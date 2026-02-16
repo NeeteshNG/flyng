@@ -5,6 +5,9 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.templatetags.static import static
+from django.urls import reverse_lazy
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -18,6 +21,11 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(','
 
 # Application definition
 DJANGO_APPS = [
+    'unfold',  # Must be before django.contrib.admin
+    'unfold.contrib.filters',  # Optional: Enhanced filters
+    'unfold.contrib.forms',  # Optional: Enhanced form widgets
+    'unfold.contrib.import_export',  # Optional: Import/Export support
+    'unfold.contrib.simple_history',  # Optional: History tracking
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -113,6 +121,107 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =============================================================================
+# UNFOLD ADMIN CONFIGURATION
+# =============================================================================
+UNFOLD = {
+    "SITE_TITLE": "FlyNG Admin",
+    "SITE_HEADER": "FlyNG",
+    "SITE_SUBHEADER": "Warehouse Drone Management System",
+    "SITE_SYMBOL": "flight",  # Material Symbols icon
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "ENVIRONMENT": "config.settings.unfold_callbacks.environment_callback",
+    "COLORS": {
+        "primary": {
+            "50": "250 245 255",
+            "100": "243 232 255",
+            "200": "233 213 255",
+            "300": "216 180 254",
+            "400": "192 132 252",
+            "500": "139 92 246",  # Main brand color - purple
+            "600": "124 58 237",
+            "700": "109 40 217",
+            "800": "91 33 182",
+            "900": "76 29 149",
+            "950": "46 16 101",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Navigation",
+                "separator": True,
+                "collapsible": False,
+                "items": [
+                    {
+                        "title": "Dashboard",
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                    },
+                ],
+            },
+            {
+                "title": "User Management",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:users_user_changelist"),
+                    },
+                    {
+                        "title": "OTPs",
+                        "icon": "pin",
+                        "link": reverse_lazy("admin:users_otp_changelist"),
+                    },
+                    {
+                        "title": "Groups",
+                        "icon": "group",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "External Links",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "API Documentation",
+                        "icon": "api",
+                        "link": "/swagger/",
+                    },
+                    {
+                        "title": "ReDoc",
+                        "icon": "description",
+                        "link": "/redoc/",
+                    },
+                    {
+                        "title": "Frontend App",
+                        "icon": "public",
+                        "link": "http://localhost:5173",
+                    },
+                ],
+            },
+        ],
+    },
+    "TABS": [
+        {
+            "models": ["users.user"],
+            "items": [
+                {
+                    "title": "Profile",
+                    "link": reverse_lazy("admin:users_user_changelist"),
+                },
+            ],
+        },
+    ],
+}
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
