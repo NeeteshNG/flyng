@@ -1,0 +1,5 @@
+// Runtime environment configuration
+// This file is replaced during Docker deployment
+window.env = {
+  VITE_API_BASE_URL: "http://localhost:8000/api/v1"
+};
