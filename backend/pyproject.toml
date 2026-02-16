@@ -1,0 +1,156 @@
+[project]
+name = "flyng-backend"
+version = "0.1.0"
+description = "FlyNG - Warehouse Drone Management System Backend"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Neetesh NG", email = "neetesh@flyng.in" }
+]
+requires-python = ">=3.13"
+
+dependencies = [
+    # Django Core
+    "Django>=6.0.2",
+    "djangorestframework>=3.15.2",
+
+    # Admin Interface
+    "django-unfold>=0.45.0",
+
+    # Authentication
+    "djangorestframework-simplejwt>=5.4.0",
+    "PyJWT>=2.10.1",
+
+    # Database
+    "psycopg2-binary>=2.9.10",
+
+    # CORS
+    "django-cors-headers>=4.6.0",
+
+    # Filtering & Search
+    "django-filter>=24.3",
+
+    # Caching & Task Queue
+    "django-redis>=5.4.0",
+    "redis>=5.2.1",
+    "celery>=5.4.0",
+
+    # API Documentation
+    "drf-spectacular>=0.28.0",
+
+    # Environment Variables
+    "python-dotenv>=1.0.1",
+
+    # Utilities
+    "Pillow>=11.1.0",
+    "python-dateutil>=2.9.0",
+
+    # Timezone
+    "pytz>=2024.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-django>=4.8.0",
+    "pytest-cov>=4.1.0",
+    "factory-boy>=3.3.0",
+
+    # Code Quality
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+
+    # Django Extensions
+    "django-extensions>=3.2.3",
+    "ipython>=8.24.0",
+
+    # Debugging
+    "django-debug-toolbar>=4.3.0",
+
+    # Type Stubs
+    "django-stubs>=5.0.0",
+    "djangorestframework-stubs>=3.15.0",
+]
+
+prod = [
+    # Production Server
+    "gunicorn>=22.0.0",
+
+    # Logging & Monitoring
+    "sentry-sdk>=2.0.0",
+
+    # Health Checks
+    "django-health-check>=3.18.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-django>=4.8.0",
+    "pytest-cov>=4.1.0",
+    "factory-boy>=3.3.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "django-extensions>=3.2.3",
+    "ipython>=8.24.0",
+    "django-debug-toolbar>=4.3.0",
+    "django-stubs>=5.0.0",
+    "djangorestframework-stubs>=3.15.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "migrations",
+    "__pycache__",
+    "staticfiles",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "DJ",     # flake8-django
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["migrations", "staticfiles"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+    "--strict-markers",
+    "-ra",
+]
+testpaths = ["tests"]
