@@ -36,6 +36,7 @@ services:
     container_name: flyng_backend
     environment:
       - DEBUG=${DEBUG:-True}
+      - DJANGO_ENV=${DJANGO_ENV:-development}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432

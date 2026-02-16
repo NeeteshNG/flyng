@@ -1,0 +1,70 @@
+# Pre-commit hooks for FlyNG
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # Python - Ruff (linting + formatting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      # Run the linter
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      # Run the formatter
+      - id: ruff-format
+        files: ^backend/
+
+  # Python - Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        files: ^backend/
+        additional_dependencies:
+          - django-stubs
+          - djangorestframework-stubs
+        args: [--ignore-missing-imports]
+
+  # Frontend - ESLint & Prettier
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npm run lint'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # Security checks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock.json
+
+# CI configuration
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [mypy, eslint]  # Skip slow hooks in CI
+  submodules: false

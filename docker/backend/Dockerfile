@@ -45,6 +45,9 @@ RUN uv pip install --system \
     "Pillow>=11.1.0" \
     "python-dateutil>=2.9.0" \
     "pytz>=2024.2" \
+    # Production dependencies
+    "gunicorn>=22.0.0" \
+    "sentry-sdk>=2.0.0" \
     # Dev dependencies
     "pytest>=8.0.0" \
     "pytest-django>=4.8.0" \
