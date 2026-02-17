@@ -1,47 +1,128 @@
 """
-Core Models - Base classes for all FlyNG models
+Core Models - Production-ready base classes for all FlyNG models
+
+Uses:
+- django-safedelete for soft delete with cascade policies
+- django-simple-history for audit trails
+- UUID for external API references
+
+Note: We use custom TimeStampedModel with 'created_at' and 'updated_at' field names
+for consistency with existing code and Django conventions.
 """
+import uuid
+
 from django.db import models
+from safedelete.models import SafeDeleteModel
+from safedelete.config import SOFT_DELETE_CASCADE
+from simple_history.models import HistoricalRecords
 
 
 class TimeStampedModel(models.Model):
     """
     Abstract base model that provides self-updating
     'created_at' and 'updated_at' fields.
+
+    Uses 'created_at' and 'updated_at' field names for consistency
+    with existing code and common Django conventions.
     """
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
 
 
-class SoftDeleteModel(models.Model):
+class SoftDeleteModel(SafeDeleteModel):
     """
-    Abstract base model that provides soft delete functionality.
+    Abstract base model that provides soft delete functionality
+    using django-safedelete with cascade policy.
+
+    Features:
+    - Soft delete (deleted records are hidden from default queries)
+    - Cascade soft delete to related objects
+    - deleted field tracks deletion timestamp
     """
-    is_deleted = models.BooleanField(default=False)
-    deleted_at = models.DateTimeField(null=True, blank=True)
+    _safedelete_policy = SOFT_DELETE_CASCADE
 
     class Meta:
         abstract = True
 
-    def soft_delete(self):
-        from django.utils import timezone
-        self.is_deleted = True
-        self.deleted_at = timezone.now()
-        self.save(update_fields=['is_deleted', 'deleted_at'])
 
-    def restore(self):
-        self.is_deleted = False
-        self.deleted_at = None
-        self.save(update_fields=['is_deleted', 'deleted_at'])
-
-
-class BaseModel(TimeStampedModel, SoftDeleteModel):
+class UUIDModel(models.Model):
     """
-    Base model combining timestamps and soft delete.
+    Abstract base model that provides a UUID field for external API references.
+    Use 'uuid' for external APIs, 'id' internally.
+    """
+    uuid = models.UUIDField(
+        default=uuid.uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+
+    class Meta:
+        abstract = True
+
+
+class BaseModel(TimeStampedModel, SoftDeleteModel, UUIDModel):
+    """
+    Production-ready base model combining:
+    - Timestamps (created, modified from django-model-utils)
+    - Soft delete with cascade (django-safedelete)
+    - UUID for external API references
+
     Use this as the base for most models.
     """
+
+    class Meta:
+        abstract = True
+
+
+class AuditedModel(BaseModel):
+    """
+    Base model with full audit trail using django-simple-history.
+
+    Use this for models that require complete change history
+    (e.g., Orders, Inventory, critical business entities).
+    """
+    history = HistoricalRecords(inherit=True)
+
+    class Meta:
+        abstract = True
+
+
+class ReadOnlyModel(TimeStampedModel, UUIDModel):
+    """
+    Base model for read-only/append-only data.
+    No soft delete - records are immutable once created.
+
+    Use for: Logs, Telemetry, Audit records, Events
+    """
+
+    class Meta:
+        abstract = True
+
+
+class OrganizationOwnedMixin(models.Model):
+    """
+    Mixin for models that belong to an organization.
+    Provides multi-tenancy support.
+    """
+    # Will be a ForeignKey to Organization model
+    # Defined here as a placeholder - actual FK added in concrete models
+    # organization = models.ForeignKey('organizations.Organization', ...)
+
+    class Meta:
+        abstract = True
+
+
+class UserOwnedMixin(models.Model):
+    """
+    Mixin for models that are owned by a user.
+    """
+    # Will be a ForeignKey to User model
+    # Defined here as a placeholder - actual FK added in concrete models
+    # created_by = models.ForeignKey('users.User', ...)
+
     class Meta:
         abstract = True

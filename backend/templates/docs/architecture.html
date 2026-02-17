@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FlyNG Warehouse Drone Management System - Model Architecture Documentation">
+    <meta name="keywords" content="FlyNG, Django, Architecture, Models, Warehouse, Drone, Documentation">
+    <title>FlyNG - Model Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-card: rgba(26, 26, 36, 0.8);
+            --text-primary: #f0f0f5;
+            --text-secondary: #8b8b9e;
+            --text-muted: #5a5a6e;
+            --accent-primary: #8b5cf6;
+            --accent-secondary: #a78bfa;
+            --accent-glow: rgba(139, 92, 246, 0.3);
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --gradient-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --gradient-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --border: rgba(139, 92, 246, 0.2);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+            --shadow-glow: 0 0 40px var(--accent-glow);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(79, 172, 254, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        .header {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.25rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .nav { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .nav a:hover {
+            color: var(--text-primary);
+            border-color: var(--border);
+            background: rgba(139, 92, 246, 0.1);
+        }
+        .nav a.active {
+            background: var(--gradient-1);
+            color: white;
+            box-shadow: var(--shadow-glow);
+        }
+        .container { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+        .section { display: none; animation: fadeIn 0.4s ease-out; }
+        .section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .section h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .section h2 .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        .icon.purple { background: var(--gradient-1); }
+        .icon.blue { background: var(--gradient-3); }
+        .icon.green { background: var(--gradient-4); }
+        .icon.pink { background: var(--gradient-2); }
+        .section h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem;
+            color: var(--text-secondary);
+        }
+        .diagram-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+        }
+        .diagram-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .diagram-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .diagram-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn {
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        .btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+        .diagram-content {
+            padding: 2rem;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, rgba(139, 92, 246, 0.02) 0%, transparent 100%);
+            overflow: auto;
+            text-align: center;
+        }
+        .mermaid {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border);
+            box-shadow: var(--shadow-glow);
+        }
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-card .sublabel {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+        .table-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+        th, td { padding: 1rem 1.25rem; text-align: left; }
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        td { border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(139, 92, 246, 0.05); }
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: var(--accent-secondary);
+            border: 1px solid var(--glass-border);
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+        .badge-purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); }
+        .badge-green { background: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
+        .badge-blue { background: rgba(96, 165, 250, 0.15); color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); }
+        .badge-yellow { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--gradient-4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .header { padding: 1rem; }
+            .container { padding: 1rem; }
+            .diagram-content { padding: 1rem; min-height: 300px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🚁</div>
+                <h1>FlyNG Model Architecture</h1>
+            </div>
+            <nav class="nav">
+                <a class="active" data-section="overview">Overview</a>
+                <a data-section="er-diagram">ER Diagram</a>
+                <a data-section="hierarchy">Model Hierarchy</a>
+                <a data-section="apps">App Structure</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Overview Section -->
+        <div id="overview" class="section active">
+            <h2><span class="icon purple">📊</span> System Overview</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="label">Total Models</div>
+                    <div class="value">30+</div>
+                    <div class="sublabel">Across 10 apps</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Base Classes</div>
+                    <div class="value">6</div>
+                    <div class="sublabel">Reusable patterns</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Audited Models</div>
+                    <div class="value">12</div>
+                    <div class="sublabel">Full change history</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">TimescaleDB</div>
+                    <div class="value">1</div>
+                    <div class="sublabel">Hypertable for telemetry</div>
+                </div>
+            </div>
+            <div class="diagram-container">
+                <div class="diagram-toolbar">
+                    <span class="diagram-title">System Architecture Flow</span>
+                    <button class="btn" onclick="exportDiagram('overview-diagram')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export SVG
+                    </button>
+                </div>
+                <div class="diagram-content">
+                    <div id="overview-diagram" class="mermaid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ER Diagram Section -->
+        <div id="er-diagram" class="section">
+            <h2><span class="icon blue">🔗</span> Entity Relationship Diagram</h2>
+            <div class="diagram-container">
+                <div class="diagram-toolbar">
+                    <span class="diagram-title">Database Relationships</span>
+                    <button class="btn" onclick="exportDiagram('er-diagram-content')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export SVG
+                    </button>
+                </div>
+                <div class="diagram-content">
+                    <div id="er-diagram-content" class="mermaid"></div>
+                </div>
+            </div>
+            <h3>Entity Details</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Entity</th><th>Key Fields</th><th>Relationships</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>Organization</code></td><td>uuid, name, slug, gst_number</td><td>Has many: Warehouses, Memberships</td></tr>
+                        <tr><td><code>Warehouse</code></td><td>uuid, name, code, timezone</td><td>Belongs to: Organization. Has many: Zones</td></tr>
+                        <tr><td><code>WarehouseZone</code></td><td>uuid, name, zone_type</td><td>Belongs to: Warehouse. Has many: GCS, Locations</td></tr>
+                        <tr><td><code>GroundControlStation</code></td><td>uuid, name, ip_address, status</td><td>Belongs to: Zone. Has many: WorkAreas</td></tr>
+                        <tr><td><code>Drone</code></td><td>uuid, serial_number, status</td><td>Belongs to: WorkArea. Has: Battery, Telemetry</td></tr>
+                        <tr><td><code>DroneBattery</code></td><td>uuid, serial_number, capacity_mah</td><td>Has many: ChargingSessions, SwapRecords</td></tr>
+                        <tr><td><code>StorageLocation</code></td><td>uuid, code, coordinates</td><td>Belongs to: Zone. Has many: Bins</td></tr>
+                        <tr><td><code>StorageBin</code></td><td>uuid, code, label_value</td><td>Belongs to: Location. Has many: Stock</td></tr>
+                        <tr><td><code>InventoryItem</code></td><td>uuid, sku, name, dimensions</td><td>Has many: Stock records</td></tr>
+                        <tr><td><code>PickOrder</code></td><td>uuid, order_number, status</td><td>Has many: OrderLines</td></tr>
+                        <tr><td><code>DroneJob</code></td><td>uuid, job_number, status</td><td>Belongs to: OrderLine, Drone. Has many: Events</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Model Hierarchy Section -->
+        <div id="hierarchy" class="section">
+            <h2><span class="icon green">🏗️</span> Model Hierarchy & Base Classes</h2>
+            <div class="diagram-container">
+                <div class="diagram-toolbar">
+                    <span class="diagram-title">Inheritance Hierarchy</span>
+                    <button class="btn" onclick="exportDiagram('hierarchy-diagram')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export SVG
+                    </button>
+                </div>
+                <div class="diagram-content">
+                    <div id="hierarchy-diagram" class="mermaid"></div>
+                </div>
+            </div>
+            <h3>Base Classes Reference</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Base Class</th><th>Inherits</th><th>Fields Added</th><th>Use Case</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>TimeStampedModel</code></td><td><code>models.Model</code></td><td><code>created_at</code>, <code>updated_at</code></td><td><span class="badge badge-blue">Basic timestamps</span></td></tr>
+                        <tr><td><code>SoftDeleteModel</code></td><td><code>SafeDeleteModel</code></td><td><code>deleted</code></td><td><span class="badge badge-yellow">Soft delete</span></td></tr>
+                        <tr><td><code>UUIDModel</code></td><td><code>models.Model</code></td><td><code>uuid</code></td><td><span class="badge badge-purple">External API refs</span></td></tr>
+                        <tr><td><code>BaseModel</code></td><td>All above</td><td>Combined</td><td><span class="badge badge-green">Standard models</span></td></tr>
+                        <tr><td><code>AuditedModel</code></td><td><code>BaseModel</code></td><td><code>history</code></td><td><span class="badge badge-purple">Full history</span></td></tr>
+                        <tr><td><code>ReadOnlyModel</code></td><td><code>TimeStamped</code> + <code>UUID</code></td><td>-</td><td><span class="badge badge-blue">Immutable</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Apps Structure Section -->
+        <div id="apps" class="section">
+            <h2><span class="icon pink">📁</span> Django Apps Structure</h2>
+            <div class="diagram-container">
+                <div class="diagram-toolbar">
+                    <span class="diagram-title">Application Modules</span>
+                    <button class="btn" onclick="exportDiagram('apps-diagram')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export SVG
+                    </button>
+                </div>
+                <div class="diagram-content">
+                    <div id="apps-diagram" class="mermaid"></div>
+                </div>
+            </div>
+            <h3>App Details</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>App</th><th>Models</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>core</code></td><td>TimeStampedModel, SoftDeleteModel, UUIDModel, BaseModel, AuditedModel, ReadOnlyModel</td><td><span class="badge badge-green">Done</span></td></tr>
+                        <tr><td><code>users</code></td><td>User, UserOneTimePassword, UserTwoFactorAuth, UserSession, UserPasswordHistory</td><td><span class="badge badge-green">Done</span></td></tr>
+                        <tr><td><code>organizations</code></td><td>Organization, OrganizationMembership, OrganizationAPIKey</td><td><span class="badge badge-yellow">Next</span></td></tr>
+                        <tr><td><code>warehouses</code></td><td>Warehouse, WarehouseContact, WarehouseZone, GroundControlStation, DroneWorkArea</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>drones</code></td><td>Drone, DroneTelemetryLog, DroneMaintenanceRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>batteries</code></td><td>DroneBattery, BatteryChargingSession, BatterySwapRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>inventory</code></td><td>StorageLocation, StorageBinTemplate, StorageBin, BinLabelType, InventoryItem, InventoryStock</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>orders</code></td><td>PickOrderBatch, PickOrder, PickOrderLine</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>jobs</code></td><td>DroneJob, DroneJobEvent</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>logs</code></td><td>DroneFlightLog, FlightGraphTemplate, FlightLogGraph</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <div class="toast-icon">✓</div>
+        <span id="toast-message">Exported!</span>
+    </div>
+
+    <script>
+        // Diagram definitions
+        const diagrams = {
+            'overview-diagram': `graph TB
+                subgraph Core[Core Layer]
+                    BaseModel
+                    AuditedModel
+                    ReadOnlyModel
+                end
+                subgraph Tenancy[Multi-Tenancy]
+                    Organization
+                    Membership
+                end
+                subgraph Facility[Warehouse Facility]
+                    Warehouse
+                    Zone
+                    GCS
+                    WorkArea
+                end
+                subgraph Fleet[Drone Fleet]
+                    Drone
+                    Battery
+                    Telemetry
+                end
+                subgraph Stock[Inventory]
+                    Location
+                    Bin
+                    Item
+                    InventoryStock
+                end
+                subgraph Fulfillment[Order Fulfillment]
+                    PickOrder
+                    OrderLine
+                    DroneJob
+                end
+                Organization --> Warehouse
+                Warehouse --> Zone
+                Zone --> GCS
+                GCS --> WorkArea
+                WorkArea --> Drone
+                Drone --> Battery
+                Drone --> Telemetry
+                Zone --> Location
+                Location --> Bin
+                Bin --> InventoryStock
+                Item --> InventoryStock
+                PickOrder --> OrderLine
+                OrderLine --> DroneJob
+                DroneJob --> Drone`,
+
+            'er-diagram-content': `erDiagram
+                User ||--o{ Membership : joins
+                Organization ||--o{ Membership : has
+                Organization ||--o{ Warehouse : owns
+                Warehouse ||--o{ Zone : contains
+                Zone ||--o{ GCS : has
+                Zone ||--o{ Location : has
+                GCS ||--o{ WorkArea : manages
+                WorkArea ||--o{ Drone : operates
+                Drone ||--o{ Telemetry : logs
+                Drone ||--o| Battery : uses
+                Battery ||--o{ ChargingSession : has
+                Location ||--o{ Bin : contains
+                Bin ||--o{ Stock : holds
+                Item ||--o{ Stock : stored
+                OrderBatch ||--o{ PickOrder : contains
+                PickOrder ||--o{ OrderLine : has
+                OrderLine ||--o{ DroneJob : creates
+                DroneJob ||--o| Drone : assigned
+                DroneJob ||--o{ JobEvent : has`,
+
+            'hierarchy-diagram': `flowchart TD
+                Model[models.Model]
+
+                Model --> TimeStamped[TimeStampedModel]
+                Model --> SoftDelete[SoftDeleteModel]
+                Model --> UUID[UUIDModel]
+
+                TimeStamped --> BaseModel[BaseModel]
+                SoftDelete --> BaseModel
+                UUID --> BaseModel
+
+                BaseModel --> Audited[AuditedModel]
+
+                TimeStamped --> ReadOnly[ReadOnlyModel]
+                UUID --> ReadOnly`,
+
+            'apps-diagram': `flowchart TD
+                subgraph Foundation[Foundation Layer]
+                    core[core]
+                    users[users]
+                end
+
+                subgraph Business[Business Layer]
+                    organizations[organizations]
+                    warehouses[warehouses]
+                end
+
+                subgraph Assets[Asset Management]
+                    drones[drones]
+                    batteries[batteries]
+                    inventory[inventory]
+                end
+
+                subgraph Operations[Operations Layer]
+                    orders[orders]
+                    jobs[jobs]
+                    logs[logs]
+                end
+
+                core --> users
+                core --> organizations
+                organizations --> warehouses
+                warehouses --> drones
+                warehouses --> inventory
+                drones --> batteries
+                inventory --> orders
+                orders --> jobs
+                drones --> jobs
+                jobs --> logs`
+        };
+
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            securityLevel: 'loose',
+            fontFamily: 'Inter, sans-serif',
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 15
+            }
+        });
+
+        // Render diagrams
+        async function renderDiagrams() {
+            for (const [id, code] of Object.entries(diagrams)) {
+                const element = document.getElementById(id);
+                if (element) {
+                    try {
+                        const { svg } = await mermaid.render('mermaid-' + id, code);
+                        element.innerHTML = svg;
+                    } catch (e) {
+                        console.error('Error rendering', id, e);
+                        element.innerHTML = '<p style="color: #f87171;">Error rendering diagram</p>';
+                    }
+                }
+            }
+        }
+
+        // Export diagram as SVG
+        function exportDiagram(containerId) {
+            const container = document.getElementById(containerId);
+            const svg = container.querySelector('svg');
+            if (svg) {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgData], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = containerId + '.svg';
+                link.click();
+                URL.revokeObjectURL(url);
+                showToast('Exported ' + containerId + '.svg');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', function() {
+                const sectionId = this.dataset.section;
+                document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                document.getElementById(sectionId).classList.add('active');
+                window.location.hash = sectionId;
+            });
+        });
+
+        // Handle initial hash
+        window.addEventListener('load', () => {
+            renderDiagrams();
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                const link = document.querySelector(`.nav a[data-section="${hash}"]`);
+                if (link) link.click();
+            }
+        });
+    </script>
+</body>
+</html>

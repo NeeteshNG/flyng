@@ -53,6 +53,21 @@ dependencies = [
 
     # Timezone
     "pytz>=2024.2",
+
+    # Model Utilities
+    "django-model-utils>=5.0.0",
+
+    # Soft Delete
+    "django-safedelete>=1.4.0",
+
+    # Audit Trail / History
+    "django-simple-history>=3.7.0",
+
+    # Field Encryption
+    "django-cryptography>=1.1",
+
+    # TimescaleDB (for telemetry time-series)
+    "django-timescaledb>=0.2.13",
 ]
 
 [project.optional-dependencies]

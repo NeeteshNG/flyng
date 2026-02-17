@@ -42,6 +42,9 @@ THIRD_PARTY_APPS = [
     'django_filters',
     'drf_spectacular',
     'phonenumber_field',
+    # Model utilities
+    'safedelete',
+    'simple_history',
 ]
 
 LOCAL_APPS = [
@@ -60,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'simple_history.middleware.HistoryRequestMiddleware',  # For tracking user in history
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -348,6 +352,27 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@flyng.in')
+
+# =============================================================================
+# DJANGO-SAFEDELETE CONFIGURATION
+# =============================================================================
+# Default policy for soft delete
+SAFE_DELETE_INTERPRET_UNDELETED_OBJECTS_AS_CREATED = True
+
+# =============================================================================
+# DJANGO-SIMPLE-HISTORY CONFIGURATION
+# =============================================================================
+# Store history in same database
+SIMPLE_HISTORY_REVERT_DISABLED = False
+# Use foreign keys for user tracking
+SIMPLE_HISTORY_FILEFIELD_TO_CHARFIELD = False
+
+# =============================================================================
+# DJANGO-CRYPTOGRAPHY CONFIGURATION
+# =============================================================================
+# Encryption key from environment (required in production)
+# In production, use a proper key management service (AWS KMS, etc.)
+CRYPTOGRAPHY_KEY = os.environ.get('CRYPTOGRAPHY_KEY', SECRET_KEY)
 
 # Logging
 LOGGING = {

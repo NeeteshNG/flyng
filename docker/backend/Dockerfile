@@ -48,6 +48,16 @@ RUN uv pip install --system \
     "python-dateutil>=2.9.0" \
     "django-phonenumber-field[phonenumberslite]>=8.0.0" \
     "pytz>=2024.2" \
+    # Model Utilities
+    "django-model-utils>=5.0.0" \
+    # Soft Delete
+    "django-safedelete>=1.4.0" \
+    # Audit Trail / History
+    "django-simple-history>=3.7.0" \
+    # Field Encryption
+    "django-cryptography>=1.1" \
+    # TimescaleDB (for telemetry time-series)
+    "django-timescaledb>=0.2.13" \
     # Production dependencies
     "gunicorn>=22.0.0" \
     "sentry-sdk>=2.0.0" \
