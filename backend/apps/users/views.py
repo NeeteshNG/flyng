@@ -1,28 +1,62 @@
 """
 User Views for FlyNG
+Production-level views with:
+- Two-Factor Authentication
+- Password history validation
+- Session management
+- Email change verification
 """
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.core.pagination import StandardPagination
+from apps.core.permissions import IsAdmin, IsManager
+
+from .models import (
+    EmailChangeRequest,
+    LoginAttempt,
+    OTP,
+    PasswordHistory,
+    UserSession,
+)
 from .serializers import (
-    UserSerializer,
-    UserCreateSerializer,
-    UserUpdateSerializer,
+    BackupCodesSerializer,
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
-    SendOTPSerializer,
-    VerifyOTPSerializer,
+    EmailChangeConfirmSerializer,
+    EmailChangeRequestSerializer,
+    LoginAttemptSerializer,
     ResetPasswordSerializer,
+    SendOTPSerializer,
+    TerminateSessionSerializer,
+    TwoFactorDisableSerializer,
+    TwoFactorEnableSerializer,
+    TwoFactorSetupSerializer,
+    UserAdminUpdateSerializer,
+    UserCreateSerializer,
+    UserListSerializer,
+    UserSerializer,
+    UserSessionSerializer,
+    UserUpdateSerializer,
+    VerifyOTPSerializer,
 )
 
 User = get_user_model()
 
+
+# =============================================================================
+# AUTHENTICATION VIEWS
+# =============================================================================
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -40,9 +74,12 @@ class RegisterView(generics.CreateAPIView):
         # Generate tokens for the new user
         refresh = RefreshToken.for_user(user)
 
+        # Send verification OTP
+        self._send_verification_otp(user)
+
         return Response({
             'success': True,
-            'message': 'User registered successfully',
+            'message': 'User registered successfully. Please verify your email.',
             'data': {
                 'user': UserSerializer(user).data,
                 'tokens': {
@@ -52,10 +89,29 @@ class RegisterView(generics.CreateAPIView):
             }
         }, status=status.HTTP_201_CREATED)
 
+    def _send_verification_otp(self, user):
+        """Send verification OTP email to user."""
+        try:
+            otp = OTP.generate(
+                email=user.email,
+                otp_type=OTP.OTPType.EMAIL_VERIFICATION,
+                validity_minutes=30,
+            )
+            send_mail(
+                subject='Verify your FlyNG account',
+                message=f'Your verification code is: {otp.otp}\n\nThis code expires in 30 minutes.',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # Don't fail registration if email fails
+
 
 class LoginView(TokenObtainPairView):
     """
     User login endpoint with JWT tokens.
+    Supports 2FA - if enabled, requires totp_code field.
     """
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -94,6 +150,10 @@ class LogoutView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+# =============================================================================
+# PROFILE VIEWS
+# =============================================================================
+
 class ProfileView(generics.RetrieveUpdateAPIView):
     """
     Get and update current user's profile.
@@ -105,7 +165,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def get_serializer_class(self):
-        if self.request.method == 'PUT' or self.request.method == 'PATCH':
+        if self.request.method in ['PUT', 'PATCH']:
             return UserUpdateSerializer
         return UserSerializer
 
@@ -133,11 +193,15 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class ChangePasswordView(APIView):
     """
     Change password for authenticated user.
+    Validates against password history.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'user': request.user}
+        )
         serializer.is_valid(raise_exception=True)
 
         user = request.user
@@ -147,7 +211,13 @@ class ChangePasswordView(APIView):
                 'message': 'Current password is incorrect'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        user.set_password(serializer.validated_data['new_password'])
+        new_password = serializer.validated_data['new_password']
+
+        # Record in password history before changing
+        PasswordHistory.record(user, new_password)
+        PasswordHistory.cleanup_old(user, keep_count=10)
+
+        user.set_password(new_password)
         user.save()
 
         return Response({
@@ -156,16 +226,361 @@ class ChangePasswordView(APIView):
         })
 
 
+# =============================================================================
+# TWO-FACTOR AUTHENTICATION VIEWS
+# =============================================================================
+
+class TwoFactorSetupView(APIView):
+    """
+    Initialize 2FA setup. Returns secret key and QR code.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.two_factor_enabled:
+            return Response({
+                'success': False,
+                'message': 'Two-factor authentication is already enabled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create 2FA setup
+        two_factor = user.setup_2fa()
+
+        return Response({
+            'success': True,
+            'message': 'Scan the QR code with your authenticator app',
+            'data': {
+                'secret_key': two_factor.secret_key,
+                'provisioning_uri': two_factor.get_provisioning_uri(),
+                'qr_code': f'data:image/png;base64,{two_factor.get_qr_code_base64()}',
+            }
+        })
+
+
+class TwoFactorEnableView(APIView):
+    """
+    Enable 2FA after verifying the TOTP code.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = TwoFactorEnableSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        totp_code = serializer.validated_data['totp_code']
+
+        success, message = user.enable_2fa(totp_code)
+
+        if success:
+            # Generate backup codes
+            two_factor = user.get_active_2fa()
+            backup_codes = two_factor.generate_backup_codes()
+
+            return Response({
+                'success': True,
+                'message': message,
+                'data': {
+                    'backup_codes': backup_codes,
+                    'warning': 'Save these backup codes in a safe place. They can be used to access your account if you lose your authenticator device.'
+                }
+            })
+
+        return Response({
+            'success': False,
+            'message': message
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TwoFactorDisableView(APIView):
+    """
+    Disable 2FA after password verification.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = TwoFactorDisableSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+
+        if not user.two_factor_enabled:
+            return Response({
+                'success': False,
+                'message': 'Two-factor authentication is not enabled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify password
+        if not user.check_password(serializer.validated_data['password']):
+            return Response({
+                'success': False,
+                'message': 'Invalid password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user.disable_2fa()
+
+        return Response({
+            'success': True,
+            'message': 'Two-factor authentication has been disabled'
+        })
+
+
+class TwoFactorBackupCodesView(APIView):
+    """
+    Generate new backup codes (invalidates existing ones).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if not user.two_factor_enabled:
+            return Response({
+                'success': False,
+                'message': 'Two-factor authentication is not enabled'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        two_factor = user.get_active_2fa()
+        if not two_factor:
+            return Response({
+                'success': False,
+                'message': 'Two-factor authentication configuration not found'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        backup_codes = two_factor.generate_backup_codes()
+
+        return Response({
+            'success': True,
+            'message': 'New backup codes generated. Previous codes are now invalid.',
+            'data': {
+                'codes': backup_codes,
+                'generated_at': two_factor.backup_codes_generated_at,
+                'remaining_count': len(backup_codes),
+            }
+        })
+
+    def get(self, request):
+        """Get remaining backup codes count."""
+        user = request.user
+
+        if not user.two_factor_enabled:
+            return Response({
+                'success': True,
+                'data': {'remaining_count': 0, 'enabled': False}
+            })
+
+        two_factor = user.get_active_2fa()
+        if not two_factor:
+            return Response({
+                'success': True,
+                'data': {'remaining_count': 0, 'enabled': False}
+            })
+
+        return Response({
+            'success': True,
+            'data': {
+                'remaining_count': two_factor.get_remaining_backup_codes_count(),
+                'generated_at': two_factor.backup_codes_generated_at,
+                'enabled': True,
+            }
+        })
+
+
+# =============================================================================
+# SESSION MANAGEMENT VIEWS
+# =============================================================================
+
+class SessionListView(generics.ListAPIView):
+    """
+    List all active sessions for current user.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSessionSerializer
+
+    def get_queryset(self):
+        return self.request.user.get_active_sessions()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        })
+
+
+class SessionTerminateView(APIView):
+    """
+    Terminate sessions.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = TerminateSessionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        session_key = serializer.validated_data.get('session_key')
+        terminate_all = serializer.validated_data.get('terminate_all', False)
+        keep_current = serializer.validated_data.get('keep_current', True)
+
+        if terminate_all:
+            current_session = request.META.get('HTTP_X_SESSION_KEY')
+            count = user.terminate_all_sessions(
+                except_current=current_session if keep_current else None
+            )
+            return Response({
+                'success': True,
+                'message': f'{count} session(s) terminated'
+            })
+
+        if session_key:
+            count = user.terminate_session(session_key)
+            if count:
+                return Response({
+                    'success': True,
+                    'message': 'Session terminated successfully'
+                })
+            return Response({
+                'success': False,
+                'message': 'Session not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({
+            'success': False,
+            'message': 'Please specify session_key or set terminate_all to true'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =============================================================================
+# EMAIL CHANGE VIEWS
+# =============================================================================
+
+class EmailChangeRequestView(APIView):
+    """
+    Request email change - sends OTP to new email.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EmailChangeRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        new_email = serializer.validated_data['new_email']
+        password = serializer.validated_data['password']
+
+        # Verify password
+        if not user.check_password(password):
+            return Response({
+                'success': False,
+                'message': 'Invalid password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create email change request
+        email_request = EmailChangeRequest.create_request(user, new_email)
+
+        # Generate OTP for new email
+        otp = OTP.generate(
+            email=new_email,
+            otp_type=OTP.OTPType.EMAIL_CHANGE,
+            validity_minutes=30,
+            new_email=new_email,
+        )
+
+        # Send OTP to new email
+        send_mail(
+            subject='Verify your new email address - FlyNG',
+            message=f'Your verification code is: {otp.otp}\n\nThis code expires in 30 minutes.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[new_email],
+            fail_silently=True,
+        )
+
+        return Response({
+            'success': True,
+            'message': f'Verification code sent to {new_email}'
+        })
+
+
+class EmailChangeConfirmView(APIView):
+    """
+    Confirm email change with OTP.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = EmailChangeConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        otp_code = serializer.validated_data['otp']
+
+        # Get pending email change request
+        try:
+            email_request = EmailChangeRequest.objects.filter(
+                user=user,
+                is_verified=False,
+            ).latest('created_at')
+        except EmailChangeRequest.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'No pending email change request found'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verify OTP
+        try:
+            otp = OTP.objects.filter(
+                email=email_request.new_email,
+                otp_type=OTP.OTPType.EMAIL_CHANGE,
+                is_used=False,
+            ).latest('created_at')
+        except OTP.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid or expired verification code'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not otp.verify(otp_code):
+            return Response({
+                'success': False,
+                'message': 'Invalid verification code'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Complete email change
+        success, message = email_request.complete()
+
+        if success:
+            return Response({
+                'success': True,
+                'message': message,
+                'data': {'new_email': email_request.new_email}
+            })
+
+        return Response({
+            'success': False,
+            'message': message
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =============================================================================
+# USER MANAGEMENT VIEWS (Admin/Manager)
+# =============================================================================
+
 class UserListView(generics.ListAPIView):
     """
     List all users (Admin/Manager only).
     """
-    queryset = User.objects.filter(is_active=True)
-    serializer_class = UserSerializer
+    queryset = User.objects.all()
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated, IsManager]
     pagination_class = StandardPagination
-    filterset_fields = ['role', 'is_verified']
+    filterset_fields = ['role', 'is_verified', 'is_active', 'two_factor_enabled']
     search_fields = ['email', 'first_name', 'last_name']
     ordering_fields = ['created_at', 'email', 'first_name']
+    ordering = ['-created_at']
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -184,13 +599,17 @@ class UserListView(generics.ListAPIView):
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    Get, update, or delete a specific user.
+    Get, update, or delete a specific user (Admin/Manager only).
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsManager]
+    lookup_field = 'uuid'
 
     def get_serializer_class(self):
         if self.request.method in ['PUT', 'PATCH']:
+            if self.request.user.is_admin():
+                return UserAdminUpdateSerializer
             return UserUpdateSerializer
         return UserSerializer
 
@@ -217,7 +636,20 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.is_active = False  # Soft delete
+
+        if not request.user.is_admin():
+            return Response({
+                'success': False,
+                'message': 'Only administrators can delete users'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if instance == request.user:
+            return Response({
+                'success': False,
+                'message': 'You cannot delete your own account'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        instance.is_active = False
         instance.save()
 
         return Response({
@@ -226,9 +658,58 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         }, status=status.HTTP_200_OK)
 
 
+class UnlockUserView(APIView):
+    """
+    Unlock a locked user account (Admin only).
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, uuid):
+        try:
+            user = User.objects.get(uuid=uuid)
+            user.unlock()
+
+            return Response({
+                'success': True,
+                'message': f'User {user.email} has been unlocked'
+            })
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class ForcePasswordChangeView(APIView):
+    """
+    Force a user to change password on next login (Admin only).
+    """
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def post(self, request, uuid):
+        try:
+            user = User.objects.get(uuid=uuid)
+            user.force_password_change = True
+            user.save(update_fields=['force_password_change'])
+
+            return Response({
+                'success': True,
+                'message': f'User {user.email} will be required to change password on next login'
+            })
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+# =============================================================================
+# OTP VIEWS
+# =============================================================================
+
 class SendOTPView(APIView):
     """
-    Send OTP to email for password reset.
+    Send OTP to email for verification or password reset.
     """
     permission_classes = [AllowAny]
 
@@ -237,16 +718,47 @@ class SendOTPView(APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
+        otp_type = serializer.validated_data.get('otp_type', OTP.OTPType.EMAIL_VERIFICATION)
 
         # Check if user exists
-        if not User.objects.filter(email=email).exists():
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Don't reveal if email exists for security
+            return Response({
+                'success': True,
+                'message': 'If this email exists, an OTP has been sent.'
+            })
+
+        # Check rate limiting (max 3 OTPs per email per hour)
+        recent_otps = OTP.objects.filter(
+            email=email,
+            otp_type=otp_type,
+            created_at__gte=timezone.now() - timedelta(hours=1),
+        ).count()
+
+        if recent_otps >= 3:
             return Response({
                 'success': False,
-                'message': 'No user found with this email'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'message': 'Too many OTP requests. Please try again later.'
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-        # TODO: Generate and send OTP
-        # For now, just return success
+        # Generate OTP
+        otp = OTP.generate(email=email, otp_type=otp_type)
+
+        # Send email
+        subject = 'Your FlyNG verification code'
+        if otp_type == OTP.OTPType.PASSWORD_RESET:
+            subject = 'Reset your FlyNG password'
+
+        send_mail(
+            subject=subject,
+            message=f'Your verification code is: {otp.otp}\n\nThis code expires in 10 minutes.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+
         return Response({
             'success': True,
             'message': 'OTP sent to your email'
@@ -255,7 +767,7 @@ class SendOTPView(APIView):
 
 class VerifyOTPView(APIView):
     """
-    Verify OTP code.
+    Verify OTP code for email verification.
     """
     permission_classes = [AllowAny]
 
@@ -263,7 +775,37 @@ class VerifyOTPView(APIView):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # TODO: Verify OTP from database
+        email = serializer.validated_data['email']
+        otp_code = serializer.validated_data['otp']
+        otp_type = serializer.validated_data.get('otp_type', OTP.OTPType.EMAIL_VERIFICATION)
+
+        try:
+            otp = OTP.objects.filter(
+                email=email,
+                otp_type=otp_type,
+                is_used=False,
+            ).latest('created_at')
+        except OTP.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid or expired OTP'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not otp.verify(otp_code):
+            remaining = otp.max_attempts - otp.attempts
+            return Response({
+                'success': False,
+                'message': f'Invalid OTP. {remaining} attempts remaining.' if remaining > 0 else 'OTP expired or invalid.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if otp_type == OTP.OTPType.EMAIL_VERIFICATION:
+            try:
+                user = User.objects.get(email=email)
+                user.is_verified = True
+                user.save(update_fields=['is_verified'])
+            except User.DoesNotExist:
+                pass
+
         return Response({
             'success': True,
             'message': 'OTP verified successfully'
@@ -281,12 +823,36 @@ class ResetPasswordView(APIView):
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data['email']
+        otp_code = serializer.validated_data['otp']
         new_password = serializer.validated_data['new_password']
 
         try:
+            otp = OTP.objects.filter(
+                email=email,
+                otp_type=OTP.OTPType.PASSWORD_RESET,
+                is_used=False,
+            ).latest('created_at')
+        except OTP.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Invalid or expired OTP. Please request a new one.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not otp.verify(otp_code):
+            return Response({
+                'success': False,
+                'message': 'Invalid OTP'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
             user = User.objects.get(email=email)
-            # TODO: Verify OTP before resetting password
+
+            # Record in password history
+            PasswordHistory.record(user, new_password)
+
             user.set_password(new_password)
+            user.failed_login_attempts = 0
+            user.lockout_until = None
             user.save()
 
             return Response({
@@ -298,3 +864,20 @@ class ResetPasswordView(APIView):
                 'success': False,
                 'message': 'User not found'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+# =============================================================================
+# AUDIT/ADMIN VIEWS
+# =============================================================================
+
+class LoginAttemptListView(generics.ListAPIView):
+    """
+    List login attempts (Admin only).
+    """
+    queryset = LoginAttempt.objects.all()
+    serializer_class = LoginAttemptSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+    pagination_class = StandardPagination
+    filterset_fields = ['email', 'success', 'ip_address', 'two_factor_used']
+    search_fields = ['email', 'ip_address']
+    ordering = ['-created_at']

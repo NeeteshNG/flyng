@@ -34,6 +34,8 @@ RUN uv pip install --system \
     "django-unfold>=0.45.0" \
     "djangorestframework-simplejwt>=5.4.0" \
     "PyJWT>=2.10.1" \
+    "pyotp>=2.9.0" \
+    "qrcode[pil]>=7.4.2" \
     "psycopg2-binary>=2.9.10" \
     "django-cors-headers>=4.6.0" \
     "django-filter>=24.3" \
@@ -44,6 +46,7 @@ RUN uv pip install --system \
     "python-dotenv>=1.0.1" \
     "Pillow>=11.1.0" \
     "python-dateutil>=2.9.0" \
+    "django-phonenumber-field[phonenumberslite]>=8.0.0" \
     "pytz>=2024.2" \
     # Production dependencies
     "gunicorn>=22.0.0" \

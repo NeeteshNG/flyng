@@ -41,6 +41,7 @@ THIRD_PARTY_APPS = [
     'corsheaders',
     'django_filters',
     'drf_spectacular',
+    'phonenumber_field',
 ]
 
 LOCAL_APPS = [
@@ -175,14 +176,46 @@ UNFOLD = {
                         "link": reverse_lazy("admin:users_user_changelist"),
                     },
                     {
+                        "title": "Groups",
+                        "icon": "group",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Security",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Login Attempts",
+                        "icon": "security",
+                        "link": reverse_lazy("admin:users_loginattempt_changelist"),
+                    },
+                    {
                         "title": "OTPs",
                         "icon": "pin",
                         "link": reverse_lazy("admin:users_otp_changelist"),
                     },
                     {
-                        "title": "Groups",
-                        "icon": "group",
-                        "link": reverse_lazy("admin:auth_group_changelist"),
+                        "title": "Two-Factor Auth",
+                        "icon": "verified_user",
+                        "link": reverse_lazy("admin:users_twofactorauth_changelist"),
+                    },
+                    {
+                        "title": "User Sessions",
+                        "icon": "devices",
+                        "link": reverse_lazy("admin:users_usersession_changelist"),
+                    },
+                    {
+                        "title": "Password History",
+                        "icon": "history",
+                        "link": reverse_lazy("admin:users_passwordhistory_changelist"),
+                    },
+                    {
+                        "title": "Email Changes",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:users_emailchangerequest_changelist"),
                     },
                 ],
             },
@@ -302,6 +335,10 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': '/api/v1',
 }
+
+# Phone Number Field Configuration (India default)
+PHONENUMBER_DEFAULT_REGION = 'IN'
+PHONENUMBER_DEFAULT_FORMAT = 'E164'
 
 # Email Configuration (for OTP)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Change in production
