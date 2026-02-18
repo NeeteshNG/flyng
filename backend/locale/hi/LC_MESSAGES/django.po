@@ -1691,3 +1691,295 @@ msgstr "इस API कुंजी को बनाने वाला उपय
 #: apps/organizations/models.py
 msgid "Description of what this API key is used for"
 msgstr "इस API कुंजी का उपयोग किसके लिए होता है इसका विवरण"
+
+# =============================================================================
+# Warehouses App - Model Names
+# =============================================================================
+
+#: apps/warehouses/apps.py
+msgid "Warehouse Management"
+msgstr "गोदाम प्रबंधन"
+
+#: apps/warehouses/models.py
+msgid "Warehouse"
+msgstr "गोदाम"
+
+#: apps/warehouses/models.py
+msgid "Warehouses"
+msgstr "गोदाम"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Profile"
+msgstr "गोदाम प्रोफ़ाइल"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Profiles"
+msgstr "गोदाम प्रोफ़ाइल"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Contact"
+msgstr "गोदाम संपर्क"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Contacts"
+msgstr "गोदाम संपर्क"
+
+# =============================================================================
+# Warehouses App - Warehouse Model Fields
+# =============================================================================
+
+#: apps/warehouses/models.py
+msgid "Organization that owns this warehouse"
+msgstr "जिस संगठन का यह गोदाम है"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Name"
+msgstr "गोदाम का नाम"
+
+#: apps/warehouses/models.py
+msgid "Display name for the warehouse"
+msgstr "गोदाम का प्रदर्शन नाम"
+
+#: apps/warehouses/models.py
+msgid "Warehouse Code"
+msgstr "गोदाम कोड"
+
+#: apps/warehouses/models.py
+msgid "Unique identifier code for the warehouse (e.g., WH-MUM-01)"
+msgstr "गोदाम के लिए अद्वितीय पहचानकर्ता कोड (जैसे, WH-MUM-01)"
+
+#: apps/warehouses/models.py
+msgid "Detailed description of the warehouse"
+msgstr "गोदाम का विस्तृत विवरण"
+
+#: apps/warehouses/models.py
+msgid "Street address, building name"
+msgstr "सड़क का पता, भवन का नाम"
+
+#: apps/warehouses/models.py
+msgid "Additional address details"
+msgstr "अतिरिक्त पता विवरण"
+
+#: apps/warehouses/models.py
+msgid "City name"
+msgstr "शहर का नाम"
+
+#: apps/warehouses/models.py
+msgid "State or province"
+msgstr "राज्य या प्रांत"
+
+#: apps/warehouses/models.py
+msgid "Postal Code"
+msgstr "पोस्टल कोड"
+
+#: apps/warehouses/models.py
+msgid "PIN code / Postal code"
+msgstr "पिन कोड / पोस्टल कोड"
+
+#: apps/warehouses/models.py
+msgid "Country name"
+msgstr "देश का नाम"
+
+#: apps/warehouses/models.py
+msgid "Latitude"
+msgstr "अक्षांश"
+
+#: apps/warehouses/models.py
+msgid "GPS latitude coordinate"
+msgstr "GPS अक्षांश निर्देशांक"
+
+#: apps/warehouses/models.py
+msgid "Longitude"
+msgstr "देशांतर"
+
+#: apps/warehouses/models.py
+msgid "GPS longitude coordinate"
+msgstr "GPS देशांतर निर्देशांक"
+
+#: apps/warehouses/models.py
+msgid "Warehouse timezone for scheduling"
+msgstr "शेड्यूलिंग के लिए गोदाम समय क्षेत्र"
+
+#: apps/warehouses/models.py
+msgid "Whether the warehouse is operational"
+msgstr "क्या गोदाम चालू है"
+
+# =============================================================================
+# Warehouses App - WarehouseProfile Model Fields
+# =============================================================================
+
+#: apps/warehouses/models.py
+msgid "Associated warehouse"
+msgstr "संबंधित गोदाम"
+
+#: apps/warehouses/models.py
+msgid "Operating Hours Start"
+msgstr "संचालन घंटे शुरू"
+
+#: apps/warehouses/models.py
+msgid "Start time of daily operations"
+msgstr "दैनिक संचालन का प्रारंभ समय"
+
+#: apps/warehouses/models.py
+msgid "Operating Hours End"
+msgstr "संचालन घंटे समाप्त"
+
+#: apps/warehouses/models.py
+msgid "End time of daily operations"
+msgstr "दैनिक संचालन का समाप्ति समय"
+
+#: apps/warehouses/models.py
+msgid "Operates 24x7"
+msgstr "24x7 संचालित"
+
+#: apps/warehouses/models.py
+msgid "Whether the warehouse operates round the clock"
+msgstr "क्या गोदाम चौबीसों घंटे संचालित होता है"
+
+#: apps/warehouses/models.py
+msgid "Total Area (sq ft)"
+msgstr "कुल क्षेत्रफल (वर्ग फुट)"
+
+#: apps/warehouses/models.py
+msgid "Total warehouse floor area in square feet"
+msgstr "वर्ग फुट में कुल गोदाम फ्लोर क्षेत्र"
+
+#: apps/warehouses/models.py
+msgid "Ceiling Height (ft)"
+msgstr "छत की ऊंचाई (फुट)"
+
+#: apps/warehouses/models.py
+msgid "Average ceiling height in feet"
+msgstr "फुट में औसत छत की ऊंचाई"
+
+#: apps/warehouses/models.py
+msgid "Max Drone Capacity"
+msgstr "अधिकतम ड्रोन क्षमता"
+
+#: apps/warehouses/models.py
+msgid "Maximum number of drones that can operate"
+msgstr "संचालित हो सकने वाले ड्रोन की अधिकतम संख्या"
+
+#: apps/warehouses/models.py
+msgid "Measurement Standard"
+msgstr "माप मानक"
+
+#: apps/warehouses/models.py
+msgid "Unit system for measurements"
+msgstr "माप के लिए इकाई प्रणाली"
+
+#: apps/warehouses/models.py
+msgid "Default currency for warehouse operations"
+msgstr "गोदाम संचालन के लिए डिफ़ॉल्ट मुद्रा"
+
+#: apps/warehouses/models.py
+msgid "Preferred date format"
+msgstr "पसंदीदा दिनांक प्रारूप"
+
+#: apps/warehouses/models.py
+msgid "Default language for warehouse interface"
+msgstr "गोदाम इंटरफ़ेस के लिए डिफ़ॉल्ट भाषा"
+
+#: apps/warehouses/models.py
+msgid "Emergency Contact"
+msgstr "आपातकालीन संपर्क"
+
+#: apps/warehouses/models.py
+msgid "Emergency contact phone number"
+msgstr "आपातकालीन संपर्क फ़ोन नंबर"
+
+#: apps/warehouses/models.py
+msgid "Safety Clearance Height (ft)"
+msgstr "सुरक्षा निकासी ऊंचाई (फुट)"
+
+#: apps/warehouses/models.py
+msgid "Minimum clearance height for drone operations"
+msgstr "ड्रोन संचालन के लिए न्यूनतम निकासी ऊंचाई"
+
+#: apps/warehouses/models.py
+msgid "Max Flight Speed (m/s)"
+msgstr "अधिकतम उड़ान गति (मी/से)"
+
+#: apps/warehouses/models.py
+msgid "Maximum allowed drone flight speed"
+msgstr "अधिकतम अनुमत ड्रोन उड़ान गति"
+
+#: apps/warehouses/models.py
+msgid "Enable Autonomous Operations"
+msgstr "स्वायत्त संचालन सक्षम करें"
+
+#: apps/warehouses/models.py
+msgid "Allow drones to operate autonomously"
+msgstr "ड्रोन को स्वायत्त रूप से संचालित करने की अनुमति दें"
+
+#: apps/warehouses/models.py
+msgid "Enable Night Operations"
+msgstr "रात्रि संचालन सक्षम करें"
+
+#: apps/warehouses/models.py
+msgid "Allow drone operations during night hours"
+msgstr "रात के घंटों में ड्रोन संचालन की अनुमति दें"
+
+# =============================================================================
+# Warehouses App - WarehouseContact Model Fields
+# =============================================================================
+
+#: apps/warehouses/models.py
+msgid "Full Name"
+msgstr "पूरा नाम"
+
+#: apps/warehouses/models.py
+msgid "Contact person full name"
+msgstr "संपर्क व्यक्ति का पूरा नाम"
+
+#: apps/warehouses/models.py
+msgid "Designation"
+msgstr "पदनाम"
+
+#: apps/warehouses/models.py
+msgid "Job title or designation"
+msgstr "नौकरी का शीर्षक या पदनाम"
+
+#: apps/warehouses/models.py
+msgid "Contact email address"
+msgstr "संपर्क ईमेल पता"
+
+#: apps/warehouses/models.py
+msgid "Primary Phone"
+msgstr "प्राथमिक फ़ोन"
+
+#: apps/warehouses/models.py
+msgid "Primary contact number"
+msgstr "प्राथमिक संपर्क नंबर"
+
+#: apps/warehouses/models.py
+msgid "Secondary Phone"
+msgstr "द्वितीयक फ़ोन"
+
+#: apps/warehouses/models.py
+msgid "Secondary contact number"
+msgstr "द्वितीयक संपर्क नंबर"
+
+#: apps/warehouses/models.py
+msgid "Is Primary Contact"
+msgstr "प्राथमिक संपर्क है"
+
+#: apps/warehouses/models.py
+msgid "Whether this is the primary contact for the warehouse"
+msgstr "क्या यह गोदाम का प्राथमिक संपर्क है"
+
+#: apps/warehouses/models.py
+msgid "Is Emergency Contact"
+msgstr "आपातकालीन संपर्क है"
+
+#: apps/warehouses/models.py
+msgid "Whether to contact in case of emergency"
+msgstr "आपातकाल में संपर्क करना है या नहीं"
+
+#: apps/warehouses/models.py
+msgid "Whether this contact is currently active"
+msgstr "क्या यह संपर्क वर्तमान में सक्रिय है"
+
+#: apps/warehouses/models.py
+msgid "Additional notes about this contact"
+msgstr "इस संपर्क के बारे में अतिरिक्त नोट्स"

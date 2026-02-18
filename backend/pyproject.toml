@@ -68,6 +68,9 @@ dependencies = [
 
     # TimescaleDB (for telemetry time-series)
     "django-timescaledb>=0.2.13",
+
+    # Model Translation (multi-language content)
+    "django-modeltranslation>=0.19.0",
 ]
 
 [project.optional-dependencies]

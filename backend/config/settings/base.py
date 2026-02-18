@@ -35,6 +35,7 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    'modeltranslation',  # Must be before apps that use it
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -51,6 +52,7 @@ LOCAL_APPS = [
     'apps.core',
     'apps.users',
     'apps.organizations',
+    'apps.warehouses',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -136,6 +138,16 @@ LOCALE_PATHS = [
 # Language cookie settings
 LANGUAGE_COOKIE_NAME = 'flyng_language'
 LANGUAGE_COOKIE_AGE = 60 * 60 * 24 * 365  # 1 year
+
+# =============================================================================
+# DJANGO-MODELTRANSLATION CONFIGURATION
+# =============================================================================
+# Languages for model field translations (stored in database)
+MODELTRANSLATION_LANGUAGES = ('en', 'hi')
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'en'
+MODELTRANSLATION_FALLBACK_LANGUAGES = ('en',)
+# Prepend default language to translated fields in admin
+MODELTRANSLATION_PREPOPULATE_LANGUAGE = 'en'
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
