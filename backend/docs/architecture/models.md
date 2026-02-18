@@ -123,6 +123,7 @@ erDiagram
     %% WAREHOUSE HIERARCHY
     %% ==========================================
 
+    Warehouse ||--|| WarehouseProfile : has_profile
     Warehouse ||--o{ WarehouseZone : contains
     Warehouse ||--o{ WarehouseContact : has_contacts
 
@@ -152,15 +153,41 @@ erDiagram
         datetime updated_at
     }
 
+    WarehouseProfile {
+        uuid uuid
+        int warehouse_id
+        time operating_hours_start
+        time operating_hours_end
+        boolean is_24x7
+        decimal total_area_sqft
+        decimal ceiling_height_ft
+        int max_drone_capacity
+        string measurement_standard
+        string currency
+        string date_format
+        string language
+        phone emergency_contact
+        decimal safety_clearance_height
+        decimal max_flight_speed
+        boolean enable_autonomous
+        boolean enable_night_ops
+        datetime created_at
+        datetime updated_at
+    }
+
     WarehouseContact {
         uuid uuid
         int warehouse_id
         string name
-        string role
+        string designation
         encrypted phone
         encrypted email
         boolean is_primary
+        boolean is_emergency
+        boolean is_active
+        text notes
         datetime created_at
+        datetime updated_at
     }
 
     WarehouseZone {
@@ -600,8 +627,9 @@ erDiagram
 │   └── OrganizationAPIKey (BaseModel)
 │
 ├── Warehouse Hierarchy
-│   ├── Warehouse (AuditedModel)
-│   ├── WarehouseContact (BaseModel) - encrypted fields
+│   ├── Warehouse (AuditedModel) ✅ - translatable: name, description
+│   ├── WarehouseProfile (BaseModel) ✅ - settings/config for warehouse
+│   ├── WarehouseContact (BaseModel) ✅ - encrypted fields, translatable: designation, notes
 │   ├── WarehouseZone (BaseModel)
 │   ├── GroundControlStation (BaseModel)
 │   └── DroneWorkArea (BaseModel)
@@ -718,6 +746,19 @@ Models using `SoftDeleteModel` cascade soft-delete to related objects:
 `AuditedModel` provides full change history via `django-simple-history`:
 - Organization, Warehouse, Drone, PickOrder, InventoryStock, etc.
 
+### 5. Model Translation (django-modeltranslation)
+Multi-language database content support for user-facing fields (English + Hindi):
+
+| App | Model | Translatable Fields |
+|-----|-------|---------------------|
+| organizations | `Plan` | name, description |
+| organizations | `Organization` | name, description |
+| organizations | `OrganizationAPIKey` | name, description |
+| warehouses | `Warehouse` | name, description |
+| warehouses | `WarehouseContact` | designation, notes |
+
+Creates database columns like `name_en`, `name_hi` automatically. Configuration in each app's `translation.py`.
+
 ---
 
 ## Auto-Generated Diagrams
@@ -743,3 +784,4 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 |---------|------|---------|
 | 1.0 | 2026-02-17 | Initial architecture design |
 | 1.1 | 2026-02-17 | Renamed all models to full descriptive names |
+| 1.2 | 2026-02-18 | Added WarehouseProfile model, django-modeltranslation support (en/hi) |

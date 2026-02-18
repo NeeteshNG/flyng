@@ -422,7 +422,9 @@
                         <tr><td><code>Plan</code></td><td>name, plan_type, monthly_price, annual_price</td><td>Has many: Organizations</td></tr>
                         <tr><td><code>Organization</code></td><td>uuid, name, slug, gst_number, pan_number</td><td>Belongs to: Plan. Has: Settings, Warehouses, Memberships</td></tr>
                         <tr><td><code>OrganizationSettings</code></td><td>timezone, currency, webhook_url</td><td>Belongs to: Organization (OneToOne)</td></tr>
-                        <tr><td><code>Warehouse</code></td><td>uuid, name, code, timezone</td><td>Belongs to: Organization. Has many: Zones</td></tr>
+                        <tr><td><code>Warehouse</code></td><td>uuid, name, code, timezone</td><td>Belongs to: Organization. Has: Profile, Contacts, Zones</td></tr>
+                        <tr><td><code>WarehouseProfile</code></td><td>operating_hours, area, ceiling_height, drone_capacity</td><td>Belongs to: Warehouse (OneToOne)</td></tr>
+                        <tr><td><code>WarehouseContact</code></td><td>name, designation, phone (encrypted), email (encrypted)</td><td>Belongs to: Warehouse</td></tr>
                         <tr><td><code>WarehouseZone</code></td><td>uuid, name, zone_type</td><td>Belongs to: Warehouse. Has many: GCS, Locations</td></tr>
                         <tr><td><code>GroundControlStation</code></td><td>uuid, name, ip_address, status</td><td>Belongs to: Zone. Has many: WorkAreas</td></tr>
                         <tr><td><code>Drone</code></td><td>uuid, serial_number, status</td><td>Belongs to: WorkArea. Has: Battery, Telemetry</td></tr>
@@ -495,7 +497,7 @@
                         <tr><td><code>core</code></td><td>TimeStampedModel, SoftDeleteModel, UUIDModel, BaseModel, AuditedModel, ReadOnlyModel</td><td><span class="badge badge-green">Done</span></td></tr>
                         <tr><td><code>users</code></td><td>User, UserOneTimePassword, UserTwoFactorAuth, UserSession, UserPasswordHistory</td><td><span class="badge badge-green">Done</span></td></tr>
                         <tr><td><code>organizations</code></td><td>Plan, Organization, OrganizationSettings, OrganizationMembership, OrganizationAPIKey</td><td><span class="badge badge-green">Done</span></td></tr>
-                        <tr><td><code>warehouses</code></td><td>Warehouse, WarehouseContact, WarehouseZone, GroundControlStation, DroneWorkArea</td><td><span class="badge badge-blue">Pending</span></td></tr>
+                        <tr><td><code>warehouses</code></td><td>Warehouse, WarehouseProfile, WarehouseContact, WarehouseZone, GroundControlStation, DroneWorkArea</td><td><span class="badge badge-yellow">In Progress</span></td></tr>
                         <tr><td><code>drones</code></td><td>Drone, DroneTelemetryLog, DroneMaintenanceRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
                         <tr><td><code>batteries</code></td><td>DroneBattery, BatteryChargingSession, BatterySwapRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
                         <tr><td><code>inventory</code></td><td>StorageLocation, StorageBinTemplate, StorageBin, BinLabelType, InventoryItem, InventoryStock</td><td><span class="badge badge-blue">Pending</span></td></tr>

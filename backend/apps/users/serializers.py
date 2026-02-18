@@ -12,6 +12,8 @@ from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from apps.core.choices import OTPType
+
 from .models import (
     EmailChangeRequest,
     LoginAttempt,
@@ -502,8 +504,8 @@ class SendOTPSerializer(serializers.Serializer):
     """
     email = serializers.EmailField(required=True)
     otp_type = serializers.ChoiceField(
-        choices=OTP.OTPType.choices,
-        default=OTP.OTPType.EMAIL_VERIFICATION,
+        choices=OTPType.choices,
+        default=OTPType.EMAIL_VERIFICATION,
     )
 
     def validate_email(self, value):
@@ -517,8 +519,8 @@ class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     otp = serializers.CharField(required=True, min_length=6, max_length=6)
     otp_type = serializers.ChoiceField(
-        choices=OTP.OTPType.choices,
-        default=OTP.OTPType.EMAIL_VERIFICATION,
+        choices=OTPType.choices,
+        default=OTPType.EMAIL_VERIFICATION,
     )
 
     def validate_email(self, value):

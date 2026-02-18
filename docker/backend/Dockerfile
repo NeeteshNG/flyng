@@ -58,6 +58,8 @@ RUN uv pip install --system \
     "django-cryptography>=1.1" \
     # TimescaleDB (for telemetry time-series)
     "django-timescaledb>=0.2.13" \
+    # Model Translation (multi-language content)
+    "django-modeltranslation>=0.19.0" \
     # Production dependencies
     "gunicorn>=22.0.0" \
     "sentry-sdk>=2.0.0" \
