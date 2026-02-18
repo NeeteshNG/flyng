@@ -195,9 +195,18 @@ erDiagram
         int warehouse_id
         string name
         string code
+        text description
         string zone_type
-        json boundaries
+        int floor_level
+        decimal area_sqft
+        decimal min_x
+        decimal max_x
+        decimal min_y
+        decimal max_y
+        int max_drones_allowed
+        int priority
         boolean is_active
+        boolean is_no_fly_zone
         datetime created_at
         datetime updated_at
     }
@@ -207,11 +216,16 @@ erDiagram
         int zone_id
         string name
         string code
+        text description
+        decimal x_position
+        decimal y_position
+        decimal z_position
+        string hardware_id
         string ip_address
-        int port
+        string firmware_version
+        int max_drones
         string status
         datetime last_heartbeat
-        json config
         boolean is_active
         datetime created_at
         datetime updated_at
@@ -219,16 +233,23 @@ erDiagram
 
     DroneWorkArea {
         uuid uuid
-        int ground_control_id
+        int ground_control_station_id
         string name
         string code
-        boolean is_tethered
-        decimal boundary_x_min
-        decimal boundary_x_max
-        decimal boundary_y_min
-        decimal boundary_y_max
-        decimal boundary_z_min
-        decimal boundary_z_max
+        text description
+        string area_type
+        decimal min_x
+        decimal max_x
+        decimal min_y
+        decimal max_y
+        decimal min_z
+        decimal max_z
+        decimal tether_length_m
+        decimal tether_anchor_x
+        decimal tether_anchor_y
+        decimal tether_anchor_z
+        decimal max_flight_speed_mps
+        int max_drones
         boolean is_active
         datetime created_at
         datetime updated_at
@@ -630,9 +651,9 @@ erDiagram
 │   ├── Warehouse (AuditedModel) ✅ - translatable: name, description
 │   ├── WarehouseProfile (BaseModel) ✅ - settings/config for warehouse
 │   ├── WarehouseContact (BaseModel) ✅ - encrypted fields, translatable: designation, notes
-│   ├── WarehouseZone (BaseModel)
-│   ├── GroundControlStation (BaseModel)
-│   └── DroneWorkArea (BaseModel)
+│   ├── WarehouseZone (AuditedModel) ✅ - translatable: name, description
+│   ├── GroundControlStation (AuditedModel) ✅ - translatable: name, description
+│   └── DroneWorkArea (AuditedModel) ✅ - translatable: name, description
 │
 ├── Assets
 │   ├── Drone (AuditedModel)
@@ -756,6 +777,9 @@ Multi-language database content support for user-facing fields (English + Hindi)
 | organizations | `OrganizationAPIKey` | name, description |
 | warehouses | `Warehouse` | name, description |
 | warehouses | `WarehouseContact` | designation, notes |
+| warehouses | `WarehouseZone` | name, description |
+| warehouses | `GroundControlStation` | name, description |
+| warehouses | `DroneWorkArea` | name, description |
 
 Creates database columns like `name_en`, `name_hi` automatically. Configuration in each app's `translation.py`.
 
@@ -785,3 +809,4 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 | 1.0 | 2026-02-17 | Initial architecture design |
 | 1.1 | 2026-02-17 | Renamed all models to full descriptive names |
 | 1.2 | 2026-02-18 | Added WarehouseProfile model, django-modeltranslation support (en/hi) |
+| 1.3 | 2026-02-18 | Added WarehouseZone, GroundControlStation, DroneWorkArea models |

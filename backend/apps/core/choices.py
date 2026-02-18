@@ -360,6 +360,16 @@ class GCSStatus(models.TextChoices):
     ERROR = 'ERROR', _('Error')
 
 
+class DroneWorkAreaType(models.TextChoices):
+    """Types of drone work areas."""
+    # Translators: Tethered work area (drone connected by cable)
+    TETHERED = 'TETHERED', _('Tethered')
+    # Translators: Untethered/free-flying work area
+    UNTETHERED = 'UNTETHERED', _('Untethered')
+    # Translators: Hybrid work area supporting both modes
+    HYBRID = 'HYBRID', _('Hybrid')
+
+
 # =============================================================================
 # Organization Membership Choices (for Day 3)
 # =============================================================================
