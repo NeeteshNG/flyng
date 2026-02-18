@@ -419,7 +419,9 @@
                         <tr><th>Entity</th><th>Key Fields</th><th>Relationships</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td><code>Organization</code></td><td>uuid, name, slug, gst_number</td><td>Has many: Warehouses, Memberships</td></tr>
+                        <tr><td><code>Plan</code></td><td>name, plan_type, monthly_price, annual_price</td><td>Has many: Organizations</td></tr>
+                        <tr><td><code>Organization</code></td><td>uuid, name, slug, gst_number, pan_number</td><td>Belongs to: Plan. Has: Settings, Warehouses, Memberships</td></tr>
+                        <tr><td><code>OrganizationSettings</code></td><td>timezone, currency, webhook_url</td><td>Belongs to: Organization (OneToOne)</td></tr>
                         <tr><td><code>Warehouse</code></td><td>uuid, name, code, timezone</td><td>Belongs to: Organization. Has many: Zones</td></tr>
                         <tr><td><code>WarehouseZone</code></td><td>uuid, name, zone_type</td><td>Belongs to: Warehouse. Has many: GCS, Locations</td></tr>
                         <tr><td><code>GroundControlStation</code></td><td>uuid, name, ip_address, status</td><td>Belongs to: Zone. Has many: WorkAreas</td></tr>
@@ -492,7 +494,7 @@
                     <tbody>
                         <tr><td><code>core</code></td><td>TimeStampedModel, SoftDeleteModel, UUIDModel, BaseModel, AuditedModel, ReadOnlyModel</td><td><span class="badge badge-green">Done</span></td></tr>
                         <tr><td><code>users</code></td><td>User, UserOneTimePassword, UserTwoFactorAuth, UserSession, UserPasswordHistory</td><td><span class="badge badge-green">Done</span></td></tr>
-                        <tr><td><code>organizations</code></td><td>Organization, OrganizationMembership, OrganizationAPIKey</td><td><span class="badge badge-yellow">Next</span></td></tr>
+                        <tr><td><code>organizations</code></td><td>Plan, Organization, OrganizationSettings, OrganizationMembership, OrganizationAPIKey</td><td><span class="badge badge-green">Done</span></td></tr>
                         <tr><td><code>warehouses</code></td><td>Warehouse, WarehouseContact, WarehouseZone, GroundControlStation, DroneWorkArea</td><td><span class="badge badge-blue">Pending</span></td></tr>
                         <tr><td><code>drones</code></td><td>Drone, DroneTelemetryLog, DroneMaintenanceRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
                         <tr><td><code>batteries</code></td><td>DroneBattery, BatteryChargingSession, BatterySwapRecord</td><td><span class="badge badge-blue">Pending</span></td></tr>
@@ -521,7 +523,9 @@
                     ReadOnlyModel
                 end
                 subgraph Tenancy[Multi-Tenancy]
+                    Plan
                     Organization
+                    OrgSettings[OrganizationSettings]
                     Membership
                 end
                 subgraph Facility[Warehouse Facility]
@@ -546,6 +550,8 @@
                     OrderLine
                     DroneJob
                 end
+                Plan --> Organization
+                Organization --> OrgSettings
                 Organization --> Warehouse
                 Warehouse --> Zone
                 Zone --> GCS
@@ -562,6 +568,8 @@
                 DroneJob --> Drone`,
 
             'er-diagram-content': `erDiagram
+                Plan ||--o{ Organization : has
+                Organization ||--|| OrgSettings : has
                 User ||--o{ Membership : joins
                 Organization ||--o{ Membership : has
                 Organization ||--o{ Warehouse : owns
@@ -602,10 +610,10 @@
                 subgraph Foundation[Foundation Layer]
                     core[core]
                     users[users]
+                    organizations[organizations]
                 end
 
                 subgraph Business[Business Layer]
-                    organizations[organizations]
                     warehouses[warehouses]
                 end
 

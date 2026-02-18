@@ -1,0 +1,1693 @@
+# FlyNG Hindi Translation
+# Copyright (C) 2024 FlyNG
+# This file is distributed under the same license as the FlyNG package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: FlyNG 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0530\n"
+"PO-Revision-Date: 2024-01-01 00:00+0530\n"
+"Last-Translator: FlyNG Team\n"
+"Language-Team: Hindi\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# =============================================================================
+# User Roles
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Administrator"
+msgstr "प्रशासक"
+
+#: apps/core/choices.py
+msgid "Manager"
+msgstr "प्रबंधक"
+
+#: apps/core/choices.py
+msgid "Operator"
+msgstr "ऑपरेटर"
+
+#: apps/core/choices.py
+msgid "Viewer"
+msgstr "दर्शक"
+
+# =============================================================================
+# OTP Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Email Verification"
+msgstr "ईमेल सत्यापन"
+
+#: apps/core/choices.py
+msgid "Password Reset"
+msgstr "पासवर्ड रीसेट"
+
+#: apps/core/choices.py
+msgid "Phone Verification"
+msgstr "फ़ोन सत्यापन"
+
+#: apps/core/choices.py
+msgid "Email Change Verification"
+msgstr "ईमेल परिवर्तन सत्यापन"
+
+# =============================================================================
+# Plan Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Free"
+msgstr "मुफ़्त"
+
+#: apps/core/choices.py
+msgid "Starter"
+msgstr "स्टार्टर"
+
+#: apps/core/choices.py
+msgid "Professional"
+msgstr "प्रोफेशनल"
+
+#: apps/core/choices.py
+msgid "Enterprise"
+msgstr "एंटरप्राइज़"
+
+# =============================================================================
+# Timezone Choices
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "India Standard Time (IST)"
+msgstr "भारतीय मानक समय (IST)"
+
+#: apps/core/choices.py
+msgid "Coordinated Universal Time (UTC)"
+msgstr "समन्वित सार्वभौमिक समय (UTC)"
+
+#: apps/core/choices.py
+msgid "Gulf Standard Time (GST)"
+msgstr "खाड़ी मानक समय (GST)"
+
+#: apps/core/choices.py
+msgid "Singapore Time (SGT)"
+msgstr "सिंगापुर समय (SGT)"
+
+#: apps/core/choices.py
+msgid "British Time (GMT/BST)"
+msgstr "ब्रिटिश समय (GMT/BST)"
+
+#: apps/core/choices.py
+msgid "Eastern Time (ET)"
+msgstr "पूर्वी समय (ET)"
+
+# =============================================================================
+# Date Format Choices
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "DD/MM/YYYY"
+msgstr "दि/मा/वर्ष"
+
+#: apps/core/choices.py
+msgid "MM/DD/YYYY"
+msgstr "मा/दि/वर्ष"
+
+#: apps/core/choices.py
+msgid "YYYY-MM-DD"
+msgstr "वर्ष-मा-दि"
+
+# =============================================================================
+# Currency Choices
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Indian Rupee (INR)"
+msgstr "भारतीय रुपया (INR)"
+
+#: apps/core/choices.py
+msgid "US Dollar (USD)"
+msgstr "अमेरिकी डॉलर (USD)"
+
+# =============================================================================
+# Language Choices
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "English"
+msgstr "अंग्रेज़ी"
+
+#: apps/core/choices.py
+msgid "Hindi"
+msgstr "हिंदी"
+
+# =============================================================================
+# Warehouse Zone Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Storage"
+msgstr "भंडारण"
+
+#: apps/core/choices.py
+msgid "Picking"
+msgstr "पिकिंग"
+
+#: apps/core/choices.py
+msgid "Staging"
+msgstr "स्टेजिंग"
+
+#: apps/core/choices.py
+msgid "Shipping"
+msgstr "शिपिंग"
+
+#: apps/core/choices.py
+msgid "Receiving"
+msgstr "प्राप्ति"
+
+#: apps/core/choices.py
+msgid "Returns"
+msgstr "वापसी"
+
+# =============================================================================
+# Measurement Standards
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Metric"
+msgstr "मीट्रिक"
+
+#: apps/core/choices.py
+msgid "Imperial"
+msgstr "इम्पीरियल"
+
+# =============================================================================
+# Drone Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Available"
+msgstr "उपलब्ध"
+
+#: apps/core/choices.py
+msgid "In Flight"
+msgstr "उड़ान में"
+
+#: apps/core/choices.py
+msgid "Charging"
+msgstr "चार्जिंग"
+
+#: apps/core/choices.py
+msgid "Idle"
+msgstr "निष्क्रिय"
+
+#: apps/core/choices.py
+msgid "Offline"
+msgstr "ऑफ़लाइन"
+
+#: apps/core/choices.py
+msgid "Maintenance"
+msgstr "रखरखाव"
+
+#: apps/core/choices.py
+msgid "Error"
+msgstr "त्रुटि"
+
+# =============================================================================
+# Drone Autonomy Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Manual"
+msgstr "मैनुअल"
+
+#: apps/core/choices.py
+msgid "Semi-Autonomous"
+msgstr "अर्ध-स्वायत्त"
+
+#: apps/core/choices.py
+msgid "Autonomous"
+msgstr "स्वायत्त"
+
+# =============================================================================
+# Battery Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "In Use"
+msgstr "उपयोग में"
+
+#: apps/core/choices.py
+msgid "Low"
+msgstr "कम"
+
+#: apps/core/choices.py
+msgid "Faulty"
+msgstr "दोषपूर्ण"
+
+#: apps/core/choices.py
+msgid "Retired"
+msgstr "सेवानिवृत्त"
+
+# =============================================================================
+# Battery Health Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Excellent"
+msgstr "उत्कृष्ट"
+
+#: apps/core/choices.py
+msgid "Good"
+msgstr "अच्छा"
+
+#: apps/core/choices.py
+msgid "Fair"
+msgstr "ठीक"
+
+#: apps/core/choices.py
+msgid "Poor"
+msgstr "खराब"
+
+#: apps/core/choices.py
+msgid "Needs Replacement"
+msgstr "बदलने की ज़रूरत"
+
+# =============================================================================
+# Bin Label Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "ArUco"
+msgstr "ArUco"
+
+#: apps/core/choices.py
+msgid "QR Code"
+msgstr "QR कोड"
+
+# =============================================================================
+# Bin Coordinate Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Center"
+msgstr "केंद्र"
+
+#: apps/core/choices.py
+msgid "Left"
+msgstr "बाएं"
+
+#: apps/core/choices.py
+msgid "Right"
+msgstr "दाएं"
+
+# =============================================================================
+# Inventory Adjustment Reasons
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Physical Count"
+msgstr "भौतिक गणना"
+
+#: apps/core/choices.py
+msgid "Damaged"
+msgstr "क्षतिग्रस्त"
+
+#: apps/core/choices.py
+msgid "Lost"
+msgstr "खोया हुआ"
+
+#: apps/core/choices.py
+msgid "Found"
+msgstr "मिला"
+
+#: apps/core/choices.py
+msgid "Customer Return"
+msgstr "ग्राहक वापसी"
+
+#: apps/core/choices.py
+msgid "Transfer"
+msgstr "स्थानांतरण"
+
+#: apps/core/choices.py
+msgid "Other"
+msgstr "अन्य"
+
+# =============================================================================
+# Order Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Pending"
+msgstr "लंबित"
+
+#: apps/core/choices.py
+msgid "Confirmed"
+msgstr "पुष्टि"
+
+#: apps/core/choices.py
+msgid "Picked"
+msgstr "पिक किया गया"
+
+#: apps/core/choices.py
+msgid "Packing"
+msgstr "पैकिंग"
+
+#: apps/core/choices.py
+msgid "Packed"
+msgstr "पैक"
+
+#: apps/core/choices.py
+msgid "Shipped"
+msgstr "भेज दिया गया"
+
+#: apps/core/choices.py
+msgid "Delivered"
+msgstr "वितरित"
+
+#: apps/core/choices.py
+msgid "Cancelled"
+msgstr "रद्द"
+
+#: apps/core/choices.py
+msgid "On Hold"
+msgstr "होल्ड पर"
+
+# =============================================================================
+# Order Priority
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Normal"
+msgstr "सामान्य"
+
+#: apps/core/choices.py
+msgid "High"
+msgstr "उच्च"
+
+#: apps/core/choices.py
+msgid "Urgent"
+msgstr "अत्यावश्यक"
+
+# =============================================================================
+# Job Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "New"
+msgstr "नया"
+
+#: apps/core/choices.py
+msgid "Queued"
+msgstr "कतार में"
+
+#: apps/core/choices.py
+msgid "Assigned"
+msgstr "सौंपा गया"
+
+#: apps/core/choices.py
+msgid "In Progress"
+msgstr "प्रगति में"
+
+#: apps/core/choices.py
+msgid "Completed"
+msgstr "पूर्ण"
+
+#: apps/core/choices.py
+msgid "Failed"
+msgstr "विफल"
+
+#: apps/core/choices.py
+msgid "Paused"
+msgstr "रुका हुआ"
+
+# =============================================================================
+# Job Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Pick"
+msgstr "पिक"
+
+#: apps/core/choices.py
+msgid "Scan"
+msgstr "स्कैन"
+
+#: apps/core/choices.py
+msgid "Count"
+msgstr "गिनती"
+
+#: apps/core/choices.py
+msgid "Move"
+msgstr "स्थानांतरित"
+
+#: apps/core/choices.py
+msgid "Return Home"
+msgstr "वापस लौटें"
+
+# =============================================================================
+# Job Event Types
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Created"
+msgstr "बनाया गया"
+
+#: apps/core/choices.py
+msgid "Started"
+msgstr "शुरू किया गया"
+
+#: apps/core/choices.py
+msgid "Navigating"
+msgstr "नेविगेट कर रहा है"
+
+#: apps/core/choices.py
+msgid "Arrived"
+msgstr "पहुंच गया"
+
+#: apps/core/choices.py
+msgid "Scanned"
+msgstr "स्कैन किया गया"
+
+#: apps/core/choices.py
+msgid "Resumed"
+msgstr "फिर से शुरू"
+
+# =============================================================================
+# GCS Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Online"
+msgstr "ऑनलाइन"
+
+# =============================================================================
+# Membership Roles
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Owner"
+msgstr "मालिक"
+
+#: apps/core/choices.py
+msgid "Member"
+msgstr "सदस्य"
+
+# =============================================================================
+# Invitation Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Accepted"
+msgstr "स्वीकृत"
+
+#: apps/core/choices.py
+msgid "Declined"
+msgstr "अस्वीकृत"
+
+#: apps/core/choices.py
+msgid "Expired"
+msgstr "समाप्त"
+
+#: apps/core/choices.py
+msgid "Revoked"
+msgstr "रद्द किया गया"
+
+# =============================================================================
+# Model Names
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Plan"
+msgstr "योजना"
+
+#: apps/organizations/models.py
+msgid "Plans"
+msgstr "योजनाएं"
+
+#: apps/organizations/models.py
+msgid "Organization"
+msgstr "संगठन"
+
+#: apps/organizations/models.py
+msgid "Organizations"
+msgstr "संगठन"
+
+#: apps/organizations/models.py
+msgid "Organization Settings"
+msgstr "संगठन सेटिंग्स"
+
+#: apps/users/models.py
+msgid "User"
+msgstr "उपयोगकर्ता"
+
+#: apps/users/models.py
+msgid "Users"
+msgstr "उपयोगकर्ता"
+
+#: apps/users/models.py
+msgid "OTP"
+msgstr "OTP"
+
+#: apps/users/models.py
+msgid "OTPs"
+msgstr "OTPs"
+
+# =============================================================================
+# Field Names - Common
+# =============================================================================
+
+#: apps/organizations/models.py apps/users/models.py
+msgid "Name"
+msgstr "नाम"
+
+#: apps/organizations/models.py
+msgid "Slug"
+msgstr "स्लग"
+
+#: apps/organizations/models.py
+msgid "Description"
+msgstr "विवरण"
+
+#: apps/organizations/models.py
+msgid "Is Active"
+msgstr "सक्रिय है"
+
+#: apps/organizations/models.py
+msgid "Is Verified"
+msgstr "सत्यापित है"
+
+#: apps/organizations/models.py
+msgid "Verified At"
+msgstr "सत्यापित समय"
+
+#: apps/organizations/models.py
+msgid "Logo"
+msgstr "लोगो"
+
+# =============================================================================
+# Field Names - Contact
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Primary Email"
+msgstr "प्राथमिक ईमेल"
+
+#: apps/users/models.py
+msgid "Email Address"
+msgstr "ईमेल पता"
+
+#: apps/organizations/models.py apps/users/models.py
+msgid "Phone Number"
+msgstr "फ़ोन नंबर"
+
+#: apps/organizations/models.py
+msgid "Website"
+msgstr "वेबसाइट"
+
+# =============================================================================
+# Field Names - Address
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Address Line 1"
+msgstr "पता पंक्ति 1"
+
+#: apps/organizations/models.py
+msgid "Address Line 2"
+msgstr "पता पंक्ति 2"
+
+#: apps/organizations/models.py
+msgid "City"
+msgstr "शहर"
+
+#: apps/organizations/models.py
+msgid "State"
+msgstr "राज्य"
+
+#: apps/organizations/models.py
+msgid "PIN Code"
+msgstr "पिन कोड"
+
+#: apps/organizations/models.py
+msgid "Country"
+msgstr "देश"
+
+# =============================================================================
+# Field Names - India Compliance
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "GST Number"
+msgstr "जीएसटी नंबर"
+
+#: apps/organizations/models.py
+msgid "PAN Number"
+msgstr "पैन नंबर"
+
+#: apps/organizations/models.py
+msgid "GST Identification Number (GSTIN)"
+msgstr "जीएसटी पहचान संख्या (GSTIN)"
+
+#: apps/organizations/models.py
+msgid "Permanent Account Number"
+msgstr "स्थायी खाता संख्या"
+
+# =============================================================================
+# Field Names - Plan
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Plan Type"
+msgstr "योजना प्रकार"
+
+#: apps/organizations/models.py
+msgid "Display name of the plan"
+msgstr "योजना का प्रदर्शन नाम"
+
+#: apps/organizations/models.py
+msgid "Description of plan features"
+msgstr "योजना सुविधाओं का विवरण"
+
+#: apps/organizations/models.py
+msgid "Whether this plan is available for new subscriptions"
+msgstr "क्या यह योजना नई सदस्यताओं के लिए उपलब्ध है"
+
+#: apps/organizations/models.py
+msgid "Monthly Price"
+msgstr "मासिक मूल्य"
+
+#: apps/organizations/models.py
+msgid "Monthly price in INR"
+msgstr "INR में मासिक मूल्य"
+
+#: apps/organizations/models.py
+msgid "Annual Price"
+msgstr "वार्षिक मूल्य"
+
+#: apps/organizations/models.py
+msgid "Annual price in INR (typically discounted)"
+msgstr "INR में वार्षिक मूल्य (आमतौर पर छूट)"
+
+#: apps/organizations/models.py
+msgid "Maximum Users"
+msgstr "अधिकतम उपयोगकर्ता"
+
+#: apps/organizations/models.py
+msgid "Maximum number of users allowed"
+msgstr "अनुमत उपयोगकर्ताओं की अधिकतम संख्या"
+
+#: apps/organizations/models.py
+msgid "Maximum Warehouses"
+msgstr "अधिकतम गोदाम"
+
+#: apps/organizations/models.py
+msgid "Maximum number of warehouses"
+msgstr "गोदामों की अधिकतम संख्या"
+
+#: apps/organizations/models.py
+msgid "Maximum Drones"
+msgstr "अधिकतम ड्रोन"
+
+#: apps/organizations/models.py
+msgid "Maximum number of drones per warehouse"
+msgstr "प्रति गोदाम ड्रोन की अधिकतम संख्या"
+
+#: apps/organizations/models.py
+msgid "Maximum Storage Locations"
+msgstr "अधिकतम भंडारण स्थान"
+
+#: apps/organizations/models.py
+msgid "Maximum storage locations per warehouse"
+msgstr "प्रति गोदाम अधिकतम भंडारण स्थान"
+
+#: apps/organizations/models.py
+msgid "Maximum Orders Per Month"
+msgstr "प्रति माह अधिकतम आदेश"
+
+#: apps/organizations/models.py
+msgid "Maximum orders per month (0 = unlimited)"
+msgstr "प्रति माह अधिकतम आदेश (0 = असीमित)"
+
+#: apps/organizations/models.py
+msgid "Analytics Enabled"
+msgstr "एनालिटिक्स सक्षम"
+
+#: apps/organizations/models.py
+msgid "Access to analytics dashboard"
+msgstr "एनालिटिक्स डैशबोर्ड तक पहुंच"
+
+#: apps/organizations/models.py
+msgid "API Access Enabled"
+msgstr "API पहुंच सक्षम"
+
+#: apps/organizations/models.py
+msgid "Access to public API"
+msgstr "सार्वजनिक API तक पहुंच"
+
+#: apps/organizations/models.py
+msgid "Priority Support"
+msgstr "प्राथमिकता सहायता"
+
+#: apps/organizations/models.py
+msgid "Priority customer support"
+msgstr "प्राथमिकता ग्राहक सहायता"
+
+#: apps/organizations/models.py
+msgid "Custom Branding"
+msgstr "कस्टम ब्रांडिंग"
+
+#: apps/organizations/models.py
+msgid "Custom logo and branding"
+msgstr "कस्टम लोगो और ब्रांडिंग"
+
+#: apps/organizations/models.py
+msgid "Audit Logs Enabled"
+msgstr "ऑडिट लॉग सक्षम"
+
+#: apps/organizations/models.py
+msgid "Access to detailed audit logs"
+msgstr "विस्तृत ऑडिट लॉग तक पहुंच"
+
+#: apps/organizations/models.py
+msgid "Export Enabled"
+msgstr "निर्यात सक्षम"
+
+#: apps/organizations/models.py
+msgid "Allow data export (CSV, JSON)"
+msgstr "डेटा निर्यात की अनुमति (CSV, JSON)"
+
+#: apps/organizations/models.py
+msgid "API Rate Limit"
+msgstr "API दर सीमा"
+
+#: apps/organizations/models.py
+msgid "API requests allowed per minute"
+msgstr "प्रति मिनट अनुमत API अनुरोध"
+
+#: apps/organizations/models.py
+msgid "Data Retention Days"
+msgstr "डेटा प्रतिधारण दिन"
+
+#: apps/organizations/models.py
+msgid "Days to retain telemetry and log data"
+msgstr "टेलीमेट्री और लॉग डेटा रखने के दिन"
+
+#: apps/organizations/models.py
+msgid "Display Order"
+msgstr "प्रदर्शन क्रम"
+
+#: apps/organizations/models.py
+msgid "Order for displaying plans (lower = first)"
+msgstr "योजनाओं को प्रदर्शित करने का क्रम (कम = पहले)"
+
+# =============================================================================
+# Field Names - Organization
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "URL-friendly identifier"
+msgstr "URL-अनुकूल पहचानकर्ता"
+
+#: apps/organizations/models.py
+msgid "Brief description of the organization"
+msgstr "संगठन का संक्षिप्त विवरण"
+
+#: apps/organizations/models.py
+msgid "Organization logo (recommended: 256x256 px)"
+msgstr "संगठन लोगो (अनुशंसित: 256x256 px)"
+
+#: apps/organizations/models.py
+msgid "Primary contact email"
+msgstr "प्राथमिक संपर्क ईमेल"
+
+#: apps/organizations/models.py
+msgid "Primary contact phone with country code"
+msgstr "देश कोड के साथ प्राथमिक संपर्क फ़ोन"
+
+#: apps/organizations/models.py
+msgid "Organization website"
+msgstr "संगठन वेबसाइट"
+
+#: apps/organizations/models.py
+msgid "Current subscription plan"
+msgstr "वर्तमान सदस्यता योजना"
+
+#: apps/organizations/models.py
+msgid "Owner"
+msgstr "मालिक"
+
+#: apps/organizations/models.py
+msgid "Organization owner/creator"
+msgstr "संगठन मालिक/निर्माता"
+
+#: apps/organizations/models.py
+msgid "Whether the organization is active"
+msgstr "क्या संगठन सक्रिय है"
+
+#: apps/organizations/models.py
+msgid "Whether the organization has been verified"
+msgstr "क्या संगठन सत्यापित है"
+
+#: apps/organizations/models.py
+msgid "Trial Ends At"
+msgstr "परीक्षण समाप्ति समय"
+
+#: apps/organizations/models.py
+msgid "When the trial period ends"
+msgstr "परीक्षण अवधि कब समाप्त होती है"
+
+# =============================================================================
+# Field Names - Organization Settings
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Timezone"
+msgstr "समय क्षेत्र"
+
+#: apps/organizations/models.py
+msgid "Date Format"
+msgstr "दिनांक प्रारूप"
+
+#: apps/organizations/models.py
+msgid "Currency"
+msgstr "मुद्रा"
+
+#: apps/organizations/models.py
+msgid "Language"
+msgstr "भाषा"
+
+#: apps/organizations/models.py
+msgid "Preferred language"
+msgstr "पसंदीदा भाषा"
+
+#: apps/organizations/models.py
+msgid "Minimum Stock Threshold"
+msgstr "न्यूनतम स्टॉक सीमा"
+
+#: apps/organizations/models.py
+msgid "Default minimum stock threshold for alerts"
+msgstr "अलर्ट के लिए डिफ़ॉल्ट न्यूनतम स्टॉक सीमा"
+
+#: apps/organizations/models.py
+msgid "Enable Low Stock Alerts"
+msgstr "कम स्टॉक अलर्ट सक्षम करें"
+
+#: apps/organizations/models.py
+msgid "Enable low stock email alerts"
+msgstr "कम स्टॉक ईमेल अलर्ट सक्षम करें"
+
+#: apps/organizations/models.py
+msgid "Auto Reorder Enabled"
+msgstr "ऑटो रीऑर्डर सक्षम"
+
+#: apps/organizations/models.py
+msgid "Enable automatic reorder suggestions"
+msgstr "स्वचालित पुनर्आदेश सुझाव सक्षम करें"
+
+#: apps/organizations/models.py
+msgid "Email Notifications Enabled"
+msgstr "ईमेल सूचनाएं सक्षम"
+
+#: apps/organizations/models.py
+msgid "Enable email notifications"
+msgstr "ईमेल सूचनाएं सक्षम करें"
+
+#: apps/organizations/models.py
+msgid "Daily Summary Enabled"
+msgstr "दैनिक सारांश सक्षम"
+
+#: apps/organizations/models.py
+msgid "Send daily summary emails"
+msgstr "दैनिक सारांश ईमेल भेजें"
+
+#: apps/organizations/models.py
+msgid "Daily Summary Time"
+msgstr "दैनिक सारांश समय"
+
+#: apps/organizations/models.py
+msgid "Time to send daily summary (in organization timezone)"
+msgstr "दैनिक सारांश भेजने का समय (संगठन समय क्षेत्र में)"
+
+#: apps/organizations/models.py
+msgid "Drone Idle Timeout"
+msgstr "ड्रोन निष्क्रिय टाइमआउट"
+
+#: apps/organizations/models.py
+msgid "Minutes before marking drone as idle"
+msgstr "ड्रोन को निष्क्रिय चिह्नित करने से पहले मिनट"
+
+#: apps/organizations/models.py
+msgid "Battery Low Threshold"
+msgstr "बैटरी कम सीमा"
+
+#: apps/organizations/models.py
+msgid "Battery percentage threshold for low battery alert"
+msgstr "कम बैटरी अलर्ट के लिए बैटरी प्रतिशत सीमा"
+
+#: apps/organizations/models.py
+msgid "Battery Critical Threshold"
+msgstr "बैटरी गंभीर सीमा"
+
+#: apps/organizations/models.py
+msgid "Battery percentage threshold for critical alert"
+msgstr "गंभीर अलर्ट के लिए बैटरी प्रतिशत सीमा"
+
+#: apps/organizations/models.py
+msgid "Auto Assign Jobs"
+msgstr "ऑटो जॉब असाइन"
+
+#: apps/organizations/models.py
+msgid "Automatically assign drone jobs from order queue"
+msgstr "ऑर्डर कतार से स्वचालित रूप से ड्रोन जॉब असाइन करें"
+
+#: apps/organizations/models.py
+msgid "Order Priority Enabled"
+msgstr "ऑर्डर प्राथमिकता सक्षम"
+
+#: apps/organizations/models.py
+msgid "Enable order priority levels"
+msgstr "ऑर्डर प्राथमिकता स्तर सक्षम करें"
+
+#: apps/organizations/models.py
+msgid "Session Timeout"
+msgstr "सत्र टाइमआउट"
+
+#: apps/organizations/models.py
+msgid "Session timeout in minutes"
+msgstr "मिनटों में सत्र टाइमआउट"
+
+#: apps/organizations/models.py
+msgid "Require 2FA for Admins"
+msgstr "प्रशासकों के लिए 2FA आवश्यक"
+
+#: apps/organizations/models.py
+msgid "Require 2FA for admin users"
+msgstr "प्रशासक उपयोगकर्ताओं के लिए 2FA आवश्यक"
+
+#: apps/organizations/models.py
+msgid "Password Expiry Days"
+msgstr "पासवर्ड समाप्ति दिन"
+
+#: apps/organizations/models.py
+msgid "Days before password expires (0 = never)"
+msgstr "पासवर्ड समाप्त होने से पहले दिन (0 = कभी नहीं)"
+
+#: apps/organizations/models.py
+msgid "Webhook URL"
+msgstr "वेबहुक URL"
+
+#: apps/organizations/models.py
+msgid "Webhook URL for event notifications"
+msgstr "इवेंट सूचनाओं के लिए वेबहुक URL"
+
+#: apps/organizations/models.py
+msgid "Webhook Secret"
+msgstr "वेबहुक सीक्रेट"
+
+#: apps/organizations/models.py
+msgid "Secret for webhook signature verification"
+msgstr "वेबहुक हस्ताक्षर सत्यापन के लिए सीक्रेट"
+
+# =============================================================================
+# Field Names - User
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Role"
+msgstr "भूमिका"
+
+#: apps/users/models.py
+msgid "Email Verified"
+msgstr "ईमेल सत्यापित"
+
+#: apps/users/models.py
+msgid "Profile Picture"
+msgstr "प्रोफ़ाइल चित्र"
+
+#: apps/users/models.py
+msgid "Last Login IP"
+msgstr "अंतिम लॉगिन IP"
+
+#: apps/users/models.py
+msgid "Failed Login Attempts"
+msgstr "विफल लॉगिन प्रयास"
+
+#: apps/users/models.py
+msgid "Locked Until"
+msgstr "तब तक लॉक"
+
+#: apps/users/models.py
+msgid "Account is locked until this time due to failed login attempts"
+msgstr "विफल लॉगिन प्रयासों के कारण खाता इस समय तक लॉक है"
+
+#: apps/users/models.py
+msgid "Two-Factor Enabled"
+msgstr "टू-फैक्टर सक्षम"
+
+#: apps/users/models.py
+msgid "Whether 2FA is enabled for this account"
+msgstr "क्या इस खाते के लिए 2FA सक्षम है"
+
+#: apps/users/models.py
+msgid "Password Changed At"
+msgstr "पासवर्ड बदलने का समय"
+
+#: apps/users/models.py
+msgid "Last time the password was changed"
+msgstr "पासवर्ड आखिरी बार बदला गया"
+
+#: apps/users/models.py
+msgid "Force Password Change"
+msgstr "पासवर्ड बदलने के लिए बाध्य"
+
+#: apps/users/models.py
+msgid "Require password change on next login"
+msgstr "अगले लॉगिन पर पासवर्ड बदलना आवश्यक"
+
+#: apps/users/models.py
+msgid "Active Organization"
+msgstr "सक्रिय संगठन"
+
+#: apps/users/models.py
+msgid "Currently active organization for this user"
+msgstr "इस उपयोगकर्ता के लिए वर्तमान में सक्रिय संगठन"
+
+#: apps/users/models.py
+msgid "Phone number with country code (e.g., +91 9876543210)"
+msgstr "देश कोड के साथ फ़ोन नंबर (जैसे, +91 9876543210)"
+
+# =============================================================================
+# Field Names - OTP
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Email"
+msgstr "ईमेल"
+
+#: apps/users/models.py
+msgid "OTP Type"
+msgstr "OTP प्रकार"
+
+#: apps/users/models.py
+msgid "Is Used"
+msgstr "उपयोग किया गया"
+
+#: apps/users/models.py
+msgid "Expires At"
+msgstr "समाप्ति समय"
+
+#: apps/users/models.py
+msgid "Attempts"
+msgstr "प्रयास"
+
+#: apps/users/models.py
+msgid "Maximum Attempts"
+msgstr "अधिकतम प्रयास"
+
+#: apps/users/models.py
+msgid "New Email"
+msgstr "नया ईमेल"
+
+# =============================================================================
+# Field Names - Password History
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Password Hash"
+msgstr "पासवर्ड हैश"
+
+#: apps/users/models.py
+msgid "Password History"
+msgstr "पासवर्ड इतिहास"
+
+#: apps/users/models.py
+msgid "Password Histories"
+msgstr "पासवर्ड इतिहास"
+
+# =============================================================================
+# Field Names - Two-Factor Authentication
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Secret Key"
+msgstr "गुप्त कुंजी"
+
+#: apps/users/models.py
+msgid "TOTP secret key (base32 encoded)"
+msgstr "TOTP गुप्त कुंजी (base32 एन्कोडेड)"
+
+#: apps/users/models.py
+msgid "Backup Codes"
+msgstr "बैकअप कोड"
+
+#: apps/users/models.py
+msgid "Hashed backup recovery codes"
+msgstr "हैश किए गए बैकअप रिकवरी कोड"
+
+#: apps/users/models.py
+msgid "Backup Codes Generated At"
+msgstr "बैकअप कोड जनरेट समय"
+
+#: apps/users/models.py
+msgid "Two-Factor Authentication"
+msgstr "टू-फैक्टर प्रमाणीकरण"
+
+#: apps/users/models.py
+msgid "Two-Factor Authentications"
+msgstr "टू-फैक्टर प्रमाणीकरण"
+
+# =============================================================================
+# Field Names - User Session
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Session Key"
+msgstr "सत्र कुंजी"
+
+#: apps/users/models.py
+msgid "IP Address"
+msgstr "IP पता"
+
+#: apps/users/models.py
+msgid "User Agent"
+msgstr "यूज़र एजेंट"
+
+#: apps/users/models.py
+msgid "Device Type"
+msgstr "डिवाइस प्रकार"
+
+#: apps/users/models.py
+msgid "Detected device type (mobile, tablet, desktop)"
+msgstr "पता लगाया गया डिवाइस प्रकार (मोबाइल, टैबलेट, डेस्कटॉप)"
+
+#: apps/users/models.py
+msgid "Browser"
+msgstr "ब्राउज़र"
+
+#: apps/users/models.py
+msgid "Operating System"
+msgstr "ऑपरेटिंग सिस्टम"
+
+#: apps/users/models.py
+msgid "Location"
+msgstr "स्थान"
+
+#: apps/users/models.py
+msgid "Approximate location based on IP"
+msgstr "IP के आधार पर अनुमानित स्थान"
+
+#: apps/users/models.py
+msgid "Last Activity"
+msgstr "अंतिम गतिविधि"
+
+#: apps/users/models.py
+msgid "Terminated At"
+msgstr "समाप्ति समय"
+
+#: apps/users/models.py
+msgid "User Session"
+msgstr "उपयोगकर्ता सत्र"
+
+#: apps/users/models.py
+msgid "User Sessions"
+msgstr "उपयोगकर्ता सत्र"
+
+# =============================================================================
+# Field Names - Login Attempt
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Success"
+msgstr "सफल"
+
+#: apps/users/models.py
+msgid "Failure Reason"
+msgstr "विफलता का कारण"
+
+#: apps/users/models.py
+msgid "Two-Factor Used"
+msgstr "टू-फैक्टर उपयोग किया गया"
+
+#: apps/users/models.py
+msgid "Login Attempt"
+msgstr "लॉगिन प्रयास"
+
+#: apps/users/models.py
+msgid "Login Attempts"
+msgstr "लॉगिन प्रयास"
+
+# =============================================================================
+# Field Names - Email Change Request
+# =============================================================================
+
+#: apps/users/models.py
+msgid "Old Email"
+msgstr "पुराना ईमेल"
+
+#: apps/users/models.py
+msgid "Email Change Request"
+msgstr "ईमेल परिवर्तन अनुरोध"
+
+#: apps/users/models.py
+msgid "Email Change Requests"
+msgstr "ईमेल परिवर्तन अनुरोध"
+
+# =============================================================================
+# Subscription Status
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Active"
+msgstr "सक्रिय"
+
+#: apps/core/choices.py
+msgid "Trialing"
+msgstr "परीक्षण"
+
+#: apps/core/choices.py
+msgid "Past Due"
+msgstr "भुगतान बकाया"
+
+# =============================================================================
+# Billing Cycle
+# =============================================================================
+
+#: apps/core/choices.py
+msgid "Monthly"
+msgstr "मासिक"
+
+#: apps/core/choices.py
+msgid "Annual"
+msgstr "वार्षिक"
+
+# =============================================================================
+# Organization Membership Model
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Organization Membership"
+msgstr "संगठन सदस्यता"
+
+#: apps/organizations/models.py
+msgid "Organization Memberships"
+msgstr "संगठन सदस्यताएं"
+
+#: apps/organizations/models.py
+msgid "The organization this membership belongs to"
+msgstr "जिस संगठन से यह सदस्यता संबंधित है"
+
+#: apps/organizations/models.py
+msgid "The user who is a member"
+msgstr "वह उपयोगकर्ता जो सदस्य है"
+
+#: apps/organizations/models.py
+msgid "Membership Role"
+msgstr "सदस्यता भूमिका"
+
+#: apps/organizations/models.py
+msgid "Role within the organization (Owner, Admin, Member)"
+msgstr "संगठन में भूमिका (मालिक, प्रशासक, सदस्य)"
+
+#: apps/organizations/models.py
+msgid "User Role"
+msgstr "उपयोगकर्ता भूमिका"
+
+#: apps/organizations/models.py
+msgid "Functional role for permissions (Admin, Manager, Operator, Viewer)"
+msgstr "अनुमतियों के लिए कार्यात्मक भूमिका (प्रशासक, प्रबंधक, ऑपरेटर, दर्शक)"
+
+#: apps/organizations/models.py
+msgid "Whether this membership is active"
+msgstr "क्या यह सदस्यता सक्रिय है"
+
+#: apps/organizations/models.py
+msgid "Joined At"
+msgstr "शामिल होने का समय"
+
+#: apps/organizations/models.py
+msgid "When the user joined the organization"
+msgstr "उपयोगकर्ता संगठन में कब शामिल हुआ"
+
+#: apps/organizations/models.py
+msgid "Deactivated At"
+msgstr "निष्क्रिय समय"
+
+#: apps/organizations/models.py
+msgid "When the membership was deactivated"
+msgstr "सदस्यता कब निष्क्रिय हुई"
+
+#: apps/organizations/models.py
+msgid "Invited By"
+msgstr "द्वारा आमंत्रित"
+
+#: apps/organizations/models.py
+msgid "User who invited this member"
+msgstr "इस सदस्य को आमंत्रित करने वाला उपयोगकर्ता"
+
+#: apps/organizations/models.py
+msgid "Notes"
+msgstr "नोट्स"
+
+#: apps/organizations/models.py
+msgid "Internal notes about this membership"
+msgstr "इस सदस्यता के बारे में आंतरिक नोट्स"
+
+# =============================================================================
+# Organization Invitation Model
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Organization Invitation"
+msgstr "संगठन आमंत्रण"
+
+#: apps/organizations/models.py
+msgid "Organization Invitations"
+msgstr "संगठन आमंत्रण"
+
+#: apps/organizations/models.py
+msgid "The organization being invited to"
+msgstr "जिस संगठन में आमंत्रित किया जा रहा है"
+
+#: apps/organizations/models.py
+msgid "Email address of the invitee"
+msgstr "आमंत्रित व्यक्ति का ईमेल पता"
+
+#: apps/organizations/models.py
+msgid "First Name"
+msgstr "पहला नाम"
+
+#: apps/organizations/models.py
+msgid "First name of the invitee (optional)"
+msgstr "आमंत्रित व्यक्ति का पहला नाम (वैकल्पिक)"
+
+#: apps/organizations/models.py
+msgid "Last Name"
+msgstr "अंतिम नाम"
+
+#: apps/organizations/models.py
+msgid "Last name of the invitee (optional)"
+msgstr "आमंत्रित व्यक्ति का अंतिम नाम (वैकल्पिक)"
+
+#: apps/organizations/models.py
+msgid "Role to assign when invitation is accepted"
+msgstr "आमंत्रण स्वीकार होने पर असाइन करने वाली भूमिका"
+
+#: apps/organizations/models.py
+msgid "Functional role to assign on acceptance"
+msgstr "स्वीकृति पर असाइन करने वाली कार्यात्मक भूमिका"
+
+#: apps/organizations/models.py
+msgid "Token"
+msgstr "टोकन"
+
+#: apps/organizations/models.py
+msgid "Unique invitation token"
+msgstr "अद्वितीय आमंत्रण टोकन"
+
+#: apps/organizations/models.py
+msgid "Status"
+msgstr "स्थिति"
+
+#: apps/organizations/models.py
+msgid "Current status of the invitation"
+msgstr "आमंत्रण की वर्तमान स्थिति"
+
+#: apps/organizations/models.py
+msgid "When the invitation expires"
+msgstr "आमंत्रण कब समाप्त होता है"
+
+#: apps/organizations/models.py
+msgid "Sent At"
+msgstr "भेजने का समय"
+
+#: apps/organizations/models.py
+msgid "When the invitation email was sent"
+msgstr "आमंत्रण ईमेल कब भेजा गया"
+
+#: apps/organizations/models.py
+msgid "Responded At"
+msgstr "प्रतिक्रिया समय"
+
+#: apps/organizations/models.py
+msgid "When the invitee responded"
+msgstr "आमंत्रित व्यक्ति ने कब प्रतिक्रिया दी"
+
+#: apps/organizations/models.py
+msgid "User who sent the invitation"
+msgstr "आमंत्रण भेजने वाला उपयोगकर्ता"
+
+#: apps/organizations/models.py
+msgid "Accepted By"
+msgstr "द्वारा स्वीकृत"
+
+#: apps/organizations/models.py
+msgid "User who accepted the invitation"
+msgstr "आमंत्रण स्वीकार करने वाला उपयोगकर्ता"
+
+#: apps/organizations/models.py
+msgid "Personal Message"
+msgstr "व्यक्तिगत संदेश"
+
+#: apps/organizations/models.py
+msgid "Optional personal message to include in invitation"
+msgstr "आमंत्रण में शामिल करने के लिए वैकल्पिक व्यक्तिगत संदेश"
+
+#: apps/organizations/models.py
+msgid "Resend Count"
+msgstr "पुनः भेजने की गिनती"
+
+#: apps/organizations/models.py
+msgid "Number of times invitation was resent"
+msgstr "आमंत्रण कितनी बार पुनः भेजा गया"
+
+#: apps/organizations/models.py
+msgid "Last Resent At"
+msgstr "अंतिम पुनः भेजने का समय"
+
+#: apps/organizations/models.py
+msgid "This invitation is no longer valid"
+msgstr "यह आमंत्रण अब मान्य नहीं है"
+
+#: apps/organizations/models.py
+msgid "This invitation has already been processed"
+msgstr "इस आमंत्रण को पहले ही संसाधित किया जा चुका है"
+
+#: apps/organizations/models.py
+msgid "Only pending invitations can be revoked"
+msgstr "केवल लंबित आमंत्रण रद्द किए जा सकते हैं"
+
+#: apps/organizations/models.py
+msgid "Only pending invitations can be resent"
+msgstr "केवल लंबित आमंत्रण पुनः भेजे जा सकते हैं"
+
+# =============================================================================
+# Subscription Model
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Subscription"
+msgstr "सदस्यता"
+
+#: apps/organizations/models.py
+msgid "Subscriptions"
+msgstr "सदस्यताएं"
+
+#: apps/organizations/models.py
+msgid "The organization this subscription belongs to"
+msgstr "जिस संगठन से यह सदस्यता संबंधित है"
+
+#: apps/organizations/models.py
+msgid "The subscribed plan"
+msgstr "सदस्यता योजना"
+
+#: apps/organizations/models.py
+msgid "Current subscription status"
+msgstr "वर्तमान सदस्यता स्थिति"
+
+#: apps/organizations/models.py
+msgid "Billing Cycle"
+msgstr "बिलिंग चक्र"
+
+#: apps/organizations/models.py
+msgid "Monthly or annual billing"
+msgstr "मासिक या वार्षिक बिलिंग"
+
+#: apps/organizations/models.py
+msgid "Amount"
+msgstr "राशि"
+
+#: apps/organizations/models.py
+msgid "Subscription amount per billing cycle"
+msgstr "प्रति बिलिंग चक्र सदस्यता राशि"
+
+#: apps/organizations/models.py
+msgid "Started At"
+msgstr "शुरू होने का समय"
+
+#: apps/organizations/models.py
+msgid "When the subscription started"
+msgstr "सदस्यता कब शुरू हुई"
+
+#: apps/organizations/models.py
+msgid "When the trial period ends"
+msgstr "परीक्षण अवधि कब समाप्त होती है"
+
+#: apps/organizations/models.py
+msgid "Current Period Start"
+msgstr "वर्तमान अवधि शुरू"
+
+#: apps/organizations/models.py
+msgid "Start of current billing period"
+msgstr "वर्तमान बिलिंग अवधि की शुरुआत"
+
+#: apps/organizations/models.py
+msgid "Current Period End"
+msgstr "वर्तमान अवधि समाप्त"
+
+#: apps/organizations/models.py
+msgid "End of current billing period"
+msgstr "वर्तमान बिलिंग अवधि का अंत"
+
+#: apps/organizations/models.py
+msgid "Cancelled At"
+msgstr "रद्द करने का समय"
+
+#: apps/organizations/models.py
+msgid "When the subscription was cancelled"
+msgstr "सदस्यता कब रद्द की गई"
+
+#: apps/organizations/models.py
+msgid "Cancel at Period End"
+msgstr "अवधि के अंत में रद्द करें"
+
+#: apps/organizations/models.py
+msgid "Whether to cancel at end of current period"
+msgstr "क्या वर्तमान अवधि के अंत में रद्द करना है"
+
+#: apps/organizations/models.py
+msgid "External Subscription ID"
+msgstr "बाहरी सदस्यता ID"
+
+#: apps/organizations/models.py
+msgid "Subscription ID from payment gateway (Razorpay, etc.)"
+msgstr "भुगतान गेटवे से सदस्यता ID (Razorpay, आदि)"
+
+#: apps/organizations/models.py
+msgid "External Customer ID"
+msgstr "बाहरी ग्राहक ID"
+
+#: apps/organizations/models.py
+msgid "Customer ID from payment gateway"
+msgstr "भुगतान गेटवे से ग्राहक ID"
+
+#: apps/organizations/models.py
+msgid "Payment Method"
+msgstr "भुगतान विधि"
+
+#: apps/organizations/models.py
+msgid "Last used payment method (e.g., card_xxxx)"
+msgstr "अंतिम उपयोग की गई भुगतान विधि (जैसे, card_xxxx)"
+
+#: apps/organizations/models.py
+msgid "Metadata"
+msgstr "मेटाडेटा"
+
+#: apps/organizations/models.py
+msgid "Additional subscription metadata"
+msgstr "अतिरिक्त सदस्यता मेटाडेटा"
+
+# =============================================================================
+# Organization API Key Model
+# =============================================================================
+
+#: apps/organizations/models.py
+msgid "Organization API Key"
+msgstr "संगठन API कुंजी"
+
+#: apps/organizations/models.py
+msgid "Organization API Keys"
+msgstr "संगठन API कुंजियां"
+
+#: apps/organizations/models.py
+msgid "The organization this API key belongs to"
+msgstr "जिस संगठन से यह API कुंजी संबंधित है"
+
+#: apps/organizations/models.py
+msgid "Friendly name for this API key"
+msgstr "इस API कुंजी के लिए अनुकूल नाम"
+
+#: apps/organizations/models.py
+msgid "Key Prefix"
+msgstr "कुंजी उपसर्ग"
+
+#: apps/organizations/models.py
+msgid "First 8 characters of the key for identification"
+msgstr "पहचान के लिए कुंजी के पहले 8 अक्षर"
+
+#: apps/organizations/models.py
+msgid "Key Hash"
+msgstr "कुंजी हैश"
+
+#: apps/organizations/models.py
+msgid "SHA-256 hash of the full API key"
+msgstr "पूर्ण API कुंजी का SHA-256 हैश"
+
+#: apps/organizations/models.py
+msgid "Whether this API key is active"
+msgstr "क्या यह API कुंजी सक्रिय है"
+
+#: apps/organizations/models.py
+msgid "When the API key expires (null = never)"
+msgstr "API कुंजी कब समाप्त होती है (null = कभी नहीं)"
+
+#: apps/organizations/models.py
+msgid "Scopes"
+msgstr "स्कोप"
+
+#: apps/organizations/models.py
+msgid "List of allowed permission scopes"
+msgstr "अनुमत अनुमति स्कोप की सूची"
+
+#: apps/organizations/models.py
+msgid "API requests allowed per minute"
+msgstr "प्रति मिनट अनुमत API अनुरोध"
+
+#: apps/organizations/models.py
+msgid "Last Used At"
+msgstr "अंतिम उपयोग समय"
+
+#: apps/organizations/models.py
+msgid "When the key was last used"
+msgstr "कुंजी का अंतिम उपयोग कब हुआ"
+
+#: apps/organizations/models.py
+msgid "Last Used IP"
+msgstr "अंतिम उपयोग IP"
+
+#: apps/organizations/models.py
+msgid "IP address that last used this key"
+msgstr "इस कुंजी का अंतिम उपयोग करने वाला IP पता"
+
+#: apps/organizations/models.py
+msgid "Usage Count"
+msgstr "उपयोग गणना"
+
+#: apps/organizations/models.py
+msgid "Total number of API calls with this key"
+msgstr "इस कुंजी के साथ कुल API कॉल की संख्या"
+
+#: apps/organizations/models.py
+msgid "Created By"
+msgstr "द्वारा निर्मित"
+
+#: apps/organizations/models.py
+msgid "User who created this API key"
+msgstr "इस API कुंजी को बनाने वाला उपयोगकर्ता"
+
+#: apps/organizations/models.py
+msgid "Description of what this API key is used for"
+msgstr "इस API कुंजी का उपयोग किसके लिए होता है इसका विवरण"

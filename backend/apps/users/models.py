@@ -22,8 +22,10 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 
+from apps.core.choices import OTPType, UserRole
 from apps.core.models import TimeStampedModel
 
 
@@ -50,7 +52,7 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', User.Role.ADMIN)
+        extra_fields.setdefault('role', UserRole.ADMIN)
         extra_fields.setdefault('is_verified', True)
 
         if extra_fields.get('is_staff') is not True:
@@ -75,12 +77,6 @@ class User(AbstractUser, TimeStampedModel):
     Uses email as the unique identifier instead of username.
     """
 
-    class Role(models.TextChoices):
-        ADMIN = 'ADMIN', 'Administrator'
-        MANAGER = 'MANAGER', 'Manager'
-        OPERATOR = 'OPERATOR', 'Operator'
-        VIEWER = 'VIEWER', 'Viewer'
-
     # UUID for external references (prevents ID enumeration)
     uuid = models.UUIDField(
         default=uuid.uuid4,
@@ -91,26 +87,34 @@ class User(AbstractUser, TimeStampedModel):
 
     # Remove username field, use email instead
     username = None
-    email = models.EmailField('Email Address', unique=True, db_index=True)
+    email = models.EmailField(
+        verbose_name=_('Email Address'),
+        unique=True,
+        db_index=True,
+    )
 
     # Profile fields
     phone = PhoneNumberField(
-        'Phone Number',
+        verbose_name=_('Phone Number'),
         blank=True,
         null=True,
         region='IN',
-        help_text='Phone number with country code (e.g., +91 9876543210)',
+        help_text=_('Phone number with country code (e.g., +91 9876543210)'),
     )
     role = models.CharField(
-        'Role',
+        verbose_name=_('Role'),
         max_length=20,
-        choices=Role.choices,
-        default=Role.VIEWER,
+        choices=UserRole.choices,
+        default=UserRole.VIEWER,
         db_index=True,
     )
-    is_verified = models.BooleanField('Email Verified', default=False, db_index=True)
+    is_verified = models.BooleanField(
+        verbose_name=_('Email Verified'),
+        default=False,
+        db_index=True,
+    )
     profile_picture = models.ImageField(
-        'Profile Picture',
+        verbose_name=_('Profile Picture'),
         upload_to='profile_pictures/%Y/%m/',
         blank=True,
         null=True,
@@ -118,46 +122,53 @@ class User(AbstractUser, TimeStampedModel):
 
     # Security fields
     last_login_ip = models.GenericIPAddressField(
-        'Last Login IP',
+        verbose_name=_('Last Login IP'),
         blank=True,
         null=True,
     )
-    failed_login_attempts = models.PositiveIntegerField(default=0)
+    failed_login_attempts = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Failed Login Attempts'),
+    )
     lockout_until = models.DateTimeField(
-        'Locked Until',
+        verbose_name=_('Locked Until'),
         blank=True,
         null=True,
-        help_text='Account is locked until this time due to failed login attempts',
+        help_text=_('Account is locked until this time due to failed login attempts'),
     )
 
     # Two-Factor Authentication
     two_factor_enabled = models.BooleanField(
-        'Two-Factor Enabled',
+        verbose_name=_('Two-Factor Enabled'),
         default=False,
-        help_text='Whether 2FA is enabled for this account',
+        help_text=_('Whether 2FA is enabled for this account'),
     )
 
     # Password management
     password_changed_at = models.DateTimeField(
-        'Password Changed At',
+        verbose_name=_('Password Changed At'),
         blank=True,
         null=True,
-        help_text='Last time the password was changed',
+        help_text=_('Last time the password was changed'),
     )
     force_password_change = models.BooleanField(
-        'Force Password Change',
+        verbose_name=_('Force Password Change'),
         default=False,
-        help_text='Require password change on next login',
+        help_text=_('Require password change on next login'),
     )
 
-    # Organization relationship (to be added when organizations app is created)
-    # organization = models.ForeignKey(
-    #     'organizations.Organization',
-    #     on_delete=models.CASCADE,
-    #     related_name='users',
-    #     null=True,
-    #     blank=True,
-    # )
+    # Organization relationship - users can belong to one organization
+    # Many-to-many relationship via OrganizationMembership will be added in Day 3
+    # This direct FK is for the user's "current/active" organization context
+    active_organization = models.ForeignKey(
+        'organizations.Organization',
+        on_delete=models.SET_NULL,
+        related_name='active_users',
+        null=True,
+        blank=True,
+        verbose_name=_('Active Organization'),
+        help_text=_('Currently active organization for this user'),
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
@@ -165,8 +176,8 @@ class User(AbstractUser, TimeStampedModel):
     objects = UserManager()
 
     class Meta:
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        verbose_name = _('User')
+        verbose_name_plural = _('Users')
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['email', 'is_active']),
@@ -197,13 +208,13 @@ class User(AbstractUser, TimeStampedModel):
 
     # Role helper methods
     def is_admin(self):
-        return self.role == self.Role.ADMIN
+        return self.role == UserRole.ADMIN
 
     def is_manager(self):
-        return self.role in [self.Role.ADMIN, self.Role.MANAGER]
+        return self.role in [UserRole.ADMIN, UserRole.MANAGER]
 
     def can_modify(self):
-        return self.role in [self.Role.ADMIN, self.Role.MANAGER, self.Role.OPERATOR]
+        return self.role in [UserRole.ADMIN, UserRole.MANAGER, UserRole.OPERATOR]
 
     # Account lockout methods
     def is_locked(self):
@@ -341,12 +352,16 @@ class PasswordHistory(TimeStampedModel):
         User,
         on_delete=models.CASCADE,
         related_name='password_history',
+        verbose_name=_('User'),
     )
-    password_hash = models.CharField(max_length=255)
+    password_hash = models.CharField(
+        max_length=255,
+        verbose_name=_('Password Hash'),
+    )
 
     class Meta:
-        verbose_name = 'Password History'
-        verbose_name_plural = 'Password Histories'
+        verbose_name = _('Password History')
+        verbose_name_plural = _('Password Histories')
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['user', 'created_at']),
@@ -383,24 +398,38 @@ class TwoFactorAuth(TimeStampedModel):
         User,
         on_delete=models.CASCADE,
         related_name='two_factor_auth',
+        verbose_name=_('User'),
     )
     secret_key = models.CharField(
         max_length=32,
-        help_text='TOTP secret key (base32 encoded)',
+        verbose_name=_('Secret Key'),
+        help_text=_('TOTP secret key (base32 encoded)'),
     )
-    is_active = models.BooleanField(default=False)
-    verified_at = models.DateTimeField(blank=True, null=True)
+    is_active = models.BooleanField(
+        default=False,
+        verbose_name=_('Is Active'),
+    )
+    verified_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Verified At'),
+    )
 
     # Backup codes for recovery
     backup_codes = models.JSONField(
         default=list,
-        help_text='Hashed backup recovery codes',
+        verbose_name=_('Backup Codes'),
+        help_text=_('Hashed backup recovery codes'),
     )
-    backup_codes_generated_at = models.DateTimeField(blank=True, null=True)
+    backup_codes_generated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Backup Codes Generated At'),
+    )
 
     class Meta:
-        verbose_name = 'Two-Factor Authentication'
-        verbose_name_plural = 'Two-Factor Authentications'
+        verbose_name = _('Two-Factor Authentication')
+        verbose_name_plural = _('Two-Factor Authentications')
         ordering = ['-created_at']
 
     def __str__(self):
@@ -483,34 +512,63 @@ class UserSession(TimeStampedModel):
         User,
         on_delete=models.CASCADE,
         related_name='sessions',
+        verbose_name=_('User'),
     )
     session_key = models.CharField(
         max_length=64,
         unique=True,
         db_index=True,
+        verbose_name=_('Session Key'),
     )
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField(blank=True)
+    ip_address = models.GenericIPAddressField(
+        verbose_name=_('IP Address'),
+    )
+    user_agent = models.TextField(
+        blank=True,
+        verbose_name=_('User Agent'),
+    )
     device_type = models.CharField(
         max_length=50,
         blank=True,
-        help_text='Detected device type (mobile, tablet, desktop)',
+        verbose_name=_('Device Type'),
+        help_text=_('Detected device type (mobile, tablet, desktop)'),
     )
-    browser = models.CharField(max_length=100, blank=True)
-    os = models.CharField(max_length=100, blank=True)
+    browser = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('Browser'),
+    )
+    os = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('Operating System'),
+    )
     location = models.CharField(
         max_length=200,
         blank=True,
-        help_text='Approximate location based on IP',
+        verbose_name=_('Location'),
+        help_text=_('Approximate location based on IP'),
     )
-    is_active = models.BooleanField(default=True)
-    last_activity = models.DateTimeField(auto_now=True)
-    expires_at = models.DateTimeField()
-    terminated_at = models.DateTimeField(blank=True, null=True)
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Is Active'),
+    )
+    last_activity = models.DateTimeField(
+        auto_now=True,
+        verbose_name=_('Last Activity'),
+    )
+    expires_at = models.DateTimeField(
+        verbose_name=_('Expires At'),
+    )
+    terminated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Terminated At'),
+    )
 
     class Meta:
-        verbose_name = 'User Session'
-        verbose_name_plural = 'User Sessions'
+        verbose_name = _('User Session')
+        verbose_name_plural = _('User Sessions')
         ordering = ['-last_activity']
         indexes = [
             models.Index(fields=['user', 'is_active']),
@@ -616,30 +674,47 @@ class OTP(TimeStampedModel):
     OTP model for password reset and email verification.
     """
 
-    class OTPType(models.TextChoices):
-        EMAIL_VERIFICATION = 'EMAIL_VERIFICATION', 'Email Verification'
-        PASSWORD_RESET = 'PASSWORD_RESET', 'Password Reset'
-        PHONE_VERIFICATION = 'PHONE_VERIFICATION', 'Phone Verification'
-        EMAIL_CHANGE = 'EMAIL_CHANGE', 'Email Change Verification'
-
-    email = models.EmailField(db_index=True)
-    otp = models.CharField(max_length=6)
+    email = models.EmailField(
+        db_index=True,
+        verbose_name=_('Email'),
+    )
+    otp = models.CharField(
+        max_length=6,
+        verbose_name=_('OTP'),
+    )
     otp_type = models.CharField(
         max_length=20,
         choices=OTPType.choices,
         default=OTPType.EMAIL_VERIFICATION,
+        verbose_name=_('OTP Type'),
     )
-    is_used = models.BooleanField(default=False)
-    expires_at = models.DateTimeField(db_index=True)
-    attempts = models.PositiveIntegerField(default=0)
-    max_attempts = models.PositiveIntegerField(default=3)
+    is_used = models.BooleanField(
+        default=False,
+        verbose_name=_('Is Used'),
+    )
+    expires_at = models.DateTimeField(
+        db_index=True,
+        verbose_name=_('Expires At'),
+    )
+    attempts = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Attempts'),
+    )
+    max_attempts = models.PositiveIntegerField(
+        default=3,
+        verbose_name=_('Maximum Attempts'),
+    )
 
     # For email change verification
-    new_email = models.EmailField(blank=True, null=True)
+    new_email = models.EmailField(
+        blank=True,
+        null=True,
+        verbose_name=_('New Email'),
+    )
 
     class Meta:
-        verbose_name = 'OTP'
-        verbose_name_plural = 'OTPs'
+        verbose_name = _('OTP')
+        verbose_name_plural = _('OTPs')
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['email', 'otp_type', 'is_used']),
@@ -680,7 +755,7 @@ class OTP(TimeStampedModel):
         Invalidates any existing unused OTPs of the same type.
         """
         if otp_type is None:
-            otp_type = cls.OTPType.EMAIL_VERIFICATION
+            otp_type = OTPType.EMAIL_VERIFICATION
 
         # Invalidate existing unused OTPs of same type
         cls.objects.filter(
@@ -711,16 +786,34 @@ class LoginAttempt(TimeStampedModel):
     """
     Track login attempts for security auditing.
     """
-    email = models.EmailField(db_index=True)
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField(blank=True)
-    success = models.BooleanField(default=False)
-    failure_reason = models.CharField(max_length=100, blank=True)
-    two_factor_used = models.BooleanField(default=False)
+    email = models.EmailField(
+        db_index=True,
+        verbose_name=_('Email'),
+    )
+    ip_address = models.GenericIPAddressField(
+        verbose_name=_('IP Address'),
+    )
+    user_agent = models.TextField(
+        blank=True,
+        verbose_name=_('User Agent'),
+    )
+    success = models.BooleanField(
+        default=False,
+        verbose_name=_('Success'),
+    )
+    failure_reason = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_('Failure Reason'),
+    )
+    two_factor_used = models.BooleanField(
+        default=False,
+        verbose_name=_('Two-Factor Used'),
+    )
 
     class Meta:
-        verbose_name = 'Login Attempt'
-        verbose_name_plural = 'Login Attempts'
+        verbose_name = _('Login Attempt')
+        verbose_name_plural = _('Login Attempts')
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['email', 'created_at']),
@@ -773,16 +866,30 @@ class EmailChangeRequest(TimeStampedModel):
         User,
         on_delete=models.CASCADE,
         related_name='email_change_requests',
+        verbose_name=_('User'),
     )
-    old_email = models.EmailField()
-    new_email = models.EmailField()
-    is_verified = models.BooleanField(default=False)
-    verified_at = models.DateTimeField(blank=True, null=True)
-    expires_at = models.DateTimeField()
+    old_email = models.EmailField(
+        verbose_name=_('Old Email'),
+    )
+    new_email = models.EmailField(
+        verbose_name=_('New Email'),
+    )
+    is_verified = models.BooleanField(
+        default=False,
+        verbose_name=_('Is Verified'),
+    )
+    verified_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_('Verified At'),
+    )
+    expires_at = models.DateTimeField(
+        verbose_name=_('Expires At'),
+    )
 
     class Meta:
-        verbose_name = 'Email Change Request'
-        verbose_name_plural = 'Email Change Requests'
+        verbose_name = _('Email Change Request')
+        verbose_name_plural = _('Email Change Requests')
         ordering = ['-created_at']
 
     def __str__(self):
