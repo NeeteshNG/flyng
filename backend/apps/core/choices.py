@@ -160,6 +160,46 @@ class DroneAutonomyStatus(models.IntegerChoices):
     AUTONOMOUS = 2, _('Autonomous')
 
 
+class MaintenanceType(models.TextChoices):
+    """Types of drone maintenance."""
+    # Translators: Scheduled preventive maintenance
+    SCHEDULED = 'SCHEDULED', _('Scheduled')
+    # Translators: Unscheduled corrective maintenance
+    CORRECTIVE = 'CORRECTIVE', _('Corrective')
+    # Translators: Emergency repair
+    EMERGENCY = 'EMERGENCY', _('Emergency')
+    # Translators: Firmware/software update
+    FIRMWARE_UPDATE = 'FIRMWARE_UPDATE', _('Firmware Update')
+    # Translators: Calibration and testing
+    CALIBRATION = 'CALIBRATION', _('Calibration')
+    # Translators: Battery replacement
+    BATTERY_REPLACEMENT = 'BATTERY_REPLACEMENT', _('Battery Replacement')
+    # Translators: Motor/propeller replacement
+    MOTOR_REPLACEMENT = 'MOTOR_REPLACEMENT', _('Motor Replacement')
+    # Translators: Sensor replacement or repair
+    SENSOR_REPAIR = 'SENSOR_REPAIR', _('Sensor Repair')
+    # Translators: General inspection
+    INSPECTION = 'INSPECTION', _('Inspection')
+
+
+class FlightMode(models.TextChoices):
+    """Drone flight modes for telemetry."""
+    # Translators: Drone is grounded
+    GROUNDED = 'GROUNDED', _('Grounded')
+    # Translators: Manual control flight
+    MANUAL = 'MANUAL', _('Manual')
+    # Translators: Stabilized/altitude hold mode
+    STABILIZED = 'STABILIZED', _('Stabilized')
+    # Translators: Position hold mode
+    POSITION_HOLD = 'POSITION_HOLD', _('Position Hold')
+    # Translators: Autonomous waypoint navigation
+    AUTONOMOUS = 'AUTONOMOUS', _('Autonomous')
+    # Translators: Return to home
+    RTH = 'RTH', _('Return to Home')
+    # Translators: Emergency landing
+    EMERGENCY = 'EMERGENCY', _('Emergency')
+
+
 # =============================================================================
 # Battery Choices (for future use)
 # =============================================================================
@@ -192,6 +232,48 @@ class BatteryHealthStatus(models.TextChoices):
     POOR = 'POOR', _('Poor')
     # Translators: Battery needs replacement
     REPLACE = 'REPLACE', _('Needs Replacement')
+
+
+class BatteryChemistry(models.TextChoices):
+    """Battery chemistry types."""
+    # Translators: Lithium Polymer battery
+    LIPO = 'LIPO', _('Lithium Polymer (LiPo)')
+    # Translators: Lithium Ion battery
+    LIION = 'LIION', _('Lithium Ion (Li-Ion)')
+    # Translators: Lithium Iron Phosphate battery
+    LIFEPO4 = 'LIFEPO4', _('Lithium Iron Phosphate (LiFePO4)')
+    # Translators: Nickel Metal Hydride battery
+    NIMH = 'NIMH', _('Nickel Metal Hydride (NiMH)')
+
+
+class ChargingStatus(models.TextChoices):
+    """Battery charging session status."""
+    # Translators: Charging session has started
+    STARTED = 'STARTED', _('Started')
+    # Translators: Battery is currently charging
+    CHARGING = 'CHARGING', _('Charging')
+    # Translators: Charging is complete
+    COMPLETED = 'COMPLETED', _('Completed')
+    # Translators: Charging was interrupted
+    INTERRUPTED = 'INTERRUPTED', _('Interrupted')
+    # Translators: Charging failed due to error
+    FAILED = 'FAILED', _('Failed')
+
+
+class SwapReason(models.TextChoices):
+    """Reasons for battery swap."""
+    # Translators: Low battery level
+    LOW_BATTERY = 'LOW_BATTERY', _('Low Battery')
+    # Translators: Scheduled maintenance swap
+    SCHEDULED = 'SCHEDULED', _('Scheduled Maintenance')
+    # Translators: Battery malfunction
+    MALFUNCTION = 'MALFUNCTION', _('Battery Malfunction')
+    # Translators: Preventive replacement
+    PREVENTIVE = 'PREVENTIVE', _('Preventive Replacement')
+    # Translators: Performance degradation
+    DEGRADATION = 'DEGRADATION', _('Performance Degradation')
+    # Translators: Emergency swap
+    EMERGENCY = 'EMERGENCY', _('Emergency')
 
 
 # =============================================================================

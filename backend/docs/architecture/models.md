@@ -656,12 +656,12 @@ erDiagram
 │   └── DroneWorkArea (AuditedModel) ✅ - translatable: name, description
 │
 ├── Assets
-│   ├── Drone (AuditedModel)
-│   ├── DroneTelemetryLog (ReadOnlyModel) - TimescaleDB hypertable
-│   ├── DroneMaintenanceRecord (ReadOnlyModel)
-│   ├── DroneBattery (AuditedModel)
-│   ├── BatteryChargingSession (ReadOnlyModel)
-│   └── BatterySwapRecord (ReadOnlyModel)
+│   ├── Drone (AuditedModel) ✅ - translatable: name
+│   ├── DroneTelemetryLog (ReadOnlyModel) ✅ - TimescaleDB hypertable
+│   ├── DroneMaintenanceRecord (ReadOnlyModel) ✅ - translatable: title, description, notes
+│   ├── DroneBattery (AuditedModel) ✅ - translatable: name, notes
+│   ├── BatteryChargingSession (ReadOnlyModel) ✅
+│   └── BatterySwapRecord (ReadOnlyModel) ✅
 │
 ├── Inventory
 │   ├── StorageLocation (BaseModel)
@@ -780,6 +780,9 @@ Multi-language database content support for user-facing fields (English + Hindi)
 | warehouses | `WarehouseZone` | name, description |
 | warehouses | `GroundControlStation` | name, description |
 | warehouses | `DroneWorkArea` | name, description |
+| drones | `Drone` | name |
+| drones | `DroneMaintenanceRecord` | title, description, notes |
+| batteries | `DroneBattery` | name, notes |
 
 Creates database columns like `name_en`, `name_hi` automatically. Configuration in each app's `translation.py`.
 
@@ -810,3 +813,5 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 | 1.1 | 2026-02-17 | Renamed all models to full descriptive names |
 | 1.2 | 2026-02-18 | Added WarehouseProfile model, django-modeltranslation support (en/hi) |
 | 1.3 | 2026-02-18 | Added WarehouseZone, GroundControlStation, DroneWorkArea models |
+| 1.4 | 2026-02-19 | Added Drone, DroneTelemetryLog, DroneMaintenanceRecord models |
+| 1.5 | 2026-02-19 | Added DroneBattery, BatteryChargingSession, BatterySwapRecord models |
