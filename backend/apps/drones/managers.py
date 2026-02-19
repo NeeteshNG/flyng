@@ -1,6 +1,7 @@
 """
 Custom Managers for Drone Models
 """
+
 from django.db import models
 
 
@@ -9,12 +10,16 @@ class DroneManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects prefetched."""
-        return super().get_queryset().select_related(
-            'work_area',
-            'work_area__ground_control_station',
-            'work_area__ground_control_station__zone',
-            'work_area__ground_control_station__zone__warehouse',
-            'current_battery',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "work_area",
+                "work_area__ground_control_station",
+                "work_area__ground_control_station__zone",
+                "work_area__ground_control_station__zone__warehouse",
+                "current_battery",
+            )
         )
 
     def active(self):
@@ -24,11 +29,13 @@ class DroneManager(models.Manager):
     def available(self):
         """Return drones available for jobs."""
         from apps.core.choices import DroneStatus
+
         return self.active().filter(status=DroneStatus.AVAILABLE)
 
     def in_flight(self):
         """Return drones currently in flight."""
         from apps.core.choices import DroneStatus
+
         return self.active().filter(status=DroneStatus.IN_FLIGHT)
 
     def for_work_area(self, work_area):
@@ -37,15 +44,11 @@ class DroneManager(models.Manager):
 
     def for_zone(self, zone):
         """Return drones for a specific zone."""
-        return self.active().filter(
-            work_area__ground_control_station__zone=zone
-        )
+        return self.active().filter(work_area__ground_control_station__zone=zone)
 
     def for_warehouse(self, warehouse):
         """Return drones for a specific warehouse."""
-        return self.active().filter(
-            work_area__ground_control_station__zone__warehouse=warehouse
-        )
+        return self.active().filter(work_area__ground_control_station__zone__warehouse=warehouse)
 
     def by_status(self, status):
         """Return drones with a specific status."""
@@ -54,9 +57,8 @@ class DroneManager(models.Manager):
     def needing_maintenance(self):
         """Return drones that need maintenance."""
         from django.utils import timezone
-        return self.active().filter(
-            next_maintenance_due__lte=timezone.now()
-        )
+
+        return self.active().filter(next_maintenance_due__lte=timezone.now())
 
 
 class DroneTelemetryLogManager(models.Manager):
@@ -64,7 +66,7 @@ class DroneTelemetryLogManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with drone prefetched."""
-        return super().get_queryset().select_related('drone')
+        return super().get_queryset().select_related("drone")
 
     def for_drone(self, drone):
         """Return telemetry for a specific drone."""
@@ -72,14 +74,16 @@ class DroneTelemetryLogManager(models.Manager):
 
     def recent(self, hours=24):
         """Return telemetry from the last N hours."""
-        from django.utils import timezone
         from datetime import timedelta
+
+        from django.utils import timezone
+
         cutoff = timezone.now() - timedelta(hours=hours)
         return self.get_queryset().filter(timestamp__gte=cutoff)
 
     def latest_for_drone(self, drone):
         """Return the most recent telemetry for a drone."""
-        return self.for_drone(drone).order_by('-timestamp').first()
+        return self.for_drone(drone).order_by("-timestamp").first()
 
 
 class DroneMaintenanceRecordManager(models.Manager):
@@ -87,9 +91,13 @@ class DroneMaintenanceRecordManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects prefetched."""
-        return super().get_queryset().select_related(
-            'drone',
-            'performed_by',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "drone",
+                "performed_by",
+            )
         )
 
     def for_drone(self, drone):

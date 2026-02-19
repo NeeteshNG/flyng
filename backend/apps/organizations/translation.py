@@ -10,6 +10,7 @@ Translatable fields:
 - Organization: name, description
 - OrganizationAPIKey: name, description
 """
+
 from modeltranslation.translator import TranslationOptions, register
 
 from apps.organizations.models import Organization, OrganizationAPIKey, Plan
@@ -24,7 +25,8 @@ class PlanTranslationOptions(TranslationOptions):
     - name: Plan display name (e.g., "Professional" → "प्रोफेशनल")
     - description: Plan feature description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")
 
 
 @register(Organization)
@@ -36,7 +38,8 @@ class OrganizationTranslationOptions(TranslationOptions):
     - name: Organization display name
     - description: Organization description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")
 
 
 @register(OrganizationAPIKey)
@@ -48,4 +51,5 @@ class OrganizationAPIKeyTranslationOptions(TranslationOptions):
     - name: API key friendly name
     - description: API key usage description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")

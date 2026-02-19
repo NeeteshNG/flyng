@@ -2,9 +2,10 @@
 Tests for User API endpoints.
 """
 
-import pytest
 from django.urls import reverse
 from rest_framework import status
+
+import pytest
 
 
 @pytest.mark.django_db

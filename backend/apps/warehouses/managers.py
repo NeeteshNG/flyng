@@ -1,6 +1,7 @@
 """
 Custom Managers for Warehouse Models
 """
+
 from django.db import models
 
 
@@ -9,9 +10,13 @@ class WarehouseManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects prefetched."""
-        return super().get_queryset().select_related(
-            'organization',
-            'profile',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "organization",
+                "profile",
+            )
         )
 
     def active(self):
@@ -24,7 +29,7 @@ class WarehouseManager(models.Manager):
 
     def with_contacts(self):
         """Return warehouses with contacts prefetched."""
-        return self.get_queryset().prefetch_related('contacts')
+        return self.get_queryset().prefetch_related("contacts")
 
 
 class WarehouseContactManager(models.Manager):
@@ -32,7 +37,7 @@ class WarehouseContactManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related warehouse."""
-        return super().get_queryset().select_related('warehouse')
+        return super().get_queryset().select_related("warehouse")
 
     def primary(self):
         """Return only primary contacts."""
@@ -48,7 +53,7 @@ class WarehouseZoneManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related warehouse prefetched."""
-        return super().get_queryset().select_related('warehouse')
+        return super().get_queryset().select_related("warehouse")
 
     def active(self):
         """Return only active zones."""
@@ -72,9 +77,13 @@ class GroundControlStationManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related zone and warehouse prefetched."""
-        return super().get_queryset().select_related(
-            'zone',
-            'zone__warehouse',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "zone",
+                "zone__warehouse",
+            )
         )
 
     def active(self):
@@ -84,6 +93,7 @@ class GroundControlStationManager(models.Manager):
     def online(self):
         """Return only online GCS stations."""
         from apps.core.choices import GCSStatus
+
         return self.active().filter(status=GCSStatus.ONLINE)
 
     def for_zone(self, zone):
@@ -96,7 +106,7 @@ class GroundControlStationManager(models.Manager):
 
     def with_work_areas(self):
         """Return GCS stations with work areas prefetched."""
-        return self.get_queryset().prefetch_related('work_areas')
+        return self.get_queryset().prefetch_related("work_areas")
 
 
 class DroneWorkAreaManager(models.Manager):
@@ -104,10 +114,14 @@ class DroneWorkAreaManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related GCS, zone, and warehouse prefetched."""
-        return super().get_queryset().select_related(
-            'ground_control_station',
-            'ground_control_station__zone',
-            'ground_control_station__zone__warehouse',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "ground_control_station",
+                "ground_control_station__zone",
+                "ground_control_station__zone__warehouse",
+            )
         )
 
     def active(self):
@@ -117,11 +131,13 @@ class DroneWorkAreaManager(models.Manager):
     def tethered(self):
         """Return only tethered work areas."""
         from apps.core.choices import DroneWorkAreaType
+
         return self.active().filter(area_type=DroneWorkAreaType.TETHERED)
 
     def untethered(self):
         """Return only untethered work areas."""
         from apps.core.choices import DroneWorkAreaType
+
         return self.active().filter(area_type=DroneWorkAreaType.UNTETHERED)
 
     def for_gcs(self, gcs):
@@ -134,6 +150,4 @@ class DroneWorkAreaManager(models.Manager):
 
     def for_warehouse(self, warehouse):
         """Return work areas for a specific warehouse."""
-        return self.active().filter(
-            ground_control_station__zone__warehouse=warehouse
-        )
+        return self.active().filter(ground_control_station__zone__warehouse=warehouse)

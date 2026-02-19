@@ -5,50 +5,42 @@
 repos:
   # General hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: \.md$
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--unsafe]  # Allow custom tags
       - id: check-json
+      - id: check-toml
       - id: check-added-large-files
         args: ['--maxkb=1000']
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-case-conflict
-
-  # Python - Ruff (linting + formatting)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.4
-    hooks:
-      # Run the linter
-      - id: ruff
-        args: [--fix]
+      - id: debug-statements
         files: ^backend/
-      # Run the formatter
+
+  # Python - Ruff (linting + formatting) - FAST!
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.6
+    hooks:
+      # Linter - auto-fixes issues
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+      # Formatter - replaces Black
       - id: ruff-format
         files: ^backend/
 
-  # Python - Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
+  # Django-specific upgrades
+  - repo: https://github.com/adamchainz/django-upgrade
+    rev: 1.22.2
     hooks:
-      - id: mypy
+      - id: django-upgrade
+        args: [--target-version, "5.1"]
         files: ^backend/
-        additional_dependencies:
-          - django-stubs
-          - djangorestframework-stubs
-        args: [--ignore-missing-imports]
-
-  # Frontend - ESLint & Prettier
-  - repo: local
-    hooks:
-      - id: eslint
-        name: eslint
-        entry: bash -c 'cd frontend && npm run lint'
-        language: system
-        files: ^frontend/.*\.(ts|tsx)$
-        pass_filenames: false
 
   # Security checks
   - repo: https://github.com/Yelp/detect-secrets
@@ -56,15 +48,24 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: package-lock.json
+        exclude: (package-lock\.json|\.svg$)
+
+  # Frontend - ESLint & Prettier (only if frontend exists)
+  - repo: local
+    hooks:
+      - id: frontend-lint
+        name: Frontend Lint
+        entry: bash -c 'cd frontend && [ -f package.json ] && npm run lint || true'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
 
 # CI configuration
 ci:
   autofix_commit_msg: |
     [pre-commit.ci] auto fixes from pre-commit hooks
   autofix_prs: true
-  autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [mypy, eslint]  # Skip slow hooks in CI
+  skip: [frontend-lint]  # Skip if frontend not set up
   submodules: false

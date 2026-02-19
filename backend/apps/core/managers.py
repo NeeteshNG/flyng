@@ -6,7 +6,9 @@ Provides:
 - Organization-scoped queries (multi-tenancy)
 - Common query patterns
 """
+
 from django.db import models
+
 from safedelete.managers import SafeDeleteManager
 from safedelete.queryset import SafeDeleteQueryset
 
@@ -120,6 +122,7 @@ class BulkCreateUpdateManager(models.Manager):
         For models with django-simple-history.
         """
         from simple_history.utils import bulk_create_with_history as _bulk_create
+
         return _bulk_create(objs, self.model, batch_size=batch_size, **kwargs)
 
     def bulk_update_with_history(self, objs, fields, batch_size=1000, **kwargs):
@@ -128,4 +131,5 @@ class BulkCreateUpdateManager(models.Manager):
         For models with django-simple-history.
         """
         from simple_history.utils import bulk_update_with_history as _bulk_update
+
         return _bulk_update(objs, self.model, fields, batch_size=batch_size, **kwargs)

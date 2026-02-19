@@ -8,6 +8,7 @@ Production-level user management with:
 - Account lockout protection
 - Login attempt auditing
 """
+
 import base64
 import hashlib
 import secrets
@@ -15,14 +16,15 @@ import uuid
 from datetime import timedelta
 from io import BytesIO
 
-import pyotp
-import qrcode
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+import pyotp
+import qrcode
 from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import OTPType, UserRole
@@ -36,7 +38,7 @@ class UserManager(BaseUserManager):
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -49,16 +51,16 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
-        extra_fields.setdefault('is_active', True)
-        extra_fields.setdefault('role', UserRole.ADMIN)
-        extra_fields.setdefault('is_verified', True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("role", UserRole.ADMIN)
+        extra_fields.setdefault("is_verified", True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
 
@@ -88,100 +90,100 @@ class User(AbstractUser, TimeStampedModel):
     # Remove username field, use email instead
     username = None
     email = models.EmailField(
-        verbose_name=_('Email Address'),
+        verbose_name=_("Email Address"),
         unique=True,
         db_index=True,
     )
 
     # Profile fields
     phone = PhoneNumberField(
-        verbose_name=_('Phone Number'),
+        verbose_name=_("Phone Number"),
         blank=True,
         null=True,
-        region='IN',
-        help_text=_('Phone number with country code (e.g., +91 9876543210)'),
+        region="IN",
+        help_text=_("Phone number with country code (e.g., +91 9876543210)"),
     )
     role = models.CharField(
-        verbose_name=_('Role'),
+        verbose_name=_("Role"),
         max_length=20,
         choices=UserRole.choices,
         default=UserRole.VIEWER,
         db_index=True,
     )
     is_verified = models.BooleanField(
-        verbose_name=_('Email Verified'),
+        verbose_name=_("Email Verified"),
         default=False,
         db_index=True,
     )
     profile_picture = models.ImageField(
-        verbose_name=_('Profile Picture'),
-        upload_to='profile_pictures/%Y/%m/',
+        verbose_name=_("Profile Picture"),
+        upload_to="profile_pictures/%Y/%m/",
         blank=True,
         null=True,
     )
 
     # Security fields
     last_login_ip = models.GenericIPAddressField(
-        verbose_name=_('Last Login IP'),
+        verbose_name=_("Last Login IP"),
         blank=True,
         null=True,
     )
     failed_login_attempts = models.PositiveIntegerField(
         default=0,
-        verbose_name=_('Failed Login Attempts'),
+        verbose_name=_("Failed Login Attempts"),
     )
     lockout_until = models.DateTimeField(
-        verbose_name=_('Locked Until'),
+        verbose_name=_("Locked Until"),
         blank=True,
         null=True,
-        help_text=_('Account is locked until this time due to failed login attempts'),
+        help_text=_("Account is locked until this time due to failed login attempts"),
     )
 
     # Two-Factor Authentication
     two_factor_enabled = models.BooleanField(
-        verbose_name=_('Two-Factor Enabled'),
+        verbose_name=_("Two-Factor Enabled"),
         default=False,
-        help_text=_('Whether 2FA is enabled for this account'),
+        help_text=_("Whether 2FA is enabled for this account"),
     )
 
     # Password management
     password_changed_at = models.DateTimeField(
-        verbose_name=_('Password Changed At'),
+        verbose_name=_("Password Changed At"),
         blank=True,
         null=True,
-        help_text=_('Last time the password was changed'),
+        help_text=_("Last time the password was changed"),
     )
     force_password_change = models.BooleanField(
-        verbose_name=_('Force Password Change'),
+        verbose_name=_("Force Password Change"),
         default=False,
-        help_text=_('Require password change on next login'),
+        help_text=_("Require password change on next login"),
     )
 
     # Organization relationship - users can belong to one organization
     # Many-to-many relationship via OrganizationMembership will be added in Day 3
     # This direct FK is for the user's "current/active" organization context
     active_organization = models.ForeignKey(
-        'organizations.Organization',
+        "organizations.Organization",
         on_delete=models.SET_NULL,
-        related_name='active_users',
+        related_name="active_users",
         null=True,
         blank=True,
-        verbose_name=_('Active Organization'),
-        help_text=_('Currently active organization for this user'),
+        verbose_name=_("Active Organization"),
+        help_text=_("Currently active organization for this user"),
     )
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = UserManager()
 
     class Meta:
-        verbose_name = _('User')
-        verbose_name_plural = _('Users')
-        ordering = ['-created_at']
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['email', 'is_active']),
-            models.Index(fields=['role', 'is_active']),
+            models.Index(fields=["email", "is_active"]),
+            models.Index(fields=["role", "is_active"]),
         ]
 
     def __str__(self):
@@ -200,7 +202,7 @@ class User(AbstractUser, TimeStampedModel):
 
     def get_full_name(self):
         """Return first_name plus last_name, with a space in between."""
-        return f'{self.first_name} {self.last_name}'.strip()
+        return f"{self.first_name} {self.last_name}".strip()
 
     @property
     def full_name(self):
@@ -239,7 +241,7 @@ class User(AbstractUser, TimeStampedModel):
             self.lockout_until = timezone.now() + timedelta(hours=1)
         elif self.failed_login_attempts >= 5:
             self.lockout_until = timezone.now() + timedelta(minutes=30)
-        self.save(update_fields=['failed_login_attempts', 'lockout_until'])
+        self.save(update_fields=["failed_login_attempts", "lockout_until"])
 
     def record_successful_login(self, ip_address=None):
         """Reset failed attempts on successful login."""
@@ -247,13 +249,13 @@ class User(AbstractUser, TimeStampedModel):
         self.lockout_until = None
         if ip_address:
             self.last_login_ip = ip_address
-        self.save(update_fields=['failed_login_attempts', 'lockout_until', 'last_login_ip'])
+        self.save(update_fields=["failed_login_attempts", "lockout_until", "last_login_ip"])
 
     def unlock(self):
         """Manually unlock the account."""
         self.failed_login_attempts = 0
         self.lockout_until = None
-        self.save(update_fields=['failed_login_attempts', 'lockout_until'])
+        self.save(update_fields=["failed_login_attempts", "lockout_until"])
 
     # Password management methods
     def set_password(self, raw_password):
@@ -264,9 +266,7 @@ class User(AbstractUser, TimeStampedModel):
 
     def check_password_history(self, raw_password, count=5):
         """Check if password was used in the last N passwords."""
-        recent_passwords = PasswordHistory.objects.filter(
-            user=self
-        ).order_by('-created_at')[:count]
+        recent_passwords = PasswordHistory.objects.filter(user=self).order_by("-created_at")[:count]
 
         for history in recent_passwords:
             if history.check_password(raw_password):
@@ -303,31 +303,28 @@ class User(AbstractUser, TimeStampedModel):
         """Enable 2FA after verifying the TOTP code."""
         setup = self.two_factor_auth.filter(is_active=False).first()
         if not setup:
-            return False, 'No pending 2FA setup found'
+            return False, "No pending 2FA setup found"
 
         if setup.verify_totp(totp_code):
             setup.is_active = True
             setup.verified_at = timezone.now()
             setup.save()
             self.two_factor_enabled = True
-            self.save(update_fields=['two_factor_enabled'])
-            return True, 'Two-factor authentication enabled successfully'
+            self.save(update_fields=["two_factor_enabled"])
+            return True, "Two-factor authentication enabled successfully"
 
-        return False, 'Invalid verification code'
+        return False, "Invalid verification code"
 
     def disable_2fa(self):
         """Disable 2FA for this user."""
         self.two_factor_auth.all().delete()
         self.two_factor_enabled = False
-        self.save(update_fields=['two_factor_enabled'])
+        self.save(update_fields=["two_factor_enabled"])
 
     # Session management
     def get_active_sessions(self):
         """Get all active sessions for this user."""
-        return self.sessions.filter(
-            is_active=True,
-            expires_at__gt=timezone.now()
-        )
+        return self.sessions.filter(is_active=True, expires_at__gt=timezone.now())
 
     def terminate_all_sessions(self, except_current=None):
         """Terminate all sessions (optionally except current)."""
@@ -338,37 +335,35 @@ class User(AbstractUser, TimeStampedModel):
 
     def terminate_session(self, session_key):
         """Terminate a specific session."""
-        return self.sessions.filter(session_key=session_key).update(
-            is_active=False,
-            terminated_at=timezone.now()
-        )
+        return self.sessions.filter(session_key=session_key).update(is_active=False, terminated_at=timezone.now())
 
 
 class PasswordHistory(TimeStampedModel):
     """
     Track password history to prevent reuse.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='password_history',
-        verbose_name=_('User'),
+        related_name="password_history",
+        verbose_name=_("User"),
     )
     password_hash = models.CharField(
         max_length=255,
-        verbose_name=_('Password Hash'),
+        verbose_name=_("Password Hash"),
     )
 
     class Meta:
-        verbose_name = _('Password History')
-        verbose_name_plural = _('Password Histories')
-        ordering = ['-created_at']
+        verbose_name = _("Password History")
+        verbose_name_plural = _("Password Histories")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=["user", "created_at"]),
         ]
 
     def __str__(self):
-        return f'Password history for {self.user.email} at {self.created_at}'
+        return f"Password history for {self.user.email} at {self.created_at}"
 
     def check_password(self, raw_password):
         """Check if the raw password matches this history entry."""
@@ -385,8 +380,8 @@ class PasswordHistory(TimeStampedModel):
     @classmethod
     def cleanup_old(cls, user, keep_count=10):
         """Keep only the last N password records."""
-        old_records = cls.objects.filter(user=user).order_by('-created_at')[keep_count:]
-        old_ids = list(old_records.values_list('id', flat=True))
+        old_records = cls.objects.filter(user=user).order_by("-created_at")[keep_count:]
+        old_ids = list(old_records.values_list("id", flat=True))
         return cls.objects.filter(id__in=old_ids).delete()
 
 
@@ -394,47 +389,48 @@ class TwoFactorAuth(TimeStampedModel):
     """
     Two-Factor Authentication configuration using TOTP.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='two_factor_auth',
-        verbose_name=_('User'),
+        related_name="two_factor_auth",
+        verbose_name=_("User"),
     )
     secret_key = models.CharField(
         max_length=32,
-        verbose_name=_('Secret Key'),
-        help_text=_('TOTP secret key (base32 encoded)'),
+        verbose_name=_("Secret Key"),
+        help_text=_("TOTP secret key (base32 encoded)"),
     )
     is_active = models.BooleanField(
         default=False,
-        verbose_name=_('Is Active'),
+        verbose_name=_("Is Active"),
     )
     verified_at = models.DateTimeField(
         blank=True,
         null=True,
-        verbose_name=_('Verified At'),
+        verbose_name=_("Verified At"),
     )
 
     # Backup codes for recovery
     backup_codes = models.JSONField(
         default=list,
-        verbose_name=_('Backup Codes'),
-        help_text=_('Hashed backup recovery codes'),
+        verbose_name=_("Backup Codes"),
+        help_text=_("Hashed backup recovery codes"),
     )
     backup_codes_generated_at = models.DateTimeField(
         blank=True,
         null=True,
-        verbose_name=_('Backup Codes Generated At'),
+        verbose_name=_("Backup Codes Generated At"),
     )
 
     class Meta:
-        verbose_name = _('Two-Factor Authentication')
-        verbose_name_plural = _('Two-Factor Authentications')
-        ordering = ['-created_at']
+        verbose_name = _("Two-Factor Authentication")
+        verbose_name_plural = _("Two-Factor Authentications")
+        ordering = ["-created_at"]
 
     def __str__(self):
-        status = 'Active' if self.is_active else 'Pending'
-        return f'2FA ({status}) for {self.user.email}'
+        status = "Active" if self.is_active else "Pending"
+        return f"2FA ({status}) for {self.user.email}"
 
     def save(self, *args, **kwargs):
         if not self.secret_key:
@@ -455,7 +451,7 @@ class TwoFactorAuth(TimeStampedModel):
         totp = self.get_totp()
         return totp.provisioning_uri(
             name=self.user.email,
-            issuer_name=getattr(settings, 'TWO_FACTOR_ISSUER', 'FlyNG'),
+            issuer_name=getattr(settings, "TWO_FACTOR_ISSUER", "FlyNG"),
         )
 
     def get_qr_code_base64(self):
@@ -465,9 +461,9 @@ class TwoFactorAuth(TimeStampedModel):
         qr.add_data(uri)
         qr.make(fit=True)
 
-        img = qr.make_image(fill_color='black', back_color='white')
+        img = qr.make_image(fill_color="black", back_color="white")
         buffer = BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         buffer.seek(0)
 
         return base64.b64encode(buffer.getvalue()).decode()
@@ -477,7 +473,7 @@ class TwoFactorAuth(TimeStampedModel):
         codes = []
         hashed_codes = []
 
-        for _ in range(count):
+        for _i in range(count):
             # Generate 8-character alphanumeric code
             code = secrets.token_hex(4).upper()
             codes.append(code)
@@ -508,77 +504,78 @@ class UserSession(TimeStampedModel):
     """
     Track user sessions for security and "logout all devices" feature.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='sessions',
-        verbose_name=_('User'),
+        related_name="sessions",
+        verbose_name=_("User"),
     )
     session_key = models.CharField(
         max_length=64,
         unique=True,
         db_index=True,
-        verbose_name=_('Session Key'),
+        verbose_name=_("Session Key"),
     )
     ip_address = models.GenericIPAddressField(
-        verbose_name=_('IP Address'),
+        verbose_name=_("IP Address"),
     )
     user_agent = models.TextField(
         blank=True,
-        verbose_name=_('User Agent'),
+        verbose_name=_("User Agent"),
     )
     device_type = models.CharField(
         max_length=50,
         blank=True,
-        verbose_name=_('Device Type'),
-        help_text=_('Detected device type (mobile, tablet, desktop)'),
+        verbose_name=_("Device Type"),
+        help_text=_("Detected device type (mobile, tablet, desktop)"),
     )
     browser = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name=_('Browser'),
+        verbose_name=_("Browser"),
     )
     os = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name=_('Operating System'),
+        verbose_name=_("Operating System"),
     )
     location = models.CharField(
         max_length=200,
         blank=True,
-        verbose_name=_('Location'),
-        help_text=_('Approximate location based on IP'),
+        verbose_name=_("Location"),
+        help_text=_("Approximate location based on IP"),
     )
     is_active = models.BooleanField(
         default=True,
-        verbose_name=_('Is Active'),
+        verbose_name=_("Is Active"),
     )
     last_activity = models.DateTimeField(
         auto_now=True,
-        verbose_name=_('Last Activity'),
+        verbose_name=_("Last Activity"),
     )
     expires_at = models.DateTimeField(
-        verbose_name=_('Expires At'),
+        verbose_name=_("Expires At"),
     )
     terminated_at = models.DateTimeField(
         blank=True,
         null=True,
-        verbose_name=_('Terminated At'),
+        verbose_name=_("Terminated At"),
     )
 
     class Meta:
-        verbose_name = _('User Session')
-        verbose_name_plural = _('User Sessions')
-        ordering = ['-last_activity']
+        verbose_name = _("User Session")
+        verbose_name_plural = _("User Sessions")
+        ordering = ["-last_activity"]
         indexes = [
-            models.Index(fields=['user', 'is_active']),
-            models.Index(fields=['session_key']),
-            models.Index(fields=['expires_at']),
+            models.Index(fields=["user", "is_active"]),
+            models.Index(fields=["session_key"]),
+            models.Index(fields=["expires_at"]),
         ]
 
     def __str__(self):
-        status = 'Active' if self.is_active else 'Terminated'
-        return f'{status} session for {self.user.email} from {self.ip_address}'
+        status = "Active" if self.is_active else "Terminated"
+        return f"{status} session for {self.user.email} from {self.ip_address}"
 
     def is_expired(self):
         """Check if session has expired."""
@@ -588,18 +585,18 @@ class UserSession(TimeStampedModel):
         """Extend session expiry."""
         self.last_activity = timezone.now()
         self.expires_at = timezone.now() + timedelta(hours=extend_hours)
-        self.save(update_fields=['last_activity', 'expires_at'])
+        self.save(update_fields=["last_activity", "expires_at"])
 
     def terminate(self):
         """Terminate this session."""
         self.is_active = False
         self.terminated_at = timezone.now()
-        self.save(update_fields=['is_active', 'terminated_at'])
+        self.save(update_fields=["is_active", "terminated_at"])
 
     @classmethod
     def create_session(cls, user, request, session_key, expires_hours=24):
         """Create a new session with device info."""
-        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
         ip_address = cls._get_client_ip(request)
 
         # Parse user agent for device info
@@ -610,19 +607,19 @@ class UserSession(TimeStampedModel):
             session_key=session_key,
             ip_address=ip_address,
             user_agent=user_agent[:500],
-            device_type=device_info.get('device', ''),
-            browser=device_info.get('browser', ''),
-            os=device_info.get('os', ''),
+            device_type=device_info.get("device", ""),
+            browser=device_info.get("browser", ""),
+            os=device_info.get("os", ""),
             expires_at=timezone.now() + timedelta(hours=expires_hours),
         )
 
     @classmethod
     def _get_client_ip(cls, request):
         """Extract client IP from request."""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
-            return x_forwarded_for.split(',')[0].strip()
-        return request.META.get('REMOTE_ADDR', '0.0.0.0')
+            return x_forwarded_for.split(",")[0].strip()
+        return request.META.get("REMOTE_ADDR", "0.0.0.0")
 
     @classmethod
     def _parse_user_agent(cls, user_agent):
@@ -630,37 +627,37 @@ class UserSession(TimeStampedModel):
         user_agent_lower = user_agent.lower()
 
         # Detect device type
-        device = 'desktop'
-        if 'mobile' in user_agent_lower or 'android' in user_agent_lower:
-            device = 'mobile'
-        elif 'tablet' in user_agent_lower or 'ipad' in user_agent_lower:
-            device = 'tablet'
+        device = "desktop"
+        if "mobile" in user_agent_lower or "android" in user_agent_lower:
+            device = "mobile"
+        elif "tablet" in user_agent_lower or "ipad" in user_agent_lower:
+            device = "tablet"
 
         # Detect browser
-        browser = 'Unknown'
-        if 'chrome' in user_agent_lower and 'edg' not in user_agent_lower:
-            browser = 'Chrome'
-        elif 'firefox' in user_agent_lower:
-            browser = 'Firefox'
-        elif 'safari' in user_agent_lower and 'chrome' not in user_agent_lower:
-            browser = 'Safari'
-        elif 'edg' in user_agent_lower:
-            browser = 'Edge'
+        browser = "Unknown"
+        if "chrome" in user_agent_lower and "edg" not in user_agent_lower:
+            browser = "Chrome"
+        elif "firefox" in user_agent_lower:
+            browser = "Firefox"
+        elif "safari" in user_agent_lower and "chrome" not in user_agent_lower:
+            browser = "Safari"
+        elif "edg" in user_agent_lower:
+            browser = "Edge"
 
         # Detect OS
-        os = 'Unknown'
-        if 'windows' in user_agent_lower:
-            os = 'Windows'
-        elif 'mac os' in user_agent_lower or 'macos' in user_agent_lower:
-            os = 'macOS'
-        elif 'linux' in user_agent_lower:
-            os = 'Linux'
-        elif 'android' in user_agent_lower:
-            os = 'Android'
-        elif 'iphone' in user_agent_lower or 'ipad' in user_agent_lower:
-            os = 'iOS'
+        os = "Unknown"
+        if "windows" in user_agent_lower:
+            os = "Windows"
+        elif "mac os" in user_agent_lower or "macos" in user_agent_lower:
+            os = "macOS"
+        elif "linux" in user_agent_lower:
+            os = "Linux"
+        elif "android" in user_agent_lower:
+            os = "Android"
+        elif "iphone" in user_agent_lower or "ipad" in user_agent_lower:
+            os = "iOS"
 
-        return {'device': device, 'browser': browser, 'os': os}
+        return {"device": device, "browser": browser, "os": os}
 
     @classmethod
     def cleanup_expired(cls):
@@ -676,52 +673,52 @@ class OTP(TimeStampedModel):
 
     email = models.EmailField(
         db_index=True,
-        verbose_name=_('Email'),
+        verbose_name=_("Email"),
     )
     otp = models.CharField(
         max_length=6,
-        verbose_name=_('OTP'),
+        verbose_name=_("OTP"),
     )
     otp_type = models.CharField(
         max_length=20,
         choices=OTPType.choices,
         default=OTPType.EMAIL_VERIFICATION,
-        verbose_name=_('OTP Type'),
+        verbose_name=_("OTP Type"),
     )
     is_used = models.BooleanField(
         default=False,
-        verbose_name=_('Is Used'),
+        verbose_name=_("Is Used"),
     )
     expires_at = models.DateTimeField(
         db_index=True,
-        verbose_name=_('Expires At'),
+        verbose_name=_("Expires At"),
     )
     attempts = models.PositiveIntegerField(
         default=0,
-        verbose_name=_('Attempts'),
+        verbose_name=_("Attempts"),
     )
     max_attempts = models.PositiveIntegerField(
         default=3,
-        verbose_name=_('Maximum Attempts'),
+        verbose_name=_("Maximum Attempts"),
     )
 
     # For email change verification
     new_email = models.EmailField(
         blank=True,
-        null=True,
-        verbose_name=_('New Email'),
+        default="",
+        verbose_name=_("New Email"),
     )
 
     class Meta:
-        verbose_name = _('OTP')
-        verbose_name_plural = _('OTPs')
-        ordering = ['-created_at']
+        verbose_name = _("OTP")
+        verbose_name_plural = _("OTPs")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['email', 'otp_type', 'is_used']),
+            models.Index(fields=["email", "otp_type", "is_used"]),
         ]
 
     def __str__(self):
-        return f'{self.otp_type} OTP for {self.email}'
+        return f"{self.otp_type} OTP for {self.email}"
 
     def is_valid(self):
         """Check if OTP is still valid (not used, not expired, attempts not exceeded)."""
@@ -736,14 +733,14 @@ class OTP(TimeStampedModel):
     def verify(self, otp_code):
         """Verify the OTP code. Returns True if valid, False otherwise."""
         self.attempts += 1
-        self.save(update_fields=['attempts'])
+        self.save(update_fields=["attempts"])
 
         if not self.is_valid():
             return False
 
         if self.otp == otp_code:
             self.is_used = True
-            self.save(update_fields=['is_used'])
+            self.save(update_fields=["is_used"])
             return True
 
         return False
@@ -765,7 +762,7 @@ class OTP(TimeStampedModel):
         ).update(is_used=True)
 
         # Generate 6-digit OTP
-        otp_code = ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+        otp_code = "".join([str(secrets.randbelow(10)) for _ in range(6)])
 
         return cls.objects.create(
             email=email,
@@ -786,53 +783,53 @@ class LoginAttempt(TimeStampedModel):
     """
     Track login attempts for security auditing.
     """
+
     email = models.EmailField(
         db_index=True,
-        verbose_name=_('Email'),
+        verbose_name=_("Email"),
     )
     ip_address = models.GenericIPAddressField(
-        verbose_name=_('IP Address'),
+        verbose_name=_("IP Address"),
     )
     user_agent = models.TextField(
         blank=True,
-        verbose_name=_('User Agent'),
+        verbose_name=_("User Agent"),
     )
     success = models.BooleanField(
         default=False,
-        verbose_name=_('Success'),
+        verbose_name=_("Success"),
     )
     failure_reason = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name=_('Failure Reason'),
+        verbose_name=_("Failure Reason"),
     )
     two_factor_used = models.BooleanField(
         default=False,
-        verbose_name=_('Two-Factor Used'),
+        verbose_name=_("Two-Factor Used"),
     )
 
     class Meta:
-        verbose_name = _('Login Attempt')
-        verbose_name_plural = _('Login Attempts')
-        ordering = ['-created_at']
+        verbose_name = _("Login Attempt")
+        verbose_name_plural = _("Login Attempts")
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['email', 'created_at']),
-            models.Index(fields=['ip_address', 'created_at']),
-            models.Index(fields=['success', 'created_at']),
+            models.Index(fields=["email", "created_at"]),
+            models.Index(fields=["ip_address", "created_at"]),
+            models.Index(fields=["success", "created_at"]),
         ]
 
     def __str__(self):
-        status = 'Success' if self.success else 'Failed'
-        return f'{status} login for {self.email} from {self.ip_address}'
+        status = "Success" if self.success else "Failed"
+        return f"{status} login for {self.email} from {self.ip_address}"
 
     @classmethod
-    def record(cls, email, ip_address, user_agent='', success=False,
-               failure_reason='', two_factor_used=False):
+    def record(cls, email, ip_address, user_agent="", success=False, failure_reason="", two_factor_used=False):
         """Record a login attempt."""
         return cls.objects.create(
             email=email,
             ip_address=ip_address,
-            user_agent=user_agent[:500] if user_agent else '',
+            user_agent=user_agent[:500] if user_agent else "",
             success=success,
             failure_reason=failure_reason,
             two_factor_used=two_factor_used,
@@ -862,39 +859,40 @@ class EmailChangeRequest(TimeStampedModel):
     """
     Track email change requests requiring verification.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='email_change_requests',
-        verbose_name=_('User'),
+        related_name="email_change_requests",
+        verbose_name=_("User"),
     )
     old_email = models.EmailField(
-        verbose_name=_('Old Email'),
+        verbose_name=_("Old Email"),
     )
     new_email = models.EmailField(
-        verbose_name=_('New Email'),
+        verbose_name=_("New Email"),
     )
     is_verified = models.BooleanField(
         default=False,
-        verbose_name=_('Is Verified'),
+        verbose_name=_("Is Verified"),
     )
     verified_at = models.DateTimeField(
         blank=True,
         null=True,
-        verbose_name=_('Verified At'),
+        verbose_name=_("Verified At"),
     )
     expires_at = models.DateTimeField(
-        verbose_name=_('Expires At'),
+        verbose_name=_("Expires At"),
     )
 
     class Meta:
-        verbose_name = _('Email Change Request')
-        verbose_name_plural = _('Email Change Requests')
-        ordering = ['-created_at']
+        verbose_name = _("Email Change Request")
+        verbose_name_plural = _("Email Change Requests")
+        ordering = ["-created_at"]
 
     def __str__(self):
-        status = 'Verified' if self.is_verified else 'Pending'
-        return f'{status} email change: {self.old_email} -> {self.new_email}'
+        status = "Verified" if self.is_verified else "Pending"
+        return f"{status} email change: {self.old_email} -> {self.new_email}"
 
     def is_expired(self):
         """Check if request has expired."""
@@ -903,19 +901,19 @@ class EmailChangeRequest(TimeStampedModel):
     def complete(self):
         """Complete the email change."""
         if self.is_expired():
-            return False, 'Email change request has expired'
+            return False, "Email change request has expired"
 
         if self.is_verified:
-            return False, 'Email change already completed'
+            return False, "Email change already completed"
 
         self.user.email = self.new_email
-        self.user.save(update_fields=['email'])
+        self.user.save(update_fields=["email"])
 
         self.is_verified = True
         self.verified_at = timezone.now()
         self.save()
 
-        return True, 'Email changed successfully'
+        return True, "Email changed successfully"
 
     @classmethod
     def create_request(cls, user, new_email, validity_hours=24):

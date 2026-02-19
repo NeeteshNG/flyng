@@ -2,6 +2,7 @@
 Unfold Admin Callbacks for FlyNG
 These callbacks provide dynamic content for the admin dashboard
 """
+
 import os
 
 
@@ -10,7 +11,7 @@ def environment_callback(request):
     Returns environment badge for the admin header.
     Shows different colors based on DEBUG setting.
     """
-    debug = os.environ.get('DEBUG', 'True').lower() == 'true'
+    debug = os.environ.get("DEBUG", "True").lower() == "true"
 
     if debug:
         return {
@@ -32,47 +33,49 @@ def dashboard_callback(request, context):
     from apps.users.models import User
 
     # Get stats for dashboard
-    context.update({
-        "stats": {
-            "total_users": User.objects.count(),
-            "active_users": User.objects.filter(is_active=True).count(),
-            "admin_users": User.objects.filter(is_superuser=True).count(),
-        },
-        "kpis": [
-            {
-                "title": "Total Users",
-                "metric": User.objects.count(),
-                "icon": "person",
-                "footer": {
-                    "text": "Active users in the system",
-                },
+    context.update(
+        {
+            "stats": {
+                "total_users": User.objects.count(),
+                "active_users": User.objects.filter(is_active=True).count(),
+                "admin_users": User.objects.filter(is_superuser=True).count(),
             },
-            {
-                "title": "Active Drones",
-                "metric": 0,  # Will be updated when drone model exists
-                "icon": "flight",
-                "footer": {
-                    "text": "Drones currently operational",
+            "kpis": [
+                {
+                    "title": "Total Users",
+                    "metric": User.objects.count(),
+                    "icon": "person",
+                    "footer": {
+                        "text": "Active users in the system",
+                    },
                 },
-            },
-            {
-                "title": "Open Orders",
-                "metric": 0,  # Will be updated when orders model exists
-                "icon": "shopping_cart",
-                "footer": {
-                    "text": "Orders pending fulfillment",
+                {
+                    "title": "Active Drones",
+                    "metric": 0,  # Will be updated when drone model exists
+                    "icon": "flight",
+                    "footer": {
+                        "text": "Drones currently operational",
+                    },
                 },
-            },
-            {
-                "title": "Jobs in Queue",
-                "metric": 0,  # Will be updated when jobs model exists
-                "icon": "queue",
-                "footer": {
-                    "text": "Jobs waiting to be processed",
+                {
+                    "title": "Open Orders",
+                    "metric": 0,  # Will be updated when orders model exists
+                    "icon": "shopping_cart",
+                    "footer": {
+                        "text": "Orders pending fulfillment",
+                    },
                 },
-            },
-        ],
-    })
+                {
+                    "title": "Jobs in Queue",
+                    "metric": 0,  # Will be updated when jobs model exists
+                    "icon": "queue",
+                    "footer": {
+                        "text": "Jobs waiting to be processed",
+                    },
+                },
+            ],
+        }
+    )
     return context
 
 

@@ -3,6 +3,7 @@ Battery Managers
 
 Custom managers for battery-related models with optimized queries.
 """
+
 from django.db import models
 from django.utils import timezone
 
@@ -12,26 +13,30 @@ class DroneBatteryManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'warehouse',
-            'created_by',
-            'updated_by',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "warehouse",
+                "created_by",
+                "updated_by",
+            )
         )
 
     def available(self):
         """Return batteries available for use."""
         return self.get_queryset().filter(
-            status='AVAILABLE',
+            status="AVAILABLE",
             is_active=True,
         )
 
     def in_use(self):
         """Return batteries currently in use (attached to drones)."""
-        return self.get_queryset().filter(status='IN_USE')
+        return self.get_queryset().filter(status="IN_USE")
 
     def charging(self):
         """Return batteries currently charging."""
-        return self.get_queryset().filter(status='CHARGING')
+        return self.get_queryset().filter(status="CHARGING")
 
     def for_warehouse(self, warehouse):
         """Return batteries belonging to a specific warehouse."""
@@ -40,22 +45,20 @@ class DroneBatteryManager(models.Manager):
     def needing_replacement(self):
         """Return batteries that need replacement."""
         return self.get_queryset().filter(
-            models.Q(health_status='REPLACE') |
-            models.Q(health_status='POOR') |
-            models.Q(status='FAULTY')
+            models.Q(health_status="REPLACE") | models.Q(health_status="POOR") | models.Q(status="FAULTY")
         )
 
     def low_charge(self, threshold=20):
         """Return batteries with charge below threshold."""
         return self.get_queryset().filter(
             current_charge_percent__lt=threshold,
-            status__in=['AVAILABLE', 'IN_USE'],
+            status__in=["AVAILABLE", "IN_USE"],
         )
 
     def healthy(self):
         """Return batteries in good or excellent condition."""
         return self.get_queryset().filter(
-            health_status__in=['EXCELLENT', 'GOOD'],
+            health_status__in=["EXCELLENT", "GOOD"],
             is_active=True,
         )
 
@@ -65,9 +68,13 @@ class BatteryChargingSessionManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'battery',
-            'battery__warehouse',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "battery",
+                "battery__warehouse",
+            )
         )
 
     def for_battery(self, battery):
@@ -77,12 +84,12 @@ class BatteryChargingSessionManager(models.Manager):
     def active(self):
         """Return currently active charging sessions."""
         return self.get_queryset().filter(
-            status__in=['STARTED', 'CHARGING'],
+            status__in=["STARTED", "CHARGING"],
         )
 
     def completed(self):
         """Return completed charging sessions."""
-        return self.get_queryset().filter(status='COMPLETED')
+        return self.get_queryset().filter(status="COMPLETED")
 
     def recent(self, days=7):
         """Return sessions from the last N days."""
@@ -92,7 +99,7 @@ class BatteryChargingSessionManager(models.Manager):
     def failed(self):
         """Return failed or interrupted charging sessions."""
         return self.get_queryset().filter(
-            status__in=['FAILED', 'INTERRUPTED'],
+            status__in=["FAILED", "INTERRUPTED"],
         )
 
 
@@ -101,11 +108,15 @@ class BatterySwapRecordManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'drone',
-            'old_battery',
-            'new_battery',
-            'performed_by',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "drone",
+                "old_battery",
+                "new_battery",
+                "performed_by",
+            )
         )
 
     def for_drone(self, drone):
@@ -114,9 +125,7 @@ class BatterySwapRecordManager(models.Manager):
 
     def for_battery(self, battery):
         """Return swap records involving a specific battery."""
-        return self.get_queryset().filter(
-            models.Q(old_battery=battery) | models.Q(new_battery=battery)
-        )
+        return self.get_queryset().filter(models.Q(old_battery=battery) | models.Q(new_battery=battery))
 
     def recent(self, days=7):
         """Return records from the last N days."""
@@ -130,5 +139,5 @@ class BatterySwapRecordManager(models.Manager):
     def emergency_swaps(self):
         """Return emergency swap records."""
         return self.get_queryset().filter(
-            swap_reason__in=['EMERGENCY', 'MALFUNCTION'],
+            swap_reason__in=["EMERGENCY", "MALFUNCTION"],
         )

@@ -1,9 +1,9 @@
 """
 Custom Exception Handler for FlyNG API
 """
-from rest_framework.views import exception_handler
-from rest_framework.response import Response
+
 from rest_framework import status
+from rest_framework.views import exception_handler
 
 
 def custom_exception_handler(exc, context):
@@ -14,20 +14,20 @@ def custom_exception_handler(exc, context):
 
     if response is not None:
         custom_response_data = {
-            'success': False,
-            'message': 'An error occurred',
-            'errors': None,
+            "success": False,
+            "message": "An error occurred",
+            "errors": None,
         }
 
         if isinstance(response.data, dict):
-            if 'detail' in response.data:
-                custom_response_data['message'] = str(response.data['detail'])
+            if "detail" in response.data:
+                custom_response_data["message"] = str(response.data["detail"])
             else:
-                custom_response_data['errors'] = response.data
-                custom_response_data['message'] = 'Validation error'
+                custom_response_data["errors"] = response.data
+                custom_response_data["message"] = "Validation error"
         elif isinstance(response.data, list):
-            custom_response_data['errors'] = response.data
-            custom_response_data['message'] = 'Multiple errors occurred'
+            custom_response_data["errors"] = response.data
+            custom_response_data["message"] = "Multiple errors occurred"
 
         response.data = custom_response_data
 
@@ -36,8 +36,9 @@ def custom_exception_handler(exc, context):
 
 class APIException(Exception):
     """Base API Exception"""
+
     status_code = status.HTTP_400_BAD_REQUEST
-    message = 'An error occurred'
+    message = "An error occurred"
 
     def __init__(self, message=None, status_code=None):
         if message:
@@ -49,23 +50,27 @@ class APIException(Exception):
 
 class NotFoundException(APIException):
     """Resource not found exception"""
+
     status_code = status.HTTP_404_NOT_FOUND
-    message = 'Resource not found'
+    message = "Resource not found"
 
 
 class ValidationException(APIException):
     """Validation error exception"""
+
     status_code = status.HTTP_400_BAD_REQUEST
-    message = 'Validation error'
+    message = "Validation error"
 
 
 class UnauthorizedException(APIException):
     """Unauthorized access exception"""
+
     status_code = status.HTTP_401_UNAUTHORIZED
-    message = 'Unauthorized'
+    message = "Unauthorized"
 
 
 class ForbiddenException(APIException):
     """Forbidden access exception"""
+
     status_code = status.HTTP_403_FORBIDDEN
-    message = 'Access forbidden'
+    message = "Access forbidden"

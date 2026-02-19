@@ -2,9 +2,10 @@
 Pytest configuration and fixtures for FlyNG backend tests.
 """
 
-import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
+import pytest
 
 User = get_user_model()
 

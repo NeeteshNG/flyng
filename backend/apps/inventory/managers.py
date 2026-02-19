@@ -3,6 +3,7 @@ Inventory Managers
 
 Custom managers for inventory-related models with optimized queries.
 """
+
 from django.db import models
 
 
@@ -11,9 +12,13 @@ class StorageLocationManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'zone',
-            'zone__warehouse',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "zone",
+                "zone__warehouse",
+            )
         )
 
     def active(self):
@@ -42,7 +47,7 @@ class BinLabelTypeManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related('organization')
+        return super().get_queryset().select_related("organization")
 
     def active(self):
         """Return active label types."""
@@ -58,9 +63,13 @@ class StorageBinTemplateManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'organization',
-            'label_type',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "organization",
+                "label_type",
+            )
         )
 
     def active(self):
@@ -81,10 +90,14 @@ class StorageBinManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'location',
-            'location__zone',
-            'template',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "location",
+                "location__zone",
+                "template",
+            )
         )
 
     def active(self):
@@ -117,9 +130,13 @@ class ItemCategoryManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'organization',
-            'parent',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "organization",
+                "parent",
+            )
         )
 
     def active(self):
@@ -144,11 +161,15 @@ class InventoryItemManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'organization',
-            'category',
-            'created_by',
-            'updated_by',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "organization",
+                "category",
+                "created_by",
+                "updated_by",
+            )
         )
 
     def active(self):
@@ -170,18 +191,17 @@ class InventoryItemManager(models.Manager):
     def low_stock(self):
         """Return items below minimum stock level."""
         from django.db.models import Sum
-        return self.active().annotate(
-            total_stock=Sum('stocks__quantity')
-        ).filter(
-            total_stock__lt=models.F('min_stock_level')
+
+        return (
+            self.active()
+            .annotate(total_stock=Sum("stocks__quantity"))
+            .filter(total_stock__lt=models.F("min_stock_level"))
         )
 
     def searchable(self, query):
         """Search items by SKU, name, or barcode."""
         return self.active().filter(
-            models.Q(sku__icontains=query) |
-            models.Q(name__icontains=query) |
-            models.Q(barcode__icontains=query)
+            models.Q(sku__icontains=query) | models.Q(name__icontains=query) | models.Q(barcode__icontains=query)
         )
 
 
@@ -190,12 +210,16 @@ class InventoryStockManager(models.Manager):
 
     def get_queryset(self):
         """Return queryset with related objects pre-fetched."""
-        return super().get_queryset().select_related(
-            'bin',
-            'bin__location',
-            'item',
-            'created_by',
-            'updated_by',
+        return (
+            super()
+            .get_queryset()
+            .select_related(
+                "bin",
+                "bin__location",
+                "item",
+                "created_by",
+                "updated_by",
+            )
         )
 
     def for_item(self, item):
@@ -221,6 +245,7 @@ class InventoryStockManager(models.Manager):
     def expiring_soon(self, days=30):
         """Return stock expiring within N days."""
         from django.utils import timezone
+
         cutoff = timezone.now().date() + timezone.timedelta(days=days)
         return self.get_queryset().filter(
             expiry_date__isnull=False,
@@ -230,6 +255,7 @@ class InventoryStockManager(models.Manager):
     def expired(self):
         """Return expired stock."""
         from django.utils import timezone
+
         return self.get_queryset().filter(
             expiry_date__isnull=False,
             expiry_date__lt=timezone.now().date(),

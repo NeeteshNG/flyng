@@ -3,6 +3,7 @@ Battery Model Translations
 
 Registers translatable fields for battery models using django-modeltranslation.
 """
+
 from modeltranslation.translator import TranslationOptions, register
 
 from .models import DroneBattery
@@ -11,7 +12,8 @@ from .models import DroneBattery
 @register(DroneBattery)
 class DroneBatteryTranslationOptions(TranslationOptions):
     """Translation options for DroneBattery model."""
-    fields = ('name', 'notes')
+
+    fields = ("name", "notes")
 
 
 # Note: BatteryChargingSession and BatterySwapRecord are ReadOnlyModels

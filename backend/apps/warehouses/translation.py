@@ -12,6 +12,7 @@ Translatable fields:
 - GroundControlStation: name, description
 - DroneWorkArea: name, description
 """
+
 from modeltranslation.translator import TranslationOptions, register
 
 from apps.warehouses.models import (
@@ -32,7 +33,8 @@ class WarehouseTranslationOptions(TranslationOptions):
     - name: Warehouse display name
     - description: Warehouse detailed description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")
 
 
 @register(WarehouseContact)
@@ -44,7 +46,8 @@ class WarehouseContactTranslationOptions(TranslationOptions):
     - designation: Job title (e.g., "Manager" → "प्रबंधक")
     - notes: Additional notes about the contact
     """
-    fields = ('designation', 'notes')
+
+    fields = ("designation", "notes")
 
 
 @register(WarehouseZone)
@@ -56,7 +59,8 @@ class WarehouseZoneTranslationOptions(TranslationOptions):
     - name: Zone display name (e.g., "Storage Zone A" → "भंडारण क्षेत्र A")
     - description: Zone detailed description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")
 
 
 @register(GroundControlStation)
@@ -68,7 +72,8 @@ class GroundControlStationTranslationOptions(TranslationOptions):
     - name: GCS display name
     - description: GCS detailed description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")
 
 
 @register(DroneWorkArea)
@@ -80,4 +85,5 @@ class DroneWorkAreaTranslationOptions(TranslationOptions):
     - name: Work area display name
     - description: Work area detailed description
     """
-    fields = ('name', 'description')
+
+    fields = ("name", "description")

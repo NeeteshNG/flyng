@@ -12,7 +12,7 @@ Models:
 - InventoryItem: Master item data (SKU)
 - InventoryStock: Stock quantity at specific bin
 """
-from django.conf import settings
+
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -58,132 +58,132 @@ class StorageLocation(BaseModel):
     """
 
     zone = models.ForeignKey(
-        'warehouses.WarehouseZone',
+        "warehouses.WarehouseZone",
         on_delete=models.CASCADE,
-        related_name='storage_locations',
-        verbose_name=_('zone'),
-        help_text=_('The warehouse zone this location belongs to'),
+        related_name="storage_locations",
+        verbose_name=_("zone"),
+        help_text=_("The warehouse zone this location belongs to"),
     )
 
     code = models.CharField(
-        _('location code'),
+        _("location code"),
         max_length=50,
         db_index=True,
-        help_text=_('Unique location code (e.g., A-01-03-02)'),
+        help_text=_("Unique location code (e.g., A-01-03-02)"),
     )
 
     # Human-readable position identifiers
     aisle = models.CharField(
-        _('aisle'),
+        _("aisle"),
         max_length=10,
-        help_text=_('Aisle identifier'),
+        help_text=_("Aisle identifier"),
     )
 
     rack = models.CharField(
-        _('rack'),
+        _("rack"),
         max_length=10,
-        help_text=_('Rack identifier within aisle'),
+        help_text=_("Rack identifier within aisle"),
     )
 
     level = models.CharField(
-        _('level'),
+        _("level"),
         max_length=10,
-        help_text=_('Level/shelf within rack'),
+        help_text=_("Level/shelf within rack"),
     )
 
     position = models.CharField(
-        _('position'),
+        _("position"),
         max_length=10,
         blank=True,
-        help_text=_('Position on the level (optional)'),
+        help_text=_("Position on the level (optional)"),
     )
 
     # Location type
     location_type = models.CharField(
-        _('location type'),
+        _("location type"),
         max_length=20,
         choices=StorageLocationType.choices,
         default=StorageLocationType.RACK,
-        help_text=_('Type of storage location'),
+        help_text=_("Type of storage location"),
     )
 
     # 3D coordinates for drone navigation
     x_coordinate = models.DecimalField(
-        _('X coordinate'),
+        _("X coordinate"),
         max_digits=10,
         decimal_places=3,
         null=True,
         blank=True,
-        help_text=_('X position in meters from origin'),
+        help_text=_("X position in meters from origin"),
     )
 
     y_coordinate = models.DecimalField(
-        _('Y coordinate'),
+        _("Y coordinate"),
         max_digits=10,
         decimal_places=3,
         null=True,
         blank=True,
-        help_text=_('Y position in meters from origin'),
+        help_text=_("Y position in meters from origin"),
     )
 
     z_coordinate = models.DecimalField(
-        _('Z coordinate'),
+        _("Z coordinate"),
         max_digits=10,
         decimal_places=3,
         null=True,
         blank=True,
-        help_text=_('Z position (height) in meters from floor'),
+        help_text=_("Z position (height) in meters from floor"),
     )
 
     # Capacity and status
     max_bins = models.PositiveSmallIntegerField(
-        _('max bins'),
+        _("max bins"),
         default=1,
         validators=[MinValueValidator(1), MaxValueValidator(100)],
-        help_text=_('Maximum number of bins at this location'),
+        help_text=_("Maximum number of bins at this location"),
     )
 
     is_accessible = models.BooleanField(
-        _('is accessible'),
+        _("is accessible"),
         default=True,
-        help_text=_('Whether drones can access this location'),
+        help_text=_("Whether drones can access this location"),
     )
 
     is_full = models.BooleanField(
-        _('is full'),
+        _("is full"),
         default=False,
         db_index=True,
-        help_text=_('Whether location is at capacity'),
+        help_text=_("Whether location is at capacity"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this location is in use'),
+        help_text=_("Whether this location is in use"),
     )
 
     notes = models.TextField(
-        _('notes'),
+        _("notes"),
         blank=True,
-        help_text=_('Additional notes about this location'),
+        help_text=_("Additional notes about this location"),
     )
 
     objects = StorageLocationManager()
 
     class Meta:
-        verbose_name = _('storage location')
-        verbose_name_plural = _('storage locations')
-        ordering = ['zone', 'aisle', 'rack', 'level', 'position']
+        verbose_name = _("storage location")
+        verbose_name_plural = _("storage locations")
+        ordering = ["zone", "aisle", "rack", "level", "position"]
         indexes = [
-            models.Index(fields=['zone', 'code']),
-            models.Index(fields=['aisle', 'rack', 'level']),
-            models.Index(fields=['location_type', 'is_active']),
+            models.Index(fields=["zone", "code"]),
+            models.Index(fields=["aisle", "rack", "level"]),
+            models.Index(fields=["location_type", "is_active"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['zone', 'code'],
-                name='unique_location_code_per_zone',
+                fields=["zone", "code"],
+                name="unique_location_code_per_zone",
             ),
         ]
 
@@ -196,7 +196,7 @@ class StorageLocation(BaseModel):
         parts = [self.aisle, self.rack, self.level]
         if self.position:
             parts.append(self.position)
-        return '-'.join(parts)
+        return "-".join(parts)
 
 
 class BinLabelType(BaseModel):
@@ -215,66 +215,66 @@ class BinLabelType(BaseModel):
     """
 
     organization = models.ForeignKey(
-        'organizations.Organization',
+        "organizations.Organization",
         on_delete=models.CASCADE,
-        related_name='bin_label_types',
-        verbose_name=_('organization'),
-        help_text=_('The organization this label type belongs to'),
+        related_name="bin_label_types",
+        verbose_name=_("organization"),
+        help_text=_("The organization this label type belongs to"),
     )
 
     name = models.CharField(
-        _('name'),
+        _("name"),
         max_length=100,
-        help_text=_('Display name for the label type'),
+        help_text=_("Display name for the label type"),
     )
 
     label_type = models.IntegerField(
-        _('label type'),
+        _("label type"),
         choices=BinLabelTypeChoices.choices,
         default=BinLabelTypeChoices.ARUCO,
-        help_text=_('Type of label (ArUco, QR)'),
+        help_text=_("Type of label (ArUco, QR)"),
     )
 
     # ArUco specific settings
     dictionary_size = models.CharField(
-        _('dictionary size'),
+        _("dictionary size"),
         max_length=20,
         blank=True,
-        help_text=_('ArUco dictionary (e.g., 4x4_50, 5x5_100)'),
+        help_text=_("ArUco dictionary (e.g., 4x4_50, 5x5_100)"),
     )
 
     marker_size_mm = models.PositiveIntegerField(
-        _('marker size (mm)'),
+        _("marker size (mm)"),
         default=100,
         validators=[MinValueValidator(10), MaxValueValidator(500)],
-        help_text=_('Physical size of the marker in millimeters'),
+        help_text=_("Physical size of the marker in millimeters"),
     )
 
     # Additional configuration
     config = models.JSONField(
-        _('configuration'),
+        _("configuration"),
         default=dict,
         blank=True,
-        help_text=_('Additional label configuration'),
+        help_text=_("Additional label configuration"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this label type is in use'),
+        help_text=_("Whether this label type is in use"),
     )
 
     objects = BinLabelTypeManager()
 
     class Meta:
-        verbose_name = _('bin label type')
-        verbose_name_plural = _('bin label types')
-        ordering = ['organization', 'name']
+        verbose_name = _("bin label type")
+        verbose_name_plural = _("bin label types")
+        ordering = ["organization", "name"]
         constraints = [
             models.UniqueConstraint(
-                fields=['organization', 'name'],
-                name='unique_label_type_name_per_org',
+                fields=["organization", "name"],
+                name="unique_label_type_name_per_org",
             ),
         ]
 
@@ -300,100 +300,100 @@ class StorageBinTemplate(BaseModel):
     """
 
     organization = models.ForeignKey(
-        'organizations.Organization',
+        "organizations.Organization",
         on_delete=models.CASCADE,
-        related_name='bin_templates',
-        verbose_name=_('organization'),
-        help_text=_('The organization this template belongs to'),
+        related_name="bin_templates",
+        verbose_name=_("organization"),
+        help_text=_("The organization this template belongs to"),
     )
 
     label_type = models.ForeignKey(
         BinLabelType,
         on_delete=models.PROTECT,
-        related_name='templates',
-        verbose_name=_('label type'),
-        help_text=_('The label type used for bins of this template'),
+        related_name="templates",
+        verbose_name=_("label type"),
+        help_text=_("The label type used for bins of this template"),
     )
 
     name = models.CharField(
-        _('name'),
+        _("name"),
         max_length=100,
-        help_text=_('Display name for the template'),
+        help_text=_("Display name for the template"),
     )
 
     description = models.TextField(
-        _('description'),
+        _("description"),
         blank=True,
-        help_text=_('Description of this bin template'),
+        help_text=_("Description of this bin template"),
     )
 
     # Dimensions in centimeters
     width = models.DecimalField(
-        _('width (cm)'),
+        _("width (cm)"),
         max_digits=6,
         decimal_places=1,
         validators=[MinValueValidator(1)],
-        help_text=_('Bin width in centimeters'),
+        help_text=_("Bin width in centimeters"),
     )
 
     height = models.DecimalField(
-        _('height (cm)'),
+        _("height (cm)"),
         max_digits=6,
         decimal_places=1,
         validators=[MinValueValidator(1)],
-        help_text=_('Bin height in centimeters'),
+        help_text=_("Bin height in centimeters"),
     )
 
     depth = models.DecimalField(
-        _('depth (cm)'),
+        _("depth (cm)"),
         max_digits=6,
         decimal_places=1,
         validators=[MinValueValidator(1)],
-        help_text=_('Bin depth in centimeters'),
+        help_text=_("Bin depth in centimeters"),
     )
 
     # Weight capacity
     max_weight_kg = models.DecimalField(
-        _('max weight (kg)'),
+        _("max weight (kg)"),
         max_digits=8,
         decimal_places=2,
         validators=[MinValueValidator(0.1)],
-        help_text=_('Maximum weight capacity in kilograms'),
+        help_text=_("Maximum weight capacity in kilograms"),
     )
 
     # Coordinate reference
     coordinate_type = models.IntegerField(
-        _('coordinate type'),
+        _("coordinate type"),
         choices=BinCoordinateType.choices,
         default=BinCoordinateType.CENTER,
-        help_text=_('Reference point for bin coordinates'),
+        help_text=_("Reference point for bin coordinates"),
     )
 
     # Additional configuration
     config = models.JSONField(
-        _('configuration'),
+        _("configuration"),
         default=dict,
         blank=True,
-        help_text=_('Additional bin configuration'),
+        help_text=_("Additional bin configuration"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this template is in use'),
+        help_text=_("Whether this template is in use"),
     )
 
     objects = StorageBinTemplateManager()
 
     class Meta:
-        verbose_name = _('storage bin template')
-        verbose_name_plural = _('storage bin templates')
-        ordering = ['organization', 'name']
+        verbose_name = _("storage bin template")
+        verbose_name_plural = _("storage bin templates")
+        ordering = ["organization", "name"]
         constraints = [
             models.UniqueConstraint(
-                fields=['organization', 'name'],
-                name='unique_template_name_per_org',
+                fields=["organization", "name"],
+                name="unique_template_name_per_org",
             ),
         ]
 
@@ -425,89 +425,89 @@ class StorageBin(BaseModel):
     location = models.ForeignKey(
         StorageLocation,
         on_delete=models.CASCADE,
-        related_name='bins',
-        verbose_name=_('location'),
-        help_text=_('The storage location this bin is at'),
+        related_name="bins",
+        verbose_name=_("location"),
+        help_text=_("The storage location this bin is at"),
     )
 
     template = models.ForeignKey(
         StorageBinTemplate,
         on_delete=models.PROTECT,
-        related_name='bins',
-        verbose_name=_('template'),
-        help_text=_('The template defining bin configuration'),
+        related_name="bins",
+        verbose_name=_("template"),
+        help_text=_("The template defining bin configuration"),
     )
 
     code = models.CharField(
-        _('bin code'),
+        _("bin code"),
         max_length=50,
         db_index=True,
-        help_text=_('Unique bin code'),
+        help_text=_("Unique bin code"),
     )
 
     label_value = models.CharField(
-        _('label value'),
+        _("label value"),
         max_length=100,
-        help_text=_('The actual label value (ArUco ID or QR content)'),
+        help_text=_("The actual label value (ArUco ID or QR content)"),
     )
 
     # Relative position within location (if multiple bins)
     position_index = models.PositiveSmallIntegerField(
-        _('position index'),
+        _("position index"),
         default=0,
-        help_text=_('Position of this bin within the location'),
+        help_text=_("Position of this bin within the location"),
     )
 
     # Current state
     current_weight_kg = models.DecimalField(
-        _('current weight (kg)'),
+        _("current weight (kg)"),
         max_digits=8,
         decimal_places=2,
         default=0,
         validators=[MinValueValidator(0)],
-        help_text=_('Current weight of bin contents'),
+        help_text=_("Current weight of bin contents"),
     )
 
     item_count = models.PositiveIntegerField(
-        _('item count'),
+        _("item count"),
         default=0,
-        help_text=_('Number of stock records in this bin'),
+        help_text=_("Number of stock records in this bin"),
     )
 
     is_full = models.BooleanField(
-        _('is full'),
+        _("is full"),
         default=False,
         db_index=True,
-        help_text=_('Whether bin is at capacity'),
+        help_text=_("Whether bin is at capacity"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this bin is in use'),
+        help_text=_("Whether this bin is in use"),
     )
 
     notes = models.TextField(
-        _('notes'),
+        _("notes"),
         blank=True,
-        help_text=_('Additional notes about this bin'),
+        help_text=_("Additional notes about this bin"),
     )
 
     objects = StorageBinManager()
 
     class Meta:
-        verbose_name = _('storage bin')
-        verbose_name_plural = _('storage bins')
-        ordering = ['location', 'position_index']
+        verbose_name = _("storage bin")
+        verbose_name_plural = _("storage bins")
+        ordering = ["location", "position_index"]
         indexes = [
-            models.Index(fields=['location', 'code']),
-            models.Index(fields=['label_value']),
+            models.Index(fields=["location", "code"]),
+            models.Index(fields=["label_value"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['location', 'code'],
-                name='unique_bin_code_per_location',
+                fields=["location", "code"],
+                name="unique_bin_code_per_location",
             ),
         ]
 
@@ -523,10 +523,7 @@ class StorageBin(BaseModel):
     def weight_utilization_percent(self):
         """Calculate weight utilization percentage."""
         if self.template.max_weight_kg > 0:
-            return round(
-                (float(self.current_weight_kg) / float(self.template.max_weight_kg)) * 100,
-                1
-            )
+            return round((float(self.current_weight_kg) / float(self.template.max_weight_kg)) * 100, 1)
         return 0
 
 
@@ -545,74 +542,74 @@ class ItemCategory(BaseModel):
     """
 
     organization = models.ForeignKey(
-        'organizations.Organization',
+        "organizations.Organization",
         on_delete=models.CASCADE,
-        related_name='item_categories',
-        verbose_name=_('organization'),
-        help_text=_('The organization this category belongs to'),
+        related_name="item_categories",
+        verbose_name=_("organization"),
+        help_text=_("The organization this category belongs to"),
     )
 
     parent = models.ForeignKey(
-        'self',
+        "self",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='children',
-        verbose_name=_('parent category'),
-        help_text=_('Parent category (null for root categories)'),
+        related_name="children",
+        verbose_name=_("parent category"),
+        help_text=_("Parent category (null for root categories)"),
     )
 
     name = models.CharField(
-        _('name'),
+        _("name"),
         max_length=100,
-        help_text=_('Category name'),
+        help_text=_("Category name"),
     )
 
     code = models.CharField(
-        _('code'),
+        _("code"),
         max_length=50,
-        help_text=_('Unique category code'),
+        help_text=_("Unique category code"),
     )
 
     description = models.TextField(
-        _('description'),
+        _("description"),
         blank=True,
-        help_text=_('Category description'),
+        help_text=_("Category description"),
     )
 
     level = models.PositiveSmallIntegerField(
-        _('level'),
+        _("level"),
         default=0,
-        help_text=_('Depth in the hierarchy (0 = root)'),
+        help_text=_("Depth in the hierarchy (0 = root)"),
     )
 
     display_order = models.PositiveIntegerField(
-        _('display order'),
+        _("display order"),
         default=0,
-        help_text=_('Order for display purposes'),
+        help_text=_("Order for display purposes"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this category is in use'),
+        help_text=_("Whether this category is in use"),
     )
 
     objects = ItemCategoryManager()
 
     class Meta:
-        verbose_name = _('item category')
-        verbose_name_plural = _('item categories')
-        ordering = ['organization', 'level', 'display_order', 'name']
+        verbose_name = _("item category")
+        verbose_name_plural = _("item categories")
+        ordering = ["organization", "level", "display_order", "name"]
         indexes = [
-            models.Index(fields=['organization', 'parent']),
-            models.Index(fields=['code']),
+            models.Index(fields=["organization", "parent"]),
+            models.Index(fields=["code"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['organization', 'code'],
-                name='unique_category_code_per_org',
+                fields=["organization", "code"],
+                name="unique_category_code_per_org",
             ),
         ]
 
@@ -658,11 +655,11 @@ class InventoryItem(AuditedModel):
     """
 
     organization = models.ForeignKey(
-        'organizations.Organization',
+        "organizations.Organization",
         on_delete=models.CASCADE,
-        related_name='inventory_items',
-        verbose_name=_('organization'),
-        help_text=_('The organization this item belongs to'),
+        related_name="inventory_items",
+        verbose_name=_("organization"),
+        help_text=_("The organization this item belongs to"),
     )
 
     category = models.ForeignKey(
@@ -670,148 +667,148 @@ class InventoryItem(AuditedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='items',
-        verbose_name=_('category'),
-        help_text=_('Item category'),
+        related_name="items",
+        verbose_name=_("category"),
+        help_text=_("Item category"),
     )
 
     sku = models.CharField(
-        _('SKU'),
+        _("SKU"),
         max_length=100,
         db_index=True,
-        help_text=_('Stock keeping unit (unique identifier)'),
+        help_text=_("Stock keeping unit (unique identifier)"),
     )
 
     name = models.CharField(
-        _('name'),
+        _("name"),
         max_length=255,
-        help_text=_('Item name'),
+        help_text=_("Item name"),
     )
 
     description = models.TextField(
-        _('description'),
+        _("description"),
         blank=True,
-        help_text=_('Item description'),
+        help_text=_("Item description"),
     )
 
     barcode = models.CharField(
-        _('barcode'),
+        _("barcode"),
         max_length=100,
         blank=True,
         db_index=True,
-        help_text=_('Barcode (EAN, UPC, etc.)'),
+        help_text=_("Barcode (EAN, UPC, etc.)"),
     )
 
     # Physical attributes
     weight_kg = models.DecimalField(
-        _('weight (kg)'),
+        _("weight (kg)"),
         max_digits=8,
         decimal_places=3,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_('Item weight in kilograms'),
+        help_text=_("Item weight in kilograms"),
     )
 
     length_cm = models.DecimalField(
-        _('length (cm)'),
+        _("length (cm)"),
         max_digits=6,
         decimal_places=1,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_('Item length in centimeters'),
+        help_text=_("Item length in centimeters"),
     )
 
     width_cm = models.DecimalField(
-        _('width (cm)'),
+        _("width (cm)"),
         max_digits=6,
         decimal_places=1,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_('Item width in centimeters'),
+        help_text=_("Item width in centimeters"),
     )
 
     height_cm = models.DecimalField(
-        _('height (cm)'),
+        _("height (cm)"),
         max_digits=6,
         decimal_places=1,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_('Item height in centimeters'),
+        help_text=_("Item height in centimeters"),
     )
 
     # Pricing and units
     unit_of_measure = models.CharField(
-        _('unit of measure'),
+        _("unit of measure"),
         max_length=20,
         choices=UnitOfMeasure.choices,
         default=UnitOfMeasure.EACH,
-        help_text=_('Unit for quantity tracking'),
+        help_text=_("Unit for quantity tracking"),
     )
 
     unit_price = models.DecimalField(
-        _('unit price'),
+        _("unit price"),
         max_digits=12,
         decimal_places=2,
         null=True,
         blank=True,
         validators=[MinValueValidator(0)],
-        help_text=_('Unit price in organization currency'),
+        help_text=_("Unit price in organization currency"),
     )
 
     # Stock management
     min_stock_level = models.PositiveIntegerField(
-        _('min stock level'),
+        _("min stock level"),
         default=0,
-        help_text=_('Minimum stock before reorder alert'),
+        help_text=_("Minimum stock before reorder alert"),
     )
 
     reorder_point = models.PositiveIntegerField(
-        _('reorder point'),
+        _("reorder point"),
         default=0,
-        help_text=_('Stock level to trigger reorder'),
+        help_text=_("Stock level to trigger reorder"),
     )
 
     reorder_quantity = models.PositiveIntegerField(
-        _('reorder quantity'),
+        _("reorder quantity"),
         default=0,
-        help_text=_('Suggested quantity to reorder'),
+        help_text=_("Suggested quantity to reorder"),
     )
 
     # Image
     image = models.ImageField(
-        _('image'),
-        upload_to='inventory/items/',
+        _("image"),
+        upload_to="inventory/items/",
         null=True,
         blank=True,
-        help_text=_('Item image'),
+        help_text=_("Item image"),
     )
 
     is_active = models.BooleanField(
-        _('is active'),
+        _("is active"),
         default=True,
         db_index=True,
-        help_text=_('Whether this item is in use'),
+        help_text=_("Whether this item is in use"),
     )
 
     objects = InventoryItemManager()
 
     class Meta:
-        verbose_name = _('inventory item')
-        verbose_name_plural = _('inventory items')
-        ordering = ['organization', 'sku']
+        verbose_name = _("inventory item")
+        verbose_name_plural = _("inventory items")
+        ordering = ["organization", "sku"]
         indexes = [
-            models.Index(fields=['organization', 'sku']),
-            models.Index(fields=['organization', 'category']),
-            models.Index(fields=['barcode']),
+            models.Index(fields=["organization", "sku"]),
+            models.Index(fields=["organization", "category"]),
+            models.Index(fields=["barcode"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=['organization', 'sku'],
-                name='unique_sku_per_org',
+                fields=["organization", "sku"],
+                name="unique_sku_per_org",
             ),
         ]
 
@@ -845,96 +842,96 @@ class InventoryStock(AuditedModel):
     bin = models.ForeignKey(
         StorageBin,
         on_delete=models.CASCADE,
-        related_name='stocks',
-        verbose_name=_('bin'),
-        help_text=_('The storage bin'),
+        related_name="stocks",
+        verbose_name=_("bin"),
+        help_text=_("The storage bin"),
     )
 
     item = models.ForeignKey(
         InventoryItem,
         on_delete=models.PROTECT,
-        related_name='stocks',
-        verbose_name=_('item'),
-        help_text=_('The inventory item'),
+        related_name="stocks",
+        verbose_name=_("item"),
+        help_text=_("The inventory item"),
     )
 
     quantity = models.IntegerField(
-        _('quantity'),
+        _("quantity"),
         default=0,
         validators=[MinValueValidator(0)],
-        help_text=_('Current quantity in stock'),
+        help_text=_("Current quantity in stock"),
     )
 
     reserved_quantity = models.IntegerField(
-        _('reserved quantity'),
+        _("reserved quantity"),
         default=0,
         validators=[MinValueValidator(0)],
-        help_text=_('Quantity reserved for orders'),
+        help_text=_("Quantity reserved for orders"),
     )
 
     lot_number = models.CharField(
-        _('lot number'),
+        _("lot number"),
         max_length=100,
         blank=True,
         db_index=True,
-        help_text=_('Lot/batch number'),
+        help_text=_("Lot/batch number"),
     )
 
     expiry_date = models.DateField(
-        _('expiry date'),
+        _("expiry date"),
         null=True,
         blank=True,
         db_index=True,
-        help_text=_('Expiration date'),
+        help_text=_("Expiration date"),
     )
 
     manufacture_date = models.DateField(
-        _('manufacture date'),
+        _("manufacture date"),
         null=True,
         blank=True,
-        help_text=_('Date of manufacture'),
+        help_text=_("Date of manufacture"),
     )
 
     received_at = models.DateTimeField(
-        _('received at'),
+        _("received at"),
         null=True,
         blank=True,
-        help_text=_('When this stock was received'),
+        help_text=_("When this stock was received"),
     )
 
     last_counted_at = models.DateTimeField(
-        _('last counted at'),
+        _("last counted at"),
         null=True,
         blank=True,
-        help_text=_('Last physical count date'),
+        help_text=_("Last physical count date"),
     )
 
     notes = models.TextField(
-        _('notes'),
+        _("notes"),
         blank=True,
-        help_text=_('Additional notes about this stock'),
+        help_text=_("Additional notes about this stock"),
     )
 
     objects = InventoryStockManager()
 
     class Meta:
-        verbose_name = _('inventory stock')
-        verbose_name_plural = _('inventory stocks')
-        ordering = ['bin', 'item', '-created_at']
+        verbose_name = _("inventory stock")
+        verbose_name_plural = _("inventory stocks")
+        ordering = ["bin", "item", "-created_at"]
         indexes = [
-            models.Index(fields=['bin', 'item']),
-            models.Index(fields=['item', 'quantity']),
-            models.Index(fields=['lot_number']),
-            models.Index(fields=['expiry_date']),
+            models.Index(fields=["bin", "item"]),
+            models.Index(fields=["item", "quantity"]),
+            models.Index(fields=["lot_number"]),
+            models.Index(fields=["expiry_date"]),
         ]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(quantity__gte=0),
-                name='stock_quantity_non_negative',
+                name="stock_quantity_non_negative",
             ),
             models.CheckConstraint(
-                condition=models.Q(reserved_quantity__lte=models.F('quantity')),
-                name='reserved_not_exceed_quantity',
+                condition=models.Q(reserved_quantity__lte=models.F("quantity")),
+                name="reserved_not_exceed_quantity",
             ),
         ]
 
@@ -951,6 +948,7 @@ class InventoryStock(AuditedModel):
         """Check if stock is expired."""
         if self.expiry_date:
             from django.utils import timezone
+
             return self.expiry_date < timezone.now().date()
         return False
 

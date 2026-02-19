@@ -9,6 +9,7 @@ Translatable fields:
 - Drone: name
 - DroneMaintenanceRecord: title, description, notes
 """
+
 from modeltranslation.translator import TranslationOptions, register
 
 from apps.drones.models import Drone, DroneMaintenanceRecord
@@ -22,7 +23,8 @@ class DroneTranslationOptions(TranslationOptions):
     Translatable fields:
     - name: Drone display name
     """
-    fields = ('name',)
+
+    fields = ("name",)
 
 
 @register(DroneMaintenanceRecord)
@@ -35,4 +37,5 @@ class DroneMaintenanceRecordTranslationOptions(TranslationOptions):
     - description: Detailed description
     - notes: Additional notes
     """
-    fields = ('title', 'description', 'notes')
+
+    fields = ("title", "description", "notes")

@@ -1,6 +1,7 @@
 """
 Custom Managers for Organization Models
 """
+
 import datetime
 
 from django.db import models
@@ -100,6 +101,4 @@ class OrganizationAPIKeyManager(models.Manager):
         now = timezone.now()
         return self.filter(
             is_active=True,
-        ).filter(
-            models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now)
-        )
+        ).filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))

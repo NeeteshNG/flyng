@@ -82,8 +82,9 @@ dev = [
     "factory-boy>=3.3.0",
 
     # Code Quality
-    "ruff>=0.4.0",
+    "ruff>=0.9.0",
     "mypy>=1.10.0",
+    "pre-commit>=4.0.0",
 
     # Django Extensions
     "django-extensions>=3.2.3",
@@ -118,8 +119,9 @@ dev = [
     "pytest-django>=4.8.0",
     "pytest-cov>=4.1.0",
     "factory-boy>=3.3.0",
-    "ruff>=0.4.0",
+    "ruff>=0.9.0",
     "mypy>=1.10.0",
+    "pre-commit>=4.0.0",
     "django-extensions>=3.2.3",
     "ipython>=8.24.0",
     "django-debug-toolbar>=4.3.0",
@@ -156,8 +158,22 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"config/settings/*.py" = ["F403", "F405", "E402"]  # Django settings pattern
+
 [tool.ruff.lint.isort]
 known-first-party = ["apps", "config"]
+section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+django = ["django", "rest_framework"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.13"
