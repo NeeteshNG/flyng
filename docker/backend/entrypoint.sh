@@ -6,12 +6,8 @@ echo "=== FlyNG Backend Starting ==="
 # ============================================
 # AUTO-SYNC DEPENDENCIES FROM pyproject.toml
 # ============================================
-# This ensures new dependencies are installed automatically
-# when pyproject.toml is updated (via volume mount)
-echo "Syncing dependencies from pyproject.toml..."
-if [ -f "pyproject.toml" ]; then
-    # Extract and install dependencies from pyproject.toml
-    # Using uv for fast installation
+if [ "$SYNC_DEPENDENCIES" = "true" ] && [ -f "pyproject.toml" ]; then
+    echo "Syncing dependencies from pyproject.toml..."
     uv pip install --system --quiet \
         $(python -c "
 import tomllib
@@ -21,8 +17,6 @@ deps = data.get('project', {}).get('dependencies', [])
 print(' '.join([f'\"{d}\"' for d in deps]))
 " 2>/dev/null) 2>/dev/null || echo "Using pre-installed dependencies"
     echo "Dependencies synced!"
-else
-    echo "No pyproject.toml found, using pre-installed dependencies"
 fi
 
 # ============================================
@@ -46,30 +40,22 @@ echo "Redis is ready!"
 # ============================================
 # DJANGO SETUP
 # ============================================
-# Make migrations (if any pending)
-echo "Checking for new migrations..."
-python manage.py makemigrations --noinput 2>/dev/null || true
 
-# Run migrations
-echo "Running migrations..."
-python manage.py migrate --noinput
+# Run migrations ONLY if RUN_MIGRATIONS=true
+# In production, migrations should be run as a separate step
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+    echo "Running migrations..."
+    python manage.py migrate --noinput
+fi
 
 # Collect static files
-echo "Collecting static files..."
-python manage.py collectstatic --noinput --clear 2>/dev/null || python manage.py collectstatic --noinput
+if [ "$COLLECT_STATIC" = "true" ]; then
+    echo "Collecting static files..."
+    python manage.py collectstatic --noinput --clear 2>/dev/null || python manage.py collectstatic --noinput
+fi
 
 # ============================================
 # START SERVER
 # ============================================
-if [ "$DEBUG" = "True" ]; then
-    echo "=== Starting Development Server ==="
-    exec python manage.py runserver 0.0.0.0:8000
-else
-    echo "=== Starting Production Server (Gunicorn) ==="
-    exec gunicorn config.wsgi:application \
-        --bind 0.0.0.0:8000 \
-        --workers ${GUNICORN_WORKERS:-3} \
-        --timeout ${GUNICORN_TIMEOUT:-120} \
-        --access-logfile - \
-        --error-logfile -
-fi
+echo "=== Starting Server ==="
+exec "$@"
