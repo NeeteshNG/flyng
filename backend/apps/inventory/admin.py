@@ -377,8 +377,6 @@ class InventoryItemAdmin(ModelAdmin):
     readonly_fields = [
         'created_at',
         'updated_at',
-        'created_by',
-        'updated_by',
         'volume_display',
     ]
     raw_id_fields = ['organization', 'category']
@@ -405,7 +403,7 @@ class InventoryItemAdmin(ModelAdmin):
             'fields': ('min_stock_level', 'reorder_point', 'reorder_quantity'),
         }),
         (_('Audit'), {
-            'fields': ('created_at', 'updated_at', 'created_by', 'updated_by'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',),
         }),
     )
@@ -469,8 +467,6 @@ class InventoryStockAdmin(ModelAdmin):
     readonly_fields = [
         'created_at',
         'updated_at',
-        'created_by',
-        'updated_by',
         'available_display',
         'total_weight_display',
     ]
@@ -507,7 +503,7 @@ class InventoryStockAdmin(ModelAdmin):
             'classes': ('collapse',),
         }),
         (_('Audit'), {
-            'fields': ('created_at', 'updated_at', 'created_by', 'updated_by'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',),
         }),
     )

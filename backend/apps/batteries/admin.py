@@ -133,8 +133,6 @@ class DroneBatteryAdmin(ModelAdmin):
     readonly_fields = [
         'created_at',
         'updated_at',
-        'created_by',
-        'updated_by',
         'health_percentage',
         'cycles_remaining',
     ]
@@ -191,7 +189,7 @@ class DroneBatteryAdmin(ModelAdmin):
             'classes': ('collapse',),
         }),
         (_('Audit'), {
-            'fields': ('created_at', 'updated_at', 'created_by', 'updated_by'),
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',),
         }),
     )
@@ -430,7 +428,7 @@ class BatterySwapRecordAdmin(ModelAdmin):
     ]
     list_filter = [
         'swap_reason',
-        'drone__work_area__gcs__zone__warehouse',
+        'drone__work_area__ground_control_station__zone__warehouse',
         'swapped_at',
     ]
     search_fields = [

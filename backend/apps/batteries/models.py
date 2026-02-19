@@ -226,11 +226,11 @@ class DroneBattery(AuditedModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(current_charge_percent__lte=100),
+                condition=models.Q(current_charge_percent__lte=100),
                 name='battery_charge_max_100',
             ),
             models.CheckConstraint(
-                check=models.Q(cycle_count__lte=models.F('max_cycles') + 100),
+                condition=models.Q(cycle_count__lte=models.F('max_cycles') + 100),
                 name='battery_cycles_reasonable',
             ),
         ]
@@ -577,7 +577,7 @@ class BatterySwapRecord(ReadOnlyModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=~models.Q(old_battery=models.F('new_battery')),
+                condition=~models.Q(old_battery=models.F('new_battery')),
                 name='different_batteries_swap',
             ),
         ]

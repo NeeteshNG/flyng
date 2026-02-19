@@ -1,16 +1,18 @@
 # Backend Dockerfile for FlyNG
-# Using uv for fast package management
+# Using uv for fast package management with auto-sync on startup
 FROM python:3.13-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV UV_SYSTEM_PYTHON=1
+ENV UV_COMPILE_BYTECODE=1
 
 # Set work directory
 WORKDIR /app
 
 # Install system dependencies and uv
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     gcc \
     python3-dev \
@@ -26,8 +28,8 @@ ENV PATH="/root/.local/bin:$PATH"
 # Copy dependency files first (for better layer caching)
 COPY backend/pyproject.toml .
 
-# Install Python dependencies with uv (much faster than pip)
-# Using --no-build-isolation to avoid needing the full project structure
+# Install base dependencies (cached layer)
+# These are installed during build for faster container startup
 RUN uv pip install --system \
     "Django>=6.0.2" \
     "djangorestframework>=3.15.2" \
@@ -48,49 +50,28 @@ RUN uv pip install --system \
     "python-dateutil>=2.9.0" \
     "django-phonenumber-field[phonenumberslite]>=8.0.0" \
     "pytz>=2024.2" \
-    # Model Utilities
     "django-model-utils>=5.0.0" \
-    # Soft Delete
     "django-safedelete>=1.4.0" \
-    # Audit Trail / History
     "django-simple-history>=3.7.0" \
-    # Field Encryption
     "django-cryptography>=1.1" \
-    # TimescaleDB (for telemetry time-series)
     "django-timescaledb>=0.2.13" \
-    # Model Translation (multi-language content)
     "django-modeltranslation>=0.19.0" \
-    # Production dependencies
     "gunicorn>=22.0.0" \
-    "sentry-sdk>=2.0.0" \
-    # Dev dependencies
-    "pytest>=8.0.0" \
-    "pytest-django>=4.8.0" \
-    "pytest-cov>=4.1.0" \
-    "factory-boy>=3.3.0" \
-    "ruff>=0.4.0" \
-    "mypy>=1.10.0" \
     "django-extensions>=3.2.3" \
-    "ipython>=8.24.0" \
-    "django-debug-toolbar>=4.3.0" \
-    "django-stubs>=5.0.0" \
-    "djangorestframework-stubs>=3.15.0"
+    "django-debug-toolbar>=4.3.0"
+
+# Copy entrypoint script first (before switching user)
+COPY docker/backend/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Copy project
 COPY backend/ .
 
-# Create non-root user
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
-USER appuser
+# Create directories for static and media files
+RUN mkdir -p /app/staticfiles /app/media
 
 # Expose port
 EXPOSE 8000
 
-# Copy and set entrypoint
-COPY docker/backend/entrypoint.sh /entrypoint.sh
-USER root
-RUN chmod +x /entrypoint.sh
-USER appuser
-
+# Entrypoint handles dependency sync and startup
 ENTRYPOINT ["/entrypoint.sh"]

@@ -929,11 +929,11 @@ class InventoryStock(AuditedModel):
         ]
         constraints = [
             models.CheckConstraint(
-                check=models.Q(quantity__gte=0),
+                condition=models.Q(quantity__gte=0),
                 name='stock_quantity_non_negative',
             ),
             models.CheckConstraint(
-                check=models.Q(reserved_quantity__lte=models.F('quantity')),
+                condition=models.Q(reserved_quantity__lte=models.F('quantity')),
                 name='reserved_not_exceed_quantity',
             ),
         ]
