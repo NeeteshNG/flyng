@@ -607,3 +607,42 @@ class BillingCycle(models.TextChoices):
     MONTHLY = "MONTHLY", _("Monthly")
     # Translators: Annual billing cycle
     ANNUAL = "ANNUAL", _("Annual")
+
+
+# =============================================================================
+# Import Job Choices
+# =============================================================================
+
+
+class ImportType(models.TextChoices):
+    """Types of bulk imports."""
+
+    # Translators: Import inventory items (products/SKUs)
+    ITEMS = "ITEMS", _("Inventory Items")
+    # Translators: Import storage locations (bins)
+    LOCATIONS = "LOCATIONS", _("Storage Locations")
+    # Translators: Import inventory stock quantities
+    INVENTORY = "INVENTORY", _("Inventory Stock")
+    # Translators: Import orders
+    ORDERS = "ORDERS", _("Orders")
+    # Translators: Import item categories
+    CATEGORIES = "CATEGORIES", _("Item Categories")
+
+
+class ImportStatus(models.TextChoices):
+    """Status of import jobs."""
+
+    # Translators: Import job is pending processing
+    PENDING = "PENDING", _("Pending")
+    # Translators: Import job is validating data
+    VALIDATING = "VALIDATING", _("Validating")
+    # Translators: Import job is currently processing
+    PROCESSING = "PROCESSING", _("Processing")
+    # Translators: Import job completed successfully
+    COMPLETED = "COMPLETED", _("Completed")
+    # Translators: Import job completed with some errors
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS", _("Completed with Errors")
+    # Translators: Import job failed
+    FAILED = "FAILED", _("Failed")
+    # Translators: Import job was cancelled
+    CANCELLED = "CANCELLED", _("Cancelled")

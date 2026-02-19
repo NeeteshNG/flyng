@@ -393,7 +393,7 @@ class StorageBinTemplate(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "name"],
-                name="unique_template_name_per_org",
+                name="unique_bin_template_name_per_org",
             ),
         ]
 

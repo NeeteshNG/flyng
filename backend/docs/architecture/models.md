@@ -830,3 +830,4 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 | 1.5 | 2026-02-19 | Added DroneBattery, BatteryChargingSession, BatterySwapRecord models |
 | 1.6 | 2026-02-19 | Added inventory models: StorageLocation, BinLabelType, StorageBinTemplate, StorageBin, ItemCategory, InventoryItem, InventoryStock |
 | 1.7 | 2026-02-19 | Added orders, jobs, logs apps: PickOrder, PickOrderLine, PickOrderBatch, DroneJob, DroneJobEvent, DroneFlightLog, FlightGraphTemplate, FlightLogGraph |
+| 1.8 | 2026-02-19 | Added ImportJob model for bulk CSV/Excel imports with progress tracking |
