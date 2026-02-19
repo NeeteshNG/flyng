@@ -50,6 +50,10 @@ services:
       - RUN_MIGRATIONS=true
       - COLLECT_STATIC=true
       - SYNC_DEPENDENCIES=true
+      # Auto-create superuser in dev
+      - CREATE_SUPERUSER=${CREATE_SUPERUSER:-true}
+      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-admin@flyng.local}
+      - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-admin123}
     volumes:
       - ./backend:/app
       - static_files:/app/staticfiles

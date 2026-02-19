@@ -54,6 +54,24 @@ if [ "$COLLECT_STATIC" = "true" ]; then
     python manage.py collectstatic --noinput --clear 2>/dev/null || python manage.py collectstatic --noinput
 fi
 
+# Create superuser in development (if doesn't exist)
+if [ "$CREATE_SUPERUSER" = "true" ]; then
+    echo "Creating superuser..."
+    python manage.py shell -c "
+from apps.users.models import User
+if not User.objects.filter(email='${SUPERUSER_EMAIL:-admin@flyng.local}').exists():
+    User.objects.create_superuser(
+        email='${SUPERUSER_EMAIL:-admin@flyng.local}',
+        password='${SUPERUSER_PASSWORD:-admin123}',
+        first_name='Admin',
+        last_name='User'
+    )
+    print('Superuser created: ${SUPERUSER_EMAIL:-admin@flyng.local}')
+else:
+    print('Superuser already exists')
+"
+fi
+
 # ============================================
 # START SERVER
 # ============================================
