@@ -673,16 +673,16 @@ erDiagram
 │   └── InventoryStock (AuditedModel) ✅
 │
 ├── Operations
-│   ├── PickOrderBatch (BaseModel)
-│   ├── PickOrder (AuditedModel)
-│   ├── PickOrderLine (AuditedModel)
-│   ├── DroneJob (AuditedModel)
-│   └── DroneJobEvent (ReadOnlyModel)
+│   ├── PickOrderBatch (BaseModel) ✅ - translatable: name, description, notes
+│   ├── PickOrder (BaseModel) ✅ - translatable: notes, internal_notes, cancellation_reason
+│   ├── PickOrderLine (TimeStampedModel) ✅ - translatable: notes, pick_notes
+│   ├── DroneJob (BaseModel) ✅ - translatable: notes, internal_notes, error_message
+│   └── DroneJobEvent (ReadOnlyModel) ✅ - translatable: description
 │
 └── Logs & Files
-    ├── DroneFlightLog (BaseModel)
-    ├── FlightGraphTemplate (BaseModel)
-    └── FlightLogGraph (BaseModel)
+    ├── DroneFlightLog (BaseModel) ✅ - translatable: description, notes, processing_error
+    ├── FlightGraphTemplate (BaseModel) ✅ - translatable: name, description, axis labels
+    └── FlightLogGraph (BaseModel) ✅ - translatable: title, generation_error
 ```
 
 ---
@@ -788,6 +788,14 @@ Multi-language database content support for user-facing fields (English + Hindi)
 | inventory | `StorageBinTemplate` | name, description |
 | inventory | `ItemCategory` | name, description |
 | inventory | `InventoryItem` | name, description |
+| orders | `PickOrder` | notes, internal_notes, cancellation_reason |
+| orders | `PickOrderLine` | notes, pick_notes |
+| orders | `PickOrderBatch` | name, description, notes |
+| jobs | `DroneJob` | notes, internal_notes, error_message |
+| jobs | `DroneJobEvent` | description |
+| logs | `DroneFlightLog` | description, notes, processing_error |
+| logs | `FlightGraphTemplate` | name, description, x_axis_label, y_axis_label, z_axis_label |
+| logs | `FlightLogGraph` | title, generation_error |
 
 Creates database columns like `name_en`, `name_hi` automatically. Configuration in each app's `translation.py`.
 
@@ -821,3 +829,4 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 | 1.4 | 2026-02-19 | Added Drone, DroneTelemetryLog, DroneMaintenanceRecord models |
 | 1.5 | 2026-02-19 | Added DroneBattery, BatteryChargingSession, BatterySwapRecord models |
 | 1.6 | 2026-02-19 | Added inventory models: StorageLocation, BinLabelType, StorageBinTemplate, StorageBin, ItemCategory, InventoryItem, InventoryStock |
+| 1.7 | 2026-02-19 | Added orders, jobs, logs apps: PickOrder, PickOrderLine, PickOrderBatch, DroneJob, DroneJobEvent, DroneFlightLog, FlightGraphTemplate, FlightLogGraph |
