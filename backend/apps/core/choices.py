@@ -316,6 +316,66 @@ class InventoryAdjustmentReason(models.TextChoices):
     OTHER = 'OTHER', _('Other')
 
 
+class StorageLocationType(models.TextChoices):
+    """Types of storage locations."""
+    # Translators: Standard rack storage
+    RACK = 'RACK', _('Rack')
+    # Translators: Floor/pallet storage
+    FLOOR = 'FLOOR', _('Floor')
+    # Translators: Shelf storage
+    SHELF = 'SHELF', _('Shelf')
+    # Translators: Bin storage
+    BIN = 'BIN', _('Bin')
+    # Translators: Bulk storage area
+    BULK = 'BULK', _('Bulk')
+    # Translators: Cold storage
+    COLD = 'COLD', _('Cold Storage')
+    # Translators: Staging area
+    STAGING = 'STAGING', _('Staging')
+    # Translators: Pick station
+    PICK_STATION = 'PICK_STATION', _('Pick Station')
+
+
+class UnitOfMeasure(models.TextChoices):
+    """Units of measure for inventory items."""
+    # Translators: Each/piece
+    EACH = 'EACH', _('Each')
+    # Translators: Box
+    BOX = 'BOX', _('Box')
+    # Translators: Case
+    CASE = 'CASE', _('Case')
+    # Translators: Pallet
+    PALLET = 'PALLET', _('Pallet')
+    # Translators: Kilogram
+    KG = 'KG', _('Kilogram')
+    # Translators: Gram
+    GRAM = 'GRAM', _('Gram')
+    # Translators: Liter
+    LITER = 'LITER', _('Liter')
+    # Translators: Milliliter
+    ML = 'ML', _('Milliliter')
+    # Translators: Meter
+    METER = 'METER', _('Meter')
+    # Translators: Pack
+    PACK = 'PACK', _('Pack')
+
+
+class InventoryMovementType(models.TextChoices):
+    """Types of inventory movements."""
+    # Translators: Inbound/receiving
+    INBOUND = 'INBOUND', _('Inbound')
+    # Translators: Outbound/shipping
+    OUTBOUND = 'OUTBOUND', _('Outbound')
+    # Translators: Internal transfer
+    TRANSFER = 'TRANSFER', _('Transfer')
+    # Translators: Adjustment
+    ADJUSTMENT = 'ADJUSTMENT', _('Adjustment')
+    # Translators: Return
+    RETURN = 'RETURN', _('Return')
+    # Translators: Cycle count
+    CYCLE_COUNT = 'CYCLE_COUNT', _('Cycle Count')
+
+
 # =============================================================================
 # Order Choices (for future use)
 # =============================================================================

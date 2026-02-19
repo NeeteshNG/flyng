@@ -664,13 +664,13 @@ erDiagram
 │   └── BatterySwapRecord (ReadOnlyModel) ✅
 │
 ├── Inventory
-│   ├── StorageLocation (BaseModel)
-│   ├── BinLabelType (BaseModel)
-│   ├── StorageBinTemplate (BaseModel)
-│   ├── StorageBin (BaseModel)
-│   ├── ItemCategory (BaseModel) - self-referential
-│   ├── InventoryItem (AuditedModel)
-│   └── InventoryStock (AuditedModel)
+│   ├── StorageLocation (BaseModel) ✅ - translatable: notes
+│   ├── BinLabelType (BaseModel) ✅ - translatable: name
+│   ├── StorageBinTemplate (BaseModel) ✅ - translatable: name, description
+│   ├── StorageBin (BaseModel) ✅
+│   ├── ItemCategory (BaseModel) ✅ - self-referential, translatable: name, description
+│   ├── InventoryItem (AuditedModel) ✅ - translatable: name, description
+│   └── InventoryStock (AuditedModel) ✅
 │
 ├── Operations
 │   ├── PickOrderBatch (BaseModel)
@@ -783,6 +783,11 @@ Multi-language database content support for user-facing fields (English + Hindi)
 | drones | `Drone` | name |
 | drones | `DroneMaintenanceRecord` | title, description, notes |
 | batteries | `DroneBattery` | name, notes |
+| inventory | `StorageLocation` | notes |
+| inventory | `BinLabelType` | name |
+| inventory | `StorageBinTemplate` | name, description |
+| inventory | `ItemCategory` | name, description |
+| inventory | `InventoryItem` | name, description |
 
 Creates database columns like `name_en`, `name_hi` automatically. Configuration in each app's `translation.py`.
 
@@ -815,3 +820,4 @@ python manage.py graph_models -a -g -o docs/architecture/generated/grouped.png
 | 1.3 | 2026-02-18 | Added WarehouseZone, GroundControlStation, DroneWorkArea models |
 | 1.4 | 2026-02-19 | Added Drone, DroneTelemetryLog, DroneMaintenanceRecord models |
 | 1.5 | 2026-02-19 | Added DroneBattery, BatteryChargingSession, BatterySwapRecord models |
+| 1.6 | 2026-02-19 | Added inventory models: StorageLocation, BinLabelType, StorageBinTemplate, StorageBin, ItemCategory, InventoryItem, InventoryStock |
