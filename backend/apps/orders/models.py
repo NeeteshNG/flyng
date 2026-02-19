@@ -1,0 +1,646 @@
+"""
+Orders Models
+
+Models for managing pick orders, order lines, and order batches.
+"""
+
+from django.db import models
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+
+from apps.core.choices import OrderPriority, OrderStatus
+from apps.core.models import BaseModel, TimeStampedModel
+
+from .managers import PickOrderBatchManager, PickOrderLineManager, PickOrderManager
+
+
+class PickOrder(BaseModel):
+    """
+    Pick order representing a customer order to be fulfilled.
+
+    Orders contain multiple lines (items to be picked) and go through
+    various statuses from pending to delivered.
+    """
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="orders",
+        verbose_name=_("Organization"),
+    )
+    warehouse = models.ForeignKey(
+        "warehouses.Warehouse",
+        on_delete=models.CASCADE,
+        related_name="orders",
+        verbose_name=_("Warehouse"),
+    )
+    batch = models.ForeignKey(
+        "orders.PickOrderBatch",
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        blank=True,
+        null=True,
+        verbose_name=_("Batch"),
+    )
+    order_number = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        verbose_name=_("Order Number"),
+    )
+    external_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name=_("External Reference"),
+        help_text=_("Reference from external system (ERP, WMS, etc.)"),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+        db_index=True,
+        verbose_name=_("Status"),
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=OrderPriority.choices,
+        default=OrderPriority.NORMAL,
+        db_index=True,
+        verbose_name=_("Priority"),
+    )
+
+    # Customer information
+    customer_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Customer Name"),
+    )
+    customer_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name=_("Customer Code"),
+    )
+
+    # Shipping address
+    shipping_address_line1 = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Address Line 1"),
+    )
+    shipping_address_line2 = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Address Line 2"),
+    )
+    shipping_city = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("City"),
+    )
+    shipping_state = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("State"),
+    )
+    shipping_postal_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        verbose_name=_("Postal Code"),
+    )
+    shipping_country = models.CharField(
+        max_length=100,
+        default="India",
+        verbose_name=_("Country"),
+    )
+
+    # Dates
+    order_date = models.DateField(
+        default=timezone.now,
+        verbose_name=_("Order Date"),
+    )
+    due_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_("Due Date"),
+    )
+    confirmed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Confirmed At"),
+    )
+    picking_started_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Picking Started At"),
+    )
+    picking_completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Picking Completed At"),
+    )
+    packed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Packed At"),
+    )
+    shipped_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Shipped At"),
+    )
+    delivered_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Delivered At"),
+    )
+    cancelled_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Cancelled At"),
+    )
+
+    # Assigned picker (user who is picking this order)
+    assigned_to = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="assigned_orders",
+        blank=True,
+        null=True,
+        verbose_name=_("Assigned To"),
+    )
+    created_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="created_orders",
+        blank=True,
+        null=True,
+        verbose_name=_("Created By"),
+    )
+
+    # Cancellation
+    cancellation_reason = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Cancellation Reason"),
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Notes"),
+    )
+    internal_notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Internal Notes"),
+    )
+
+    objects = PickOrderManager()
+
+    class Meta:
+        verbose_name = _("Pick Order")
+        verbose_name_plural = _("Pick Orders")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+            models.Index(fields=["warehouse", "status"]),
+            models.Index(fields=["order_date"]),
+            models.Index(fields=["due_date"]),
+            models.Index(fields=["priority", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.order_number} ({self.get_status_display()})"
+
+    @property
+    def total_lines(self):
+        """Get total number of order lines."""
+        return self.lines.count()
+
+    @property
+    def picked_lines(self):
+        """Get number of picked lines."""
+        return self.lines.filter(is_picked=True).count()
+
+    @property
+    def pending_lines(self):
+        """Get number of pending lines."""
+        return self.lines.filter(is_picked=False).count()
+
+    @property
+    def total_quantity(self):
+        """Get total quantity to pick."""
+        return self.lines.aggregate(total=models.Sum("quantity"))["total"] or 0
+
+    @property
+    def picked_quantity(self):
+        """Get total quantity picked."""
+        return self.lines.aggregate(total=models.Sum("picked_quantity"))["total"] or 0
+
+    @property
+    def pick_progress_percent(self):
+        """Get picking progress percentage."""
+        total = self.total_quantity
+        if total == 0:
+            return 0
+        return round((self.picked_quantity / total) * 100, 1)
+
+    @property
+    def is_overdue(self):
+        """Check if order is overdue."""
+        if not self.due_date:
+            return False
+        if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+            return False
+        return self.due_date < timezone.now().date()
+
+    @property
+    def is_complete(self):
+        """Check if order is complete."""
+        return self.status in [OrderStatus.DELIVERED, OrderStatus.SHIPPED]
+
+    @property
+    def shipping_address(self):
+        """Get formatted shipping address."""
+        parts = [
+            self.shipping_address_line1,
+            self.shipping_address_line2,
+            self.shipping_city,
+            f"{self.shipping_state} {self.shipping_postal_code}".strip(),
+            self.shipping_country,
+        ]
+        return ", ".join(p for p in parts if p)
+
+    def confirm(self, user=None):
+        """Confirm the order for picking."""
+        if self.status != OrderStatus.PENDING:
+            return False
+        self.status = OrderStatus.CONFIRMED
+        self.confirmed_at = timezone.now()
+        self.save(update_fields=["status", "confirmed_at", "updated_at"])
+        return True
+
+    def start_picking(self, user=None):
+        """Start picking the order."""
+        if self.status != OrderStatus.CONFIRMED:
+            return False
+        self.status = OrderStatus.PICKING
+        self.picking_started_at = timezone.now()
+        if user:
+            self.assigned_to = user
+        self.save(update_fields=["status", "picking_started_at", "assigned_to", "updated_at"])
+        return True
+
+    def complete_picking(self):
+        """Mark picking as complete."""
+        if self.status != OrderStatus.PICKING:
+            return False
+        self.status = OrderStatus.PICKED
+        self.picking_completed_at = timezone.now()
+        self.save(update_fields=["status", "picking_completed_at", "updated_at"])
+        return True
+
+    def pack(self):
+        """Mark order as packed."""
+        if self.status not in [OrderStatus.PICKED, OrderStatus.PACKING]:
+            return False
+        self.status = OrderStatus.PACKED
+        self.packed_at = timezone.now()
+        self.save(update_fields=["status", "packed_at", "updated_at"])
+        return True
+
+    def ship(self):
+        """Mark order as shipped."""
+        if self.status != OrderStatus.PACKED:
+            return False
+        self.status = OrderStatus.SHIPPED
+        self.shipped_at = timezone.now()
+        self.save(update_fields=["status", "shipped_at", "updated_at"])
+        return True
+
+    def deliver(self):
+        """Mark order as delivered."""
+        if self.status != OrderStatus.SHIPPED:
+            return False
+        self.status = OrderStatus.DELIVERED
+        self.delivered_at = timezone.now()
+        self.save(update_fields=["status", "delivered_at", "updated_at"])
+        return True
+
+    def cancel(self, reason=""):
+        """Cancel the order."""
+        if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+            return False
+        self.status = OrderStatus.CANCELLED
+        self.cancelled_at = timezone.now()
+        self.cancellation_reason = reason
+        self.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
+        return True
+
+    def hold(self):
+        """Put order on hold."""
+        if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
+            return False
+        self.status = OrderStatus.ON_HOLD
+        self.save(update_fields=["status", "updated_at"])
+        return True
+
+
+class PickOrderLine(TimeStampedModel):
+    """
+    Individual line item within a pick order.
+
+    Each line represents an item to be picked from a specific location.
+    """
+
+    order = models.ForeignKey(
+        PickOrder,
+        on_delete=models.CASCADE,
+        related_name="lines",
+        verbose_name=_("Order"),
+    )
+    item = models.ForeignKey(
+        "inventory.InventoryItem",
+        on_delete=models.PROTECT,
+        related_name="order_lines",
+        verbose_name=_("Item"),
+    )
+    source_bin = models.ForeignKey(
+        "inventory.StorageBin",
+        on_delete=models.PROTECT,
+        related_name="order_lines",
+        verbose_name=_("Source Bin"),
+        help_text=_("Bin from which item should be picked"),
+    )
+    stock = models.ForeignKey(
+        "inventory.InventoryStock",
+        on_delete=models.SET_NULL,
+        related_name="order_lines",
+        blank=True,
+        null=True,
+        verbose_name=_("Stock Record"),
+        help_text=_("Specific stock record to pick from (optional)"),
+    )
+
+    # Quantities
+    quantity = models.PositiveIntegerField(
+        verbose_name=_("Quantity"),
+        help_text=_("Quantity to pick"),
+    )
+    picked_quantity = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Picked Quantity"),
+        help_text=_("Quantity actually picked"),
+    )
+
+    # Line number for ordering
+    line_number = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_("Line Number"),
+    )
+
+    # Status
+    is_picked = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name=_("Is Picked"),
+    )
+    picked_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Picked At"),
+    )
+    picked_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="picked_lines",
+        blank=True,
+        null=True,
+        verbose_name=_("Picked By"),
+    )
+
+    # For tracking lot/batch
+    lot_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("Lot Number"),
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Notes"),
+    )
+    pick_notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Pick Notes"),
+        help_text=_("Notes recorded during picking"),
+    )
+
+    objects = PickOrderLineManager()
+
+    class Meta:
+        verbose_name = _("Pick Order Line")
+        verbose_name_plural = _("Pick Order Lines")
+        ordering = ["order", "line_number"]
+        indexes = [
+            models.Index(fields=["order", "is_picked"]),
+            models.Index(fields=["item"]),
+            models.Index(fields=["source_bin"]),
+        ]
+
+    def __str__(self):
+        return f"{self.order.order_number} - Line {self.line_number}: {self.item.sku}"
+
+    @property
+    def shortage_quantity(self):
+        """Get shortage quantity (requested - picked)."""
+        if not self.is_picked:
+            return 0
+        return max(0, self.quantity - self.picked_quantity)
+
+    @property
+    def has_shortage(self):
+        """Check if line has shortage."""
+        return self.shortage_quantity > 0
+
+    @property
+    def is_fully_picked(self):
+        """Check if line is fully picked."""
+        return self.is_picked and self.picked_quantity >= self.quantity
+
+    def pick(self, quantity, user=None, notes=""):
+        """Mark line as picked with quantity."""
+        self.picked_quantity = quantity
+        self.is_picked = True
+        self.picked_at = timezone.now()
+        if user:
+            self.picked_by = user
+        if notes:
+            self.pick_notes = notes
+        self.save(
+            update_fields=[
+                "picked_quantity",
+                "is_picked",
+                "picked_at",
+                "picked_by",
+                "pick_notes",
+                "updated_at",
+            ]
+        )
+
+        # Check if all lines are picked
+        self._check_order_complete()
+        return True
+
+    def _check_order_complete(self):
+        """Check if order is complete and update status."""
+        order = self.order
+        if order.lines.filter(is_picked=False).count() == 0:
+            order.complete_picking()
+
+
+class PickOrderBatch(BaseModel):
+    """
+    Batch of pick orders for wave picking or group processing.
+
+    Batches allow grouping orders for more efficient picking
+    by optimizing pick paths.
+    """
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="order_batches",
+        verbose_name=_("Organization"),
+    )
+    warehouse = models.ForeignKey(
+        "warehouses.Warehouse",
+        on_delete=models.CASCADE,
+        related_name="order_batches",
+        verbose_name=_("Warehouse"),
+    )
+    batch_number = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        verbose_name=_("Batch Number"),
+    )
+    name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Batch Name"),
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Description"),
+    )
+
+    # Status
+    is_completed = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name=_("Is Completed"),
+    )
+    completed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Completed At"),
+    )
+
+    # Assigned picker
+    assigned_to = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="assigned_batches",
+        blank=True,
+        null=True,
+        verbose_name=_("Assigned To"),
+    )
+    created_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        related_name="created_batches",
+        blank=True,
+        null=True,
+        verbose_name=_("Created By"),
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Notes"),
+    )
+
+    objects = PickOrderBatchManager()
+
+    class Meta:
+        verbose_name = _("Pick Order Batch")
+        verbose_name_plural = _("Pick Order Batches")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["organization", "is_completed"]),
+            models.Index(fields=["warehouse", "is_completed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.batch_number}"
+
+    @property
+    def order_count(self):
+        """Get number of orders in batch."""
+        return self.orders.count()
+
+    @property
+    def total_lines(self):
+        """Get total lines across all orders."""
+        return sum(order.total_lines for order in self.orders.all())
+
+    @property
+    def picked_lines(self):
+        """Get picked lines across all orders."""
+        return sum(order.picked_lines for order in self.orders.all())
+
+    @property
+    def progress_percent(self):
+        """Get batch picking progress."""
+        total = self.total_lines
+        if total == 0:
+            return 0
+        return round((self.picked_lines / total) * 100, 1)
+
+    def add_orders(self, orders):
+        """Add orders to batch."""
+        for order in orders:
+            order.batch = self
+            order.save(update_fields=["batch", "updated_at"])
+
+    def remove_order(self, order):
+        """Remove order from batch."""
+        if order.batch == self:
+            order.batch = None
+            order.save(update_fields=["batch", "updated_at"])
+
+    def complete(self):
+        """Mark batch as complete."""
+        self.is_completed = True
+        self.completed_at = timezone.now()
+        self.save(update_fields=["is_completed", "completed_at", "updated_at"])
+        return True
