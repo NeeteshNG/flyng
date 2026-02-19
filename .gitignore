@@ -104,9 +104,9 @@ backend/staticfiles/
 backend/static/
 backend/logs/
 
-# Migrations (exclude until models are finalized)
-backend/apps/*/migrations/0*.py
-!backend/apps/*/migrations/__init__.py
+# Migrations - keep in version control
+# backend/apps/*/migrations/0*.py
+# !backend/apps/*/migrations/__init__.py
 
 # ===========================================
 # Docker
