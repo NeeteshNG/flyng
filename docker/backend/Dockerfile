@@ -53,7 +53,7 @@ RUN uv pip install --system \
     "django-model-utils>=5.0.0" \
     "django-safedelete>=1.4.0" \
     "django-simple-history>=3.7.0" \
-    "django-cryptography>=1.1" \
+    "django-cryptography-django5>=1.2" \
     "django-timescaledb>=0.2.13" \
     "django-modeltranslation>=0.19.0" \
     "gunicorn>=22.0.0" \

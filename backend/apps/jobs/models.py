@@ -4,7 +4,8 @@ Jobs Models
 Models for managing drone jobs and job events.
 """
 
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -50,6 +51,7 @@ class DroneJob(BaseModel):
         related_name="jobs",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Order"),
     )
     order_line = models.ForeignKey(
@@ -58,6 +60,7 @@ class DroneJob(BaseModel):
         related_name="jobs",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Order Line"),
     )
 
@@ -208,10 +211,97 @@ class DroneJob(BaseModel):
             models.Index(fields=["drone", "status"]),
             models.Index(fields=["priority", "status"]),
             models.Index(fields=["order"]),
+            # Time-series optimizations for date range queries
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["-created_at"]),  # Descending for recent queries
+            models.Index(fields=["completed_at"]),
+            models.Index(fields=["-completed_at"]),  # Descending for recent completions
+            # Composite for job analytics over time
+            models.Index(fields=["organization", "status", "-created_at"]),
+            models.Index(fields=["warehouse", "status", "-created_at"]),
+            models.Index(fields=["drone", "-completed_at"]),  # Drone performance history
+            # Partial indexes for non-deleted records (most queries filter on active jobs)
+            models.Index(
+                fields=["organization", "status"],
+                name="job_org_status_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["warehouse", "status", "priority"],
+                name="job_wh_status_priority_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["drone", "status"],
+                name="job_drone_status_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+        ]
+        constraints = [
+            # Picked quantity cannot exceed requested quantity
+            models.CheckConstraint(
+                condition=models.Q(picked_quantity__lte=models.F("quantity")),
+                name="job_picked_not_exceed_quantity",
+            ),
         ]
 
     def __str__(self):
         return f"{self.job_number} ({self.get_status_display()})"
+
+    def clean(self):
+        """
+        Validate cross-model organization boundaries.
+
+        Ensures all related objects belong to the same organization
+        to prevent data leakage between tenants.
+        """
+        super().clean()
+        errors = {}
+
+        # Validate warehouse belongs to organization
+        if self.warehouse_id and self.organization_id:
+            if self.warehouse.organization_id != self.organization_id:
+                errors["warehouse"] = _(
+                    "Warehouse must belong to the same organization as the job."
+                )
+
+        # Validate order belongs to organization
+        if self.order_id and self.organization_id:
+            if self.order.organization_id != self.organization_id:
+                errors["order"] = _(
+                    "Order must belong to the same organization as the job."
+                )
+
+        # Validate source bin belongs to same warehouse
+        if self.source_bin_id and self.warehouse_id:
+            source_warehouse = self.source_bin.location.zone.warehouse_id
+            if source_warehouse != self.warehouse_id:
+                errors["source_bin"] = _(
+                    "Source bin must be in the same warehouse as the job."
+                )
+
+        # Validate destination bin belongs to same warehouse
+        if self.destination_bin_id and self.warehouse_id:
+            dest_warehouse = self.destination_bin.location.zone.warehouse_id
+            if dest_warehouse != self.warehouse_id:
+                errors["destination_bin"] = _(
+                    "Destination bin must be in the same warehouse as the job."
+                )
+
+        # Validate item belongs to same organization
+        if self.item_id and self.organization_id:
+            if self.item.organization_id != self.organization_id:
+                errors["item"] = _(
+                    "Item must belong to the same organization as the job."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # Run full validation on save
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def is_active(self):
@@ -252,48 +342,73 @@ class DroneJob(BaseModel):
         end_time = self.completed_at or self.failed_at or timezone.now()
         return (end_time - self.started_at).total_seconds()
 
+    def _get_locked_instance(self):
+        """
+        Get a row-locked instance of this job for safe concurrent updates.
+        Must be called within a transaction.
+        """
+        return DroneJob.objects.select_for_update().get(pk=self.pk)
+
+    @transaction.atomic
     def queue(self):
-        """Add job to queue."""
-        if self.status != JobStatus.NEW:
+        """Add job to queue with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.NEW:
             return False
-        self.status = JobStatus.QUEUED
-        self.queued_at = timezone.now()
-        self.save(update_fields=["status", "queued_at", "updated_at"])
+        job.status = JobStatus.QUEUED
+        job.queued_at = timezone.now()
+        job.save(update_fields=["status", "queued_at", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
+        self.queued_at = job.queued_at
         self._log_event(JobEventType.QUEUED, "Job added to queue")
         return True
 
+    @transaction.atomic
     def assign(self, drone):
-        """Assign job to a drone."""
-        if self.status != JobStatus.QUEUED:
+        """Assign job to a drone with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.QUEUED:
             return False
-        self.status = JobStatus.ASSIGNED
-        self.drone = drone
-        self.assigned_at = timezone.now()
-        self.save(update_fields=["status", "drone", "assigned_at", "updated_at"])
+        job.status = JobStatus.ASSIGNED
+        job.drone = drone
+        job.assigned_at = timezone.now()
+        job.save(update_fields=["status", "drone", "assigned_at", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
+        self.drone = job.drone
+        self.assigned_at = job.assigned_at
         self._log_event(JobEventType.ASSIGNED, f"Job assigned to drone {drone}")
         return True
 
+    @transaction.atomic
     def start(self):
-        """Start job execution."""
-        if self.status != JobStatus.ASSIGNED:
+        """Start job execution with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.ASSIGNED:
             return False
-        self.status = JobStatus.IN_PROGRESS
-        self.started_at = timezone.now()
-        self.save(update_fields=["status", "started_at", "updated_at"])
+        job.status = JobStatus.IN_PROGRESS
+        job.started_at = timezone.now()
+        job.save(update_fields=["status", "started_at", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
+        self.started_at = job.started_at
         self._log_event(JobEventType.STARTED, "Job execution started")
         return True
 
+    @transaction.atomic
     def complete(self, picked_quantity=None):
-        """Mark job as complete."""
-        if self.status != JobStatus.IN_PROGRESS:
+        """Mark job as complete with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.IN_PROGRESS:
             return False
-        self.status = JobStatus.COMPLETED
-        self.completed_at = timezone.now()
+        job.status = JobStatus.COMPLETED
+        job.completed_at = timezone.now()
         if picked_quantity is not None:
-            self.picked_quantity = picked_quantity
+            job.picked_quantity = picked_quantity
         else:
-            self.picked_quantity = self.quantity
-        self.save(
+            job.picked_quantity = job.quantity
+        job.save(
             update_fields=[
                 "status",
                 "completed_at",
@@ -301,18 +416,24 @@ class DroneJob(BaseModel):
                 "updated_at",
             ]
         )
+        # Update self to reflect changes
+        self.status = job.status
+        self.completed_at = job.completed_at
+        self.picked_quantity = job.picked_quantity
         self._log_event(JobEventType.COMPLETED, "Job completed successfully")
         return True
 
+    @transaction.atomic
     def fail(self, error_code="", error_message=""):
-        """Mark job as failed."""
-        if self.status not in [JobStatus.ASSIGNED, JobStatus.IN_PROGRESS]:
+        """Mark job as failed with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status not in [JobStatus.ASSIGNED, JobStatus.IN_PROGRESS]:
             return False
-        self.status = JobStatus.FAILED
-        self.failed_at = timezone.now()
-        self.error_code = error_code
-        self.error_message = error_message
-        self.save(
+        job.status = JobStatus.FAILED
+        job.failed_at = timezone.now()
+        job.error_code = error_code
+        job.error_message = error_message
+        job.save(
             update_fields=[
                 "status",
                 "failed_at",
@@ -321,50 +442,71 @@ class DroneJob(BaseModel):
                 "updated_at",
             ]
         )
+        # Update self to reflect changes
+        self.status = job.status
+        self.failed_at = job.failed_at
+        self.error_code = job.error_code
+        self.error_message = job.error_message
         self._log_event(JobEventType.FAILED, f"Job failed: {error_message}")
         return True
 
+    @transaction.atomic
     def cancel(self, reason=""):
-        """Cancel the job."""
-        if self.status in [JobStatus.COMPLETED, JobStatus.CANCELLED]:
+        """Cancel the job with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status in [JobStatus.COMPLETED, JobStatus.CANCELLED]:
             return False
-        self.status = JobStatus.CANCELLED
-        self.cancelled_at = timezone.now()
+        job.status = JobStatus.CANCELLED
+        job.cancelled_at = timezone.now()
         if reason:
-            self.notes = f"{self.notes}\nCancelled: {reason}".strip()
-        self.save(update_fields=["status", "cancelled_at", "notes", "updated_at"])
+            job.notes = f"{job.notes}\nCancelled: {reason}".strip()
+        job.save(update_fields=["status", "cancelled_at", "notes", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
+        self.cancelled_at = job.cancelled_at
+        self.notes = job.notes
         self._log_event(JobEventType.CANCELLED, f"Job cancelled: {reason}")
         return True
 
+    @transaction.atomic
     def pause(self):
-        """Pause job execution."""
-        if self.status != JobStatus.IN_PROGRESS:
+        """Pause job execution with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.IN_PROGRESS:
             return False
-        self.status = JobStatus.PAUSED
-        self.save(update_fields=["status", "updated_at"])
+        job.status = JobStatus.PAUSED
+        job.save(update_fields=["status", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
         self._log_event(JobEventType.PAUSED, "Job paused")
         return True
 
+    @transaction.atomic
     def resume(self):
-        """Resume paused job."""
-        if self.status != JobStatus.PAUSED:
+        """Resume paused job with row-level locking."""
+        job = self._get_locked_instance()
+        if job.status != JobStatus.PAUSED:
             return False
-        self.status = JobStatus.IN_PROGRESS
-        self.save(update_fields=["status", "updated_at"])
+        job.status = JobStatus.IN_PROGRESS
+        job.save(update_fields=["status", "updated_at"])
+        # Update self to reflect changes
+        self.status = job.status
         self._log_event(JobEventType.RESUMED, "Job resumed")
         return True
 
+    @transaction.atomic
     def retry(self):
-        """Retry a failed job."""
-        if not self.can_retry:
+        """Retry a failed job with row-level locking."""
+        job = self._get_locked_instance()
+        if not (job.status == JobStatus.FAILED and job.retry_count < job.max_retries):
             return False
-        self.status = JobStatus.QUEUED
-        self.retry_count += 1
-        self.error_code = ""
-        self.error_message = ""
-        self.failed_at = None
-        self.queued_at = timezone.now()
-        self.save(
+        job.status = JobStatus.QUEUED
+        job.retry_count += 1
+        job.error_code = ""
+        job.error_message = ""
+        job.failed_at = None
+        job.queued_at = timezone.now()
+        job.save(
             update_fields=[
                 "status",
                 "retry_count",
@@ -375,6 +517,13 @@ class DroneJob(BaseModel):
                 "updated_at",
             ]
         )
+        # Update self to reflect changes
+        self.status = job.status
+        self.retry_count = job.retry_count
+        self.error_code = job.error_code
+        self.error_message = job.error_message
+        self.failed_at = job.failed_at
+        self.queued_at = job.queued_at
         self._log_event(JobEventType.QUEUED, f"Job retrying (attempt {self.retry_count})")
         return True
 
@@ -421,18 +570,24 @@ class DroneJobEvent(ReadOnlyModel):
         verbose_name=_("Description"),
     )
 
-    # Position at event time (optional)
-    x_position = models.FloatField(
+    # Position at event time (optional) - using DecimalField for consistency
+    x_position = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
         blank=True,
         null=True,
         verbose_name=_("X Position"),
     )
-    y_position = models.FloatField(
+    y_position = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
         blank=True,
         null=True,
         verbose_name=_("Y Position"),
     )
-    z_position = models.FloatField(
+    z_position = models.DecimalField(
+        max_digits=10,
+        decimal_places=3,
         blank=True,
         null=True,
         verbose_name=_("Z Position"),

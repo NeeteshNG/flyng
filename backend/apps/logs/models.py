@@ -232,6 +232,32 @@ class DroneFlightLog(BaseModel):
             models.Index(fields=["organization", "is_processed"]),
             models.Index(fields=["drone", "flight_date"]),
             models.Index(fields=["file_hash"]),
+            # Time-series optimizations for date range queries
+            models.Index(fields=["flight_date"]),
+            models.Index(fields=["-flight_date"]),  # Descending for recent queries
+            models.Index(fields=["drone", "-flight_date"]),  # Recent flights per drone
+            models.Index(fields=["organization", "flight_date"]),
+            # Composite for analytics dashboard queries
+            models.Index(fields=["organization", "drone", "flight_date"]),
+        ]
+        constraints = [
+            # Battery consumption should be positive (end battery <= start battery)
+            models.CheckConstraint(
+                condition=(
+                    models.Q(start_battery_percent__isnull=True)
+                    | models.Q(end_battery_percent__isnull=True)
+                    | models.Q(end_battery_percent__lte=models.F("start_battery_percent"))
+                ),
+                name="battery_decreases_during_flight",
+            ),
+            # Processed timestamp should be set only when is_processed is True
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_processed=False, processed_at__isnull=True)
+                    | models.Q(is_processed=True)
+                ),
+                name="processed_at_requires_is_processed",
+            ),
         ]
 
     def __str__(self):

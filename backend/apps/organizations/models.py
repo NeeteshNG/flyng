@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
+from django_cryptography.fields import encrypt
 from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import (
@@ -95,6 +96,7 @@ class Plan(BaseModel):
     )
     is_active = models.BooleanField(
         default=True,
+        db_index=True,
         verbose_name=_("Is Active"),
         help_text=_("Whether this plan is available for new subscriptions"),
     )
@@ -179,6 +181,7 @@ class Plan(BaseModel):
     # API Rate Limits
     api_rate_limit_per_minute = models.PositiveIntegerField(
         default=60,
+        validators=[MinValueValidator(1)],
         verbose_name=_("API Rate Limit"),
         help_text=_("API requests allowed per minute"),
     )
@@ -201,6 +204,13 @@ class Plan(BaseModel):
         verbose_name = _("Plan")
         verbose_name_plural = _("Plans")
         ordering = ["display_order", "monthly_price"]
+        constraints = [
+            # Annual price should be less than or equal to 12x monthly (discounted)
+            models.CheckConstraint(
+                condition=models.Q(annual_price__lte=models.F("monthly_price") * 12),
+                name="annual_price_not_exceed_monthly",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.get_plan_type_display()})"
@@ -339,6 +349,7 @@ class Organization(AuditedModel):
         related_name="organizations",
         null=True,
         blank=True,
+        db_index=True,
         verbose_name=_("Plan"),
         help_text=_("Current subscription plan"),
     )
@@ -602,6 +613,7 @@ class OrganizationSettings(BaseModel):
     )
     password_expiry_days = models.PositiveIntegerField(
         default=0,  # 0 = never expires
+        validators=[MinValueValidator(0)],
         verbose_name=_("Password Expiry Days"),
         help_text=_("Days before password expires (0 = never)"),
     )
@@ -612,16 +624,27 @@ class OrganizationSettings(BaseModel):
         verbose_name=_("Webhook URL"),
         help_text=_("Webhook URL for event notifications"),
     )
-    webhook_secret = models.CharField(
-        max_length=64,
-        blank=True,
-        verbose_name=_("Webhook Secret"),
-        help_text=_("Secret for webhook signature verification"),
+    webhook_secret = encrypt(
+        models.CharField(
+            max_length=64,
+            blank=True,
+            verbose_name=_("Webhook Secret"),
+            help_text=_("Secret for webhook signature verification"),
+        )
     )
 
     class Meta:
         verbose_name = _("Organization Settings")
         verbose_name_plural = _("Organization Settings")
+        constraints = [
+            # Critical threshold should be less than low threshold
+            models.CheckConstraint(
+                condition=models.Q(
+                    battery_critical_threshold_percent__lt=models.F("battery_low_threshold_percent")
+                ),
+                name="critical_less_than_low_threshold",
+            ),
+        ]
 
     def __str__(self):
         return f"Settings for {self.organization.name}"
@@ -885,6 +908,7 @@ class OrganizationInvitation(AuditedModel):
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
+        db_index=True,
         related_name="sent_invitations",
         verbose_name=_("Invited By"),
         help_text=_("User who sent the invitation"),
@@ -1123,11 +1147,13 @@ class Subscription(AuditedModel):
         verbose_name=_("External Customer ID"),
         help_text=_("Customer ID from payment gateway"),
     )
-    payment_method = models.CharField(
-        max_length=50,
-        blank=True,
-        verbose_name=_("Payment Method"),
-        help_text=_("Last used payment method (e.g., card_xxxx)"),
+    payment_method = encrypt(
+        models.CharField(
+            max_length=50,
+            blank=True,
+            verbose_name=_("Payment Method"),
+            help_text=_("Last used payment method (e.g., card_xxxx)"),
+        )
     )
 
     # Metadata
@@ -1145,6 +1171,13 @@ class Subscription(AuditedModel):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["current_period_end"]),
+        ]
+        constraints = [
+            # Period end must be after period start
+            models.CheckConstraint(
+                condition=models.Q(current_period_start__lt=models.F("current_period_end")),
+                name="subscription_period_end_after_start",
+            ),
         ]
 
     def __str__(self):
@@ -1305,6 +1338,7 @@ class OrganizationAPIKey(AuditedModel):
     # Rate limiting
     rate_limit_per_minute = models.PositiveIntegerField(
         default=60,
+        validators=[MinValueValidator(1)],
         verbose_name=_("Rate Limit"),
         help_text=_("API requests allowed per minute"),
     )

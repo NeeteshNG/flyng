@@ -4,22 +4,26 @@ Orders Models
 Models for managing pick orders, order lines, and order batches.
 """
 
-from django.db import models
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from django_cryptography.fields import encrypt
+
 from apps.core.choices import OrderPriority, OrderStatus
-from apps.core.models import BaseModel, TimeStampedModel
+from apps.core.models import AuditedModel, BaseModel, TimeStampedModel
 
 from .managers import PickOrderBatchManager, PickOrderLineManager, PickOrderManager
 
 
-class PickOrder(BaseModel):
+class PickOrder(AuditedModel):
     """
     Pick order representing a customer order to be fulfilled.
 
     Orders contain multiple lines (items to be picked) and go through
     various statuses from pending to delivered.
+    Uses AuditedModel for complete change history tracking.
     """
 
     organization = models.ForeignKey(
@@ -86,36 +90,46 @@ class PickOrder(BaseModel):
         verbose_name=_("Customer Code"),
     )
 
-    # Shipping address
-    shipping_address_line1 = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
-        verbose_name=_("Address Line 1"),
+    # Shipping address - encrypted for PII protection
+    shipping_address_line1 = encrypt(
+        models.CharField(
+            max_length=255,
+            blank=True,
+            default="",
+            verbose_name=_("Address Line 1"),
+        )
     )
-    shipping_address_line2 = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
-        verbose_name=_("Address Line 2"),
+    shipping_address_line2 = encrypt(
+        models.CharField(
+            max_length=255,
+            blank=True,
+            default="",
+            verbose_name=_("Address Line 2"),
+        )
     )
-    shipping_city = models.CharField(
-        max_length=100,
-        blank=True,
-        default="",
-        verbose_name=_("City"),
+    shipping_city = encrypt(
+        models.CharField(
+            max_length=100,
+            blank=True,
+            default="",
+            verbose_name=_("City"),
+        )
     )
-    shipping_state = models.CharField(
-        max_length=100,
-        blank=True,
-        default="",
-        verbose_name=_("State"),
+    shipping_state = encrypt(
+        models.CharField(
+            max_length=100,
+            blank=True,
+            default="",
+            verbose_name=_("State"),
+        )
     )
-    shipping_postal_code = models.CharField(
-        max_length=20,
-        blank=True,
-        default="",
-        verbose_name=_("Postal Code"),
+    shipping_postal_code = encrypt(
+        models.CharField(
+            max_length=20,
+            blank=True,
+            default="",
+            verbose_name=_("Postal Code"),
+        )
     )
     shipping_country = models.CharField(
         max_length=100,
@@ -176,7 +190,14 @@ class PickOrder(BaseModel):
         related_name="assigned_orders",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Assigned To"),
+    )
+    assigned_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name=_("Assigned At"),
+        help_text=_("When the order was assigned to a picker"),
     )
     created_by = models.ForeignKey(
         "users.User",
@@ -184,6 +205,7 @@ class PickOrder(BaseModel):
         related_name="created_orders",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Created By"),
     )
 
@@ -218,10 +240,83 @@ class PickOrder(BaseModel):
             models.Index(fields=["order_date"]),
             models.Index(fields=["due_date"]),
             models.Index(fields=["priority", "status"]),
+            # Composite indexes for common queries
+            models.Index(fields=["organization", "status", "priority"]),
+            models.Index(fields=["warehouse", "status", "due_date"]),
+            models.Index(fields=["assigned_to", "status"]),
+            # Partial indexes for non-deleted records (most queries filter on active records)
+            models.Index(
+                fields=["organization", "status"],
+                name="order_org_status_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["warehouse", "status", "priority"],
+                name="order_wh_stat_pri_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["due_date"],
+                name="order_due_date_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+        ]
+        constraints = [
+            # Due date should be on or after order date
+            models.CheckConstraint(
+                condition=(
+                    models.Q(due_date__isnull=True) | models.Q(due_date__gte=models.F("order_date"))
+                ),
+                name="due_date_after_order_date",
+            ),
         ]
 
     def __str__(self):
         return f"{self.order_number} ({self.get_status_display()})"
+
+    def clean(self):
+        """
+        Validate cross-model organization boundaries.
+
+        Ensures all related objects belong to the same organization
+        to prevent data leakage between tenants.
+        """
+        super().clean()
+        errors = {}
+
+        # Validate warehouse belongs to organization
+        if self.warehouse_id and self.organization_id:
+            if self.warehouse.organization_id != self.organization_id:
+                errors["warehouse"] = _(
+                    "Warehouse must belong to the same organization as the order."
+                )
+
+        # Validate batch belongs to same organization
+        if self.batch_id and self.organization_id:
+            if self.batch.organization_id != self.organization_id:
+                errors["batch"] = _(
+                    "Batch must belong to the same organization as the order."
+                )
+
+        # Validate assigned_to belongs to same organization
+        if self.assigned_to_id and self.organization_id:
+            from apps.organizations.models import OrganizationMembership
+
+            if not OrganizationMembership.objects.filter(
+                user_id=self.assigned_to_id,
+                organization_id=self.organization_id,
+            ).exists():
+                errors["assigned_to"] = _(
+                    "Assigned user must be a member of the order's organization."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # Run full validation on save
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def total_lines(self):
@@ -282,6 +377,7 @@ class PickOrder(BaseModel):
         ]
         return ", ".join(p for p in parts if p)
 
+    @transaction.atomic
     def confirm(self, user=None):
         """Confirm the order for picking."""
         if self.status != OrderStatus.PENDING:
@@ -291,17 +387,22 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "confirmed_at", "updated_at"])
         return True
 
+    @transaction.atomic
     def start_picking(self, user=None):
         """Start picking the order."""
         if self.status != OrderStatus.CONFIRMED:
             return False
         self.status = OrderStatus.PICKING
         self.picking_started_at = timezone.now()
+        update_fields = ["status", "picking_started_at", "updated_at"]
         if user:
             self.assigned_to = user
-        self.save(update_fields=["status", "picking_started_at", "assigned_to", "updated_at"])
+            self.assigned_at = timezone.now()
+            update_fields.extend(["assigned_to", "assigned_at"])
+        self.save(update_fields=update_fields)
         return True
 
+    @transaction.atomic
     def complete_picking(self):
         """Mark picking as complete."""
         if self.status != OrderStatus.PICKING:
@@ -311,6 +412,7 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "picking_completed_at", "updated_at"])
         return True
 
+    @transaction.atomic
     def pack(self):
         """Mark order as packed."""
         if self.status not in [OrderStatus.PICKED, OrderStatus.PACKING]:
@@ -320,6 +422,7 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "packed_at", "updated_at"])
         return True
 
+    @transaction.atomic
     def ship(self):
         """Mark order as shipped."""
         if self.status != OrderStatus.PACKED:
@@ -329,6 +432,7 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "shipped_at", "updated_at"])
         return True
 
+    @transaction.atomic
     def deliver(self):
         """Mark order as delivered."""
         if self.status != OrderStatus.SHIPPED:
@@ -338,6 +442,7 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "delivered_at", "updated_at"])
         return True
 
+    @transaction.atomic
     def cancel(self, reason=""):
         """Cancel the order."""
         if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
@@ -348,6 +453,7 @@ class PickOrder(BaseModel):
         self.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
         return True
 
+    @transaction.atomic
     def hold(self):
         """Put order on hold."""
         if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
@@ -462,9 +568,52 @@ class PickOrderLine(TimeStampedModel):
             models.Index(fields=["item"]),
             models.Index(fields=["source_bin"]),
         ]
+        constraints = [
+            # Picked quantity cannot exceed requested quantity
+            models.CheckConstraint(
+                condition=models.Q(picked_quantity__lte=models.F("quantity")),
+                name="order_line_picked_not_exceed_quantity",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.order.order_number} - Line {self.line_number}: {self.item.sku}"
+
+    def clean(self):
+        """
+        Validate cross-model organization boundaries.
+
+        Ensures item and bin belong to the same organization/warehouse as the order.
+        """
+        super().clean()
+        errors = {}
+
+        if self.order_id:
+            order_org_id = self.order.organization_id
+            order_warehouse_id = self.order.warehouse_id
+
+            # Validate item belongs to same organization
+            if self.item_id and order_org_id:
+                if self.item.organization_id != order_org_id:
+                    errors["item"] = _(
+                        "Item must belong to the same organization as the order."
+                    )
+
+            # Validate source bin belongs to same warehouse
+            if self.source_bin_id and order_warehouse_id:
+                bin_warehouse_id = self.source_bin.location.zone.warehouse_id
+                if bin_warehouse_id != order_warehouse_id:
+                    errors["source_bin"] = _(
+                        "Source bin must be in the same warehouse as the order."
+                    )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # Run full validation on save
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def shortage_quantity(self):
@@ -483,6 +632,7 @@ class PickOrderLine(TimeStampedModel):
         """Check if line is fully picked."""
         return self.is_picked and self.picked_quantity >= self.quantity
 
+    @transaction.atomic
     def pick(self, quantity, user=None, notes=""):
         """Mark line as picked with quantity."""
         self.picked_quantity = quantity
@@ -571,6 +721,7 @@ class PickOrderBatch(BaseModel):
         related_name="assigned_batches",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Assigned To"),
     )
     created_by = models.ForeignKey(
@@ -598,10 +749,40 @@ class PickOrderBatch(BaseModel):
         indexes = [
             models.Index(fields=["organization", "is_completed"]),
             models.Index(fields=["warehouse", "is_completed"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["organization", "is_completed"],
+                name="batch_org_completed_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
 
     def __str__(self):
         return f"{self.batch_number}"
+
+    def clean(self):
+        """
+        Validate cross-model organization boundaries.
+
+        Ensures warehouse belongs to the same organization as the batch.
+        """
+        super().clean()
+        errors = {}
+
+        # Validate warehouse belongs to organization
+        if self.warehouse_id and self.organization_id:
+            if self.warehouse.organization_id != self.organization_id:
+                errors["warehouse"] = _(
+                    "Warehouse must belong to the same organization as the batch."
+                )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        # Run full validation on save
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def order_count(self):
@@ -626,18 +807,21 @@ class PickOrderBatch(BaseModel):
             return 0
         return round((self.picked_lines / total) * 100, 1)
 
+    @transaction.atomic
     def add_orders(self, orders):
         """Add orders to batch."""
         for order in orders:
             order.batch = self
             order.save(update_fields=["batch", "updated_at"])
 
+    @transaction.atomic
     def remove_order(self, order):
         """Remove order from batch."""
         if order.batch == self:
             order.batch = None
             order.save(update_fields=["batch", "updated_at"])
 
+    @transaction.atomic
     def complete(self):
         """Mark batch as complete."""
         self.is_completed = True

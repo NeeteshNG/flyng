@@ -13,6 +13,7 @@ Models:
 - InventoryStock: Stock quantity at specific bin
 """
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -146,6 +147,7 @@ class StorageLocation(BaseModel):
     is_accessible = models.BooleanField(
         _("is accessible"),
         default=True,
+        db_index=True,
         help_text=_("Whether drones can access this location"),
     )
 
@@ -179,6 +181,12 @@ class StorageLocation(BaseModel):
             models.Index(fields=["zone", "code"]),
             models.Index(fields=["aisle", "rack", "level"]),
             models.Index(fields=["location_type", "is_active"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["zone", "is_accessible"],
+                name="loc_zone_access_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -503,6 +511,12 @@ class StorageBin(BaseModel):
         indexes = [
             models.Index(fields=["location", "code"]),
             models.Index(fields=["label_value"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["location", "is_active"],
+                name="bin_location_is_active_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -616,12 +630,23 @@ class ItemCategory(BaseModel):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        """Validate organization boundary constraint."""
+        super().clean()
+        # Ensure parent category belongs to the same organization
+        if self.parent and self.parent.organization_id != self.organization_id:
+            raise ValidationError(
+                {"parent": _("Parent category must belong to the same organization.")}
+            )
+
     def save(self, *args, **kwargs):
         # Auto-set level based on parent
         if self.parent:
             self.level = self.parent.level + 1
         else:
             self.level = 0
+        # Call full_clean to enforce validation
+        self.full_clean()
         super().save(*args, **kwargs)
 
     @property
@@ -803,12 +828,32 @@ class InventoryItem(AuditedModel):
         indexes = [
             models.Index(fields=["organization", "sku"]),
             models.Index(fields=["organization", "category"]),
+            models.Index(fields=["organization", "is_active"]),
             models.Index(fields=["barcode"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["organization", "sku"],
+                name="item_org_sku_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["organization", "is_active"],
+                name="item_org_is_active_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
         constraints = [
             models.UniqueConstraint(
                 fields=["organization", "sku"],
                 name="unique_sku_per_org",
+            ),
+            # Reorder quantity should be at least the minimum stock level
+            models.CheckConstraint(
+                condition=(
+                    models.Q(reorder_quantity=0)
+                    | models.Q(reorder_quantity__gte=models.F("min_stock_level"))
+                ),
+                name="reorder_quantity_gte_min_stock",
             ),
         ]
 
@@ -843,6 +888,7 @@ class InventoryStock(AuditedModel):
         StorageBin,
         on_delete=models.CASCADE,
         related_name="stocks",
+        db_index=True,
         verbose_name=_("bin"),
         help_text=_("The storage bin"),
     )
@@ -923,6 +969,19 @@ class InventoryStock(AuditedModel):
             models.Index(fields=["item", "quantity"]),
             models.Index(fields=["lot_number"]),
             models.Index(fields=["expiry_date"]),
+            # Composite index for expiry filtering and sorting
+            models.Index(fields=["item", "expiry_date", "quantity"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["bin", "item"],
+                name="stock_bin_item_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["item", "quantity"],
+                name="stock_item_qty_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
         constraints = [
             models.CheckConstraint(

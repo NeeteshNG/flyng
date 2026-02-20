@@ -5,6 +5,7 @@ Uses:
 - django-safedelete for soft delete with cascade policies
 - django-simple-history for audit trails
 - UUID for external API references
+- Optimistic locking for high-concurrency scenarios
 
 Note: We use custom TimeStampedModel with 'created_at' and 'updated_at' field names
 for consistency with existing code and Django conventions.
@@ -12,6 +13,7 @@ for consistency with existing code and Django conventions.
 
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -20,6 +22,19 @@ from safedelete.models import SafeDeleteModel
 from simple_history.models import HistoricalRecords
 
 from .utils import import_error_file_upload_path, import_file_upload_path
+
+
+class ConcurrentModificationError(Exception):
+    """
+    Raised when optimistic locking detects a concurrent modification.
+
+    This indicates another process modified the record between when
+    it was read and when save() was called.
+    """
+
+    def __init__(self, message="Record was modified by another process"):
+        self.message = message
+        super().__init__(self.message)
 
 
 class TimeStampedModel(models.Model):
@@ -110,6 +125,85 @@ class ReadOnlyModel(TimeStampedModel, UUIDModel):
 
     class Meta:
         abstract = True
+
+
+class OptimisticLockingMixin(models.Model):
+    """
+    Mixin that provides optimistic locking via a version field.
+
+    Prevents lost updates in high-concurrency scenarios by detecting
+    when another process has modified a record.
+
+    Usage:
+        class MyModel(OptimisticLockingMixin, BaseModel):
+            ...
+
+        # When saving, if version mismatch detected:
+        try:
+            instance.save()
+        except ConcurrentModificationError:
+            # Handle conflict (refresh and retry, or notify user)
+            instance.refresh_from_db()
+
+    Trade-offs:
+        Pros:
+        - No database locks held (better scalability)
+        - Works across multiple database backends
+        - Detects conflicts at application level
+
+        Cons:
+        - Requires retry logic in application code
+        - Can cause more work under high contention
+        - Version field adds slight storage overhead
+    """
+
+    version = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_("Version"),
+        help_text=_("Optimistic locking version number"),
+    )
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to implement optimistic locking.
+
+        On update, atomically increments version and checks that
+        the current version matches what we read.
+        """
+        if self.pk:
+            # This is an update - check version
+            cls = self.__class__
+            current_version = self.version
+
+            # Atomically update only if version matches
+            updated = cls.objects.filter(
+                pk=self.pk,
+                version=current_version,
+            ).update(version=current_version + 1)
+
+            if updated == 0:
+                # Version mismatch - record was modified by another process
+                raise ConcurrentModificationError(
+                    f"{cls.__name__} with pk={self.pk} was modified by another process. "
+                    f"Expected version {current_version}."
+                )
+
+            # Update our version to reflect the increment
+            self.version = current_version + 1
+
+        super().save(*args, **kwargs)
+
+    def save_without_version_check(self, *args, **kwargs):
+        """
+        Save without optimistic locking check.
+
+        Use sparingly for administrative updates where conflicts
+        are acceptable (e.g., bulk updates, migrations).
+        """
+        super().save(*args, **kwargs)
 
 
 class OrganizationOwnedMixin(models.Model):
@@ -256,6 +350,7 @@ class ImportJob(BaseModel):
         related_name="import_jobs",
         blank=True,
         null=True,
+        db_index=True,
         verbose_name=_("Created By"),
     )
 
@@ -273,6 +368,24 @@ class ImportJob(BaseModel):
         indexes = [
             models.Index(fields=["organization", "status"]),
             models.Index(fields=["import_type", "status"]),
+        ]
+        constraints = [
+            # Processed rows cannot exceed total rows
+            models.CheckConstraint(
+                condition=(
+                    models.Q(total_rows=0) | models.Q(processed_rows__lte=models.F("total_rows"))
+                ),
+                name="processed_not_exceed_total_rows",
+            ),
+            # Success + error + skipped cannot exceed processed
+            models.CheckConstraint(
+                condition=models.Q(
+                    success_count__lte=models.F("processed_rows"),
+                    error_count__lte=models.F("processed_rows"),
+                    skipped_count__lte=models.F("processed_rows"),
+                ),
+                name="counts_not_exceed_processed",
+            ),
         ]
 
     def __str__(self):

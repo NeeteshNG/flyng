@@ -25,6 +25,7 @@ from django.utils.translation import gettext_lazy as _
 
 import pyotp
 import qrcode
+from django_cryptography.fields import encrypt
 from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import OTPType, UserRole
@@ -184,6 +185,7 @@ class User(AbstractUser, TimeStampedModel):
         indexes = [
             models.Index(fields=["email", "is_active"]),
             models.Index(fields=["role", "is_active"]),
+            models.Index(fields=["is_verified", "is_active"]),
         ]
 
     def __str__(self):
@@ -394,6 +396,7 @@ class TwoFactorAuth(TimeStampedModel):
         User,
         on_delete=models.CASCADE,
         related_name="two_factor_auth",
+        db_index=True,
         verbose_name=_("User"),
     )
     secret_key = models.CharField(
@@ -427,6 +430,14 @@ class TwoFactorAuth(TimeStampedModel):
         verbose_name = _("Two-Factor Authentication")
         verbose_name_plural = _("Two-Factor Authentications")
         ordering = ["-created_at"]
+        constraints = [
+            # Prevent multiple active 2FA setups for the same user
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=models.Q(is_active=True),
+                name="unique_active_2fa_per_user",
+            ),
+        ]
 
     def __str__(self):
         status = "Active" if self.is_active else "Pending"
@@ -540,11 +551,14 @@ class UserSession(TimeStampedModel):
         blank=True,
         verbose_name=_("Operating System"),
     )
-    location = models.CharField(
-        max_length=200,
-        blank=True,
-        verbose_name=_("Location"),
-        help_text=_("Approximate location based on IP"),
+    # Location encrypted for PII protection
+    location = encrypt(
+        models.CharField(
+            max_length=200,
+            blank=True,
+            verbose_name=_("Location"),
+            help_text=_("Approximate location based on IP"),
+        )
     )
     is_active = models.BooleanField(
         default=True,
@@ -571,6 +585,13 @@ class UserSession(TimeStampedModel):
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["session_key"]),
             models.Index(fields=["expires_at"]),
+        ]
+        constraints = [
+            # Session expiry should be after creation
+            models.CheckConstraint(
+                condition=models.Q(expires_at__gte=models.F("created_at")),
+                name="session_expires_after_created",
+            ),
         ]
 
     def __str__(self):
@@ -817,6 +838,7 @@ class LoginAttempt(TimeStampedModel):
             models.Index(fields=["email", "created_at"]),
             models.Index(fields=["ip_address", "created_at"]),
             models.Index(fields=["success", "created_at"]),
+            models.Index(fields=["created_at"]),  # For cleanup queries
         ]
 
     def __str__(self):

@@ -63,8 +63,8 @@ dependencies = [
     # Audit Trail / History
     "django-simple-history>=3.7.0",
 
-    # Field Encryption
-    "django-cryptography>=1.1",
+    # Field Encryption (django5 fork supports Django 5.x/6.x)
+    "django-cryptography-django5>=1.2",
 
     # TimescaleDB (for telemetry time-series)
     "django-timescaledb>=0.2.13",

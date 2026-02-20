@@ -7,8 +7,11 @@ Models:
 - WarehouseContact: Contact persons associated with a warehouse
 """
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
+from django_cryptography.fields import encrypt
 
 from apps.core.choices import (
     CurrencyChoices,
@@ -208,6 +211,7 @@ class WarehouseProfile(BaseModel):
     )
     operates_24x7 = models.BooleanField(
         default=False,
+        db_index=True,
         verbose_name=_("Operates 24x7"),
         help_text=_("Whether the warehouse operates round the clock"),
     )
@@ -266,11 +270,14 @@ class WarehouseProfile(BaseModel):
     )
 
     # Safety & Compliance
-    emergency_contact_number = models.CharField(
-        max_length=20,
-        blank=True,
-        verbose_name=_("Emergency Contact"),
-        help_text=_("Emergency contact phone number"),
+    # Emergency contact encrypted for PII protection
+    emergency_contact_number = encrypt(
+        models.CharField(
+            max_length=20,
+            blank=True,
+            verbose_name=_("Emergency Contact"),
+            help_text=_("Emergency contact phone number"),
+        )
     )
     safety_clearance_height_ft = models.DecimalField(
         max_digits=6,
@@ -302,6 +309,18 @@ class WarehouseProfile(BaseModel):
     class Meta:
         verbose_name = _("Warehouse Profile")
         verbose_name_plural = _("Warehouse Profiles")
+        constraints = [
+            # Operating hours: end should be after start (unless 24x7)
+            models.CheckConstraint(
+                condition=(
+                    models.Q(operates_24x7=True)
+                    | models.Q(operating_hours_start__isnull=True)
+                    | models.Q(operating_hours_end__isnull=True)
+                    | models.Q(operating_hours_start__lt=models.F("operating_hours_end"))
+                ),
+                name="valid_operating_hours",
+            ),
+        ]
 
     def __str__(self):
         return f"Profile: {self.warehouse.name}"
@@ -339,16 +358,21 @@ class WarehouseContact(BaseModel):
         verbose_name=_("Email"),
         help_text=_("Contact email address"),
     )
-    phone_primary = models.CharField(
-        max_length=20,
-        verbose_name=_("Primary Phone"),
-        help_text=_("Primary contact number"),
+    # Phone numbers encrypted for PII protection
+    phone_primary = encrypt(
+        models.CharField(
+            max_length=20,
+            verbose_name=_("Primary Phone"),
+            help_text=_("Primary contact number"),
+        )
     )
-    phone_secondary = models.CharField(
-        max_length=20,
-        blank=True,
-        verbose_name=_("Secondary Phone"),
-        help_text=_("Secondary contact number"),
+    phone_secondary = encrypt(
+        models.CharField(
+            max_length=20,
+            blank=True,
+            verbose_name=_("Secondary Phone"),
+            help_text=_("Secondary contact number"),
+        )
     )
 
     # Contact Type
@@ -502,6 +526,7 @@ class WarehouseZone(AuditedModel):
     )
     is_no_fly_zone = models.BooleanField(
         default=False,
+        db_index=True,
         verbose_name=_("Is No-Fly Zone"),
         help_text=_("If true, drones cannot enter this zone"),
     )
@@ -522,6 +547,23 @@ class WarehouseZone(AuditedModel):
             models.UniqueConstraint(
                 fields=["warehouse", "code"],
                 name="unique_zone_code_per_warehouse",
+            ),
+            # Boundary validation: min values must be less than max values
+            models.CheckConstraint(
+                condition=(
+                    models.Q(min_x__isnull=True)
+                    | models.Q(max_x__isnull=True)
+                    | models.Q(min_x__lt=models.F("max_x"))
+                ),
+                name="zone_min_x_less_than_max_x",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(min_y__isnull=True)
+                    | models.Q(max_y__isnull=True)
+                    | models.Q(min_y__lt=models.F("max_y"))
+                ),
+                name="zone_min_y_less_than_max_y",
             ),
         ]
 
@@ -849,10 +891,48 @@ class DroneWorkArea(AuditedModel):
                 fields=["ground_control_station", "code"],
                 name="unique_work_area_code_per_gcs",
             ),
+            # Boundary validation: min values must be less than max values
+            models.CheckConstraint(
+                condition=(
+                    models.Q(min_x__isnull=True)
+                    | models.Q(max_x__isnull=True)
+                    | models.Q(min_x__lt=models.F("max_x"))
+                ),
+                name="work_area_min_x_less_than_max_x",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(min_y__isnull=True)
+                    | models.Q(max_y__isnull=True)
+                    | models.Q(min_y__lt=models.F("max_y"))
+                ),
+                name="work_area_min_y_less_than_max_y",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(min_z__lt=models.F("max_z")),
+                name="work_area_min_z_less_than_max_z",
+            ),
         ]
 
     def __str__(self):
         return f"{self.name} ({self.code}) - {self.ground_control_station.name}"
+
+    def clean(self):
+        """Validate tethered work area configuration."""
+        super().clean()
+        # If tethered, require tether configuration
+        if self.area_type == DroneWorkAreaType.TETHERED:
+            errors = {}
+            if not self.tether_length_m:
+                errors["tether_length_m"] = _("Tether length is required for tethered work areas.")
+            if self.tether_anchor_x is None or self.tether_anchor_y is None:
+                errors["tether_anchor_x"] = _("Tether anchor position (X, Y) is required for tethered work areas.")
+            if errors:
+                raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def bounds(self):

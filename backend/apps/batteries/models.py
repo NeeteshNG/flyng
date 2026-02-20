@@ -224,6 +224,19 @@ class DroneBattery(AuditedModel):
             models.Index(fields=["status", "health_status"]),
             models.Index(fields=["warehouse", "status"]),
             models.Index(fields=["cycle_count"]),
+            # Composite index for finding available batteries with good health
+            models.Index(fields=["warehouse", "status", "health_status", "current_charge_percent"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["warehouse", "status"],
+                name="battery_wh_status_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["status", "health_status"],
+                name="battery_status_health_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
         ]
         constraints = [
             models.CheckConstraint(
@@ -234,6 +247,23 @@ class DroneBattery(AuditedModel):
                 condition=models.Q(cycle_count__lte=models.F("max_cycles") + 100),
                 name="battery_cycles_reasonable",
             ),
+            # Current capacity cannot exceed nominal capacity
+            models.CheckConstraint(
+                condition=(
+                    models.Q(current_capacity_mah__isnull=True)
+                    | models.Q(current_capacity_mah__lte=models.F("capacity_mah"))
+                ),
+                name="current_capacity_not_exceed_nominal",
+            ),
+            # Voltage should be consistent with cell count (3.0V-4.2V per cell)
+            # Min: cell_count * 3.0V, Max: cell_count * 4.2V
+            models.CheckConstraint(
+                condition=(
+                    models.Q(voltage_nominal__gte=models.F("cell_count") * 3.0)
+                    & models.Q(voltage_nominal__lte=models.F("cell_count") * 4.2)
+                ),
+                name="voltage_matches_cell_count",
+            ),
         ]
 
     def __str__(self):
@@ -241,10 +271,14 @@ class DroneBattery(AuditedModel):
 
     @property
     def health_percentage(self):
-        """Calculate health as percentage of original capacity."""
-        if self.current_capacity_mah and self.capacity_mah:
+        """Calculate health as percentage of original capacity.
+
+        Returns None if current capacity is unknown (not yet measured).
+        """
+        if self.current_capacity_mah is not None and self.capacity_mah:
             return round((self.current_capacity_mah / self.capacity_mah) * 100, 1)
-        return 100.0
+        # Return None when capacity hasn't been measured yet, not 100%
+        return None
 
     @property
     def cycles_remaining(self):
@@ -435,6 +469,21 @@ class BatteryChargingSession(ReadOnlyModel):
         indexes = [
             models.Index(fields=["battery", "-started_at"]),
             models.Index(fields=["status", "-started_at"]),
+            # Time-series optimizations for date range queries
+            models.Index(fields=["started_at"]),
+            models.Index(fields=["-started_at"]),  # Descending for recent queries
+            # Composite for charging analytics over time
+            models.Index(fields=["battery", "status", "-started_at"]),
+        ]
+        constraints = [
+            # End charge should be >= start charge (charging increases charge)
+            models.CheckConstraint(
+                condition=(
+                    models.Q(end_charge_percent__isnull=True)
+                    | models.Q(end_charge_percent__gte=models.F("start_charge_percent"))
+                ),
+                name="charging_increases_charge",
+            ),
         ]
 
     def __str__(self):
@@ -480,6 +529,7 @@ class BatterySwapRecord(ReadOnlyModel):
         "drones.Drone",
         on_delete=models.PROTECT,
         related_name="battery_swaps",
+        db_index=True,
         verbose_name=_("drone"),
         help_text=_("The drone that had its battery swapped"),
     )

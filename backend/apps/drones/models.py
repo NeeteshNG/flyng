@@ -39,6 +39,7 @@ class Drone(AuditedModel):
         "warehouses.DroneWorkArea",
         on_delete=models.PROTECT,
         related_name="drones",
+        db_index=True,
         verbose_name=_("Work Area"),
         help_text=_("Work area where this drone operates"),
     )
@@ -216,6 +217,28 @@ class Drone(AuditedModel):
             models.Index(fields=["status"]),
             models.Index(fields=["serial_number"]),
             models.Index(fields=["last_heartbeat"]),
+            # Partial indexes for non-deleted records
+            models.Index(
+                fields=["work_area", "status"],
+                name="drone_work_area_status_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+            models.Index(
+                fields=["status", "is_active"],
+                name="drone_status_is_active_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+        ]
+        constraints = [
+            # Flight statistics must be non-negative
+            models.CheckConstraint(
+                condition=models.Q(total_flight_hours__gte=0),
+                name="non_negative_flight_hours",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_distance_km__gte=0),
+                name="non_negative_flight_distance",
+            ),
         ]
 
     def __str__(self):
@@ -447,9 +470,17 @@ class DroneTelemetryLog(ReadOnlyModel):
         verbose_name_plural = _("Drone Telemetry Logs")
         ordering = ["-timestamp"]
         indexes = [
+            # Primary time-series index for drone + time range queries
             models.Index(fields=["drone", "timestamp"]),
+            models.Index(fields=["drone", "-timestamp"]),  # Descending for recent data
+            models.Index(fields=["drone"]),  # For standalone drone queries
             models.Index(fields=["timestamp"]),
+            models.Index(fields=["-timestamp"]),  # Descending for recent queries
             models.Index(fields=["flight_mode"]),
+            # Composite indexes for time-series analytics
+            models.Index(fields=["drone", "flight_mode", "timestamp"]),
+            # Battery monitoring queries over time
+            models.Index(fields=["drone", "battery_percentage", "timestamp"]),
         ]
         # Note: TimescaleDB hypertable will be created via migration
         # using CREATE_HYPERTABLE on the 'timestamp' column
