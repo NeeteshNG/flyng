@@ -28,37 +28,11 @@ ENV PATH="/root/.local/bin:$PATH"
 # Copy dependency files first (for better layer caching)
 COPY backend/pyproject.toml .
 
-# Install base dependencies (cached layer)
-# These are installed during build for faster container startup
-RUN uv pip install --system \
-    "Django>=6.0.2" \
-    "djangorestframework>=3.15.2" \
-    "django-unfold>=0.45.0" \
-    "djangorestframework-simplejwt>=5.4.0" \
-    "PyJWT>=2.10.1" \
-    "pyotp>=2.9.0" \
-    "qrcode[pil]>=7.4.2" \
-    "psycopg2-binary>=2.9.10" \
-    "django-cors-headers>=4.6.0" \
-    "django-filter>=24.3" \
-    "django-redis>=5.4.0" \
-    "redis>=5.2.1" \
-    "celery>=5.4.0" \
-    "drf-spectacular>=0.28.0" \
-    "python-dotenv>=1.0.1" \
-    "Pillow>=11.1.0" \
-    "python-dateutil>=2.9.0" \
-    "django-phonenumber-field[phonenumberslite]>=8.0.0" \
-    "pytz>=2024.2" \
-    "django-model-utils>=5.0.0" \
-    "django-safedelete>=1.4.0" \
-    "django-simple-history>=3.7.0" \
-    "django-cryptography-django5>=1.2" \
-    "django-timescaledb>=0.2.13" \
-    "django-modeltranslation>=0.19.0" \
-    "gunicorn>=22.0.0" \
-    "django-extensions>=3.2.3" \
-    "django-debug-toolbar>=4.3.0"
+# Install dependencies from pyproject.toml (single source of truth)
+# Generate a requirements.txt from pyproject.toml and install
+RUN python -c "import tomllib; f=open('pyproject.toml','rb'); d=tomllib.load(f); print('\n'.join(d['project']['dependencies']))" > /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 
 # Copy entrypoint script first (before switching user)
 COPY docker/backend/entrypoint.sh /entrypoint.sh
