@@ -1,0 +1,30 @@
+meta {
+  name: 2FA Setup
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/users/2fa/setup/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Setup Two-Factor Authentication
+
+  Generates a TOTP secret and QR code for setting up 2FA.
+
+  ## Response
+  - 200: Returns `secret` and `qr_code` (base64 image)
+  - 400: 2FA already enabled
+  - 401: Not authenticated
+
+  ## Next Steps
+  1. Scan QR code with authenticator app (Google Authenticator, Authy, etc.)
+  2. Call Enable 2FA endpoint with generated code to activate
+}

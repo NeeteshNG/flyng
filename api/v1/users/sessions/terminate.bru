@@ -1,0 +1,37 @@
+meta {
+  name: Terminate Session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/sessions/terminate/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "session_id": "session-uuid-here"
+  }
+}
+
+docs {
+  # Terminate Session
+
+  Ends a specific session or all other sessions.
+
+  ## Request Body
+  - `session_id` (optional): UUID of session to terminate
+  - If not provided, terminates ALL other sessions (except current)
+
+  ## Response
+  - 200: Session(s) terminated
+  - 400: Cannot terminate current session with session_id
+  - 404: Session not found
+  - 401: Not authenticated
+}

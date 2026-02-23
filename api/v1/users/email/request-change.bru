@@ -1,0 +1,43 @@
+meta {
+  name: Request Email Change
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/users/email-change/request/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "new_email": "newemail@example.com",
+    "password": "SecurePass123!"
+  }
+}
+
+docs {
+  # Request Email Change
+
+  Initiates email change process by sending OTP to new email.
+
+  ## Request Body
+  - `new_email` (required): New email address
+  - `password` (required): Current account password
+
+  ## Response
+  - 200: OTP sent to new email
+  - 400: Email already in use or invalid password
+  - 401: Not authenticated
+
+  ## Next Step
+  Check new email for OTP and call Confirm Email Change endpoint.
+
+  ## Dev Note
+  In development, OTP is logged to Docker console logs.
+}

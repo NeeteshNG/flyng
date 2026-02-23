@@ -1,0 +1,40 @@
+meta {
+  name: Register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/users/register/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@example.com",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!",
+    "first_name": "Test",
+    "last_name": "User",
+    "phone": "+919876543210"
+  }
+}
+
+docs {
+  # Register New User
+
+  Creates a new user account.
+
+  ## Request Body
+  - `email` (required): User's email address
+  - `password` (required): Password (min 8 chars, mixed case, number, special char)
+  - `password_confirm` (required): Must match password
+  - `first_name` (required): User's first name
+  - `last_name` (required): User's last name
+  - `phone` (optional): Phone number with country code
+
+  ## Response
+  - 201: User created successfully with tokens
+  - 400: Validation error
+}

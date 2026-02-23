@@ -1,0 +1,37 @@
+meta {
+  name: 2FA Disable
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/users/2fa/disable/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "password": "SecurePass123!",
+    "totp_code": "123456"
+  }
+}
+
+docs {
+  # Disable Two-Factor Authentication
+
+  Removes 2FA from the account.
+
+  ## Request Body
+  - `password` (required): Current account password
+  - `totp_code` (required): 6-digit code from authenticator app
+
+  ## Response
+  - 200: 2FA disabled successfully
+  - 400: Invalid password or TOTP code
+  - 401: Not authenticated
+}

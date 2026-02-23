@@ -1,0 +1,41 @@
+meta {
+  name: Login with 2FA
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/users/login/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@example.com",
+    "password": "SecurePass123!",
+    "totp_code": "123456"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.access) {
+    bru.setEnvVar("accessToken", res.body.access);
+    bru.setEnvVar("refreshToken", res.body.refresh);
+  }
+}
+
+docs {
+  # Login with Two-Factor Authentication
+
+  Login when 2FA is enabled on account.
+
+  ## Request Body
+  - `email` (required): User's email
+  - `password` (required): User's password
+  - `totp_code` (required): 6-digit code from authenticator app
+
+  ## Response
+  - 200: Returns `access` and `refresh` tokens
+  - 400: Invalid 2FA code
+}

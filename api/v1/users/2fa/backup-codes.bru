@@ -1,0 +1,39 @@
+meta {
+  name: 2FA Backup Codes
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/users/2fa/backup-codes/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "password": "SecurePass123!"
+  }
+}
+
+docs {
+  # Regenerate Backup Codes
+
+  Generates new backup codes (invalidates old ones).
+
+  ## Request Body
+  - `password` (required): Current account password
+
+  ## Response
+  - 200: Returns new `backup_codes` array
+  - 400: Invalid password or 2FA not enabled
+  - 401: Not authenticated
+
+  ## Note
+  - Old backup codes will no longer work
+  - Save new codes securely
+}

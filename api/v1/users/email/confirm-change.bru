@@ -1,0 +1,41 @@
+meta {
+  name: Confirm Email Change
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/email-change/confirm/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "otp": "123456"
+  }
+}
+
+docs {
+  # Confirm Email Change
+
+  Completes email change by verifying OTP sent to new email.
+
+  ## Prerequisites
+  Must call Request Email Change first.
+
+  ## Request Body
+  - `otp` (required): 6-digit OTP sent to new email
+
+  ## Response
+  - 200: Email changed successfully
+  - 400: Invalid or expired OTP
+  - 401: Not authenticated
+
+  ## Note
+  After successful change, you may need to re-login.
+}

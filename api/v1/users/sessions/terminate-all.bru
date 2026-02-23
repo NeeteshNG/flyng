@@ -1,0 +1,35 @@
+meta {
+  name: Terminate All Sessions
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/users/sessions/terminate/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {}
+}
+
+docs {
+  # Terminate All Other Sessions
+
+  Ends all sessions except the current one.
+
+  ## Request Body
+  Empty object `{}`
+
+  ## Response
+  - 200: All other sessions terminated
+  - 401: Not authenticated
+
+  ## Use Case
+  Useful when you suspect unauthorized access to your account.
+}

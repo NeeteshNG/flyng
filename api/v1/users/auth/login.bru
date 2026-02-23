@@ -1,0 +1,46 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/login/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@example.com",
+    "password": "SecurePass123!"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.access) {
+    bru.setEnvVar("accessToken", res.body.access);
+    bru.setEnvVar("refreshToken", res.body.refresh);
+  }
+}
+
+docs {
+  # Login
+
+  Authenticates user and returns JWT tokens.
+
+  ## Request Body
+  - `email` (required): User's email
+  - `password` (required): User's password
+  - `totp_code` (optional): 6-digit 2FA code if enabled
+
+  ## Response
+  - 200: Returns `access` and `refresh` tokens
+  - 400: Invalid credentials
+  - 401: Account locked or 2FA required
+
+  ## 2FA Flow
+  If user has 2FA enabled and no `totp_code` provided:
+  - Returns 401 with `requires_2fa: true`
+  - Re-send request with `totp_code` field
+}

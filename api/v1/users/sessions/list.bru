@@ -1,0 +1,33 @@
+meta {
+  name: List Sessions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/sessions/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # List Active Sessions
+
+  Returns all active sessions for the authenticated user.
+
+  ## Response
+  - 200: Array of session objects with:
+    - `id`: Session UUID
+    - `ip_address`: Client IP
+    - `device_type`: desktop/mobile/tablet
+    - `browser`: Browser name
+    - `os`: Operating system
+    - `created_at`: When session was created
+    - `last_activity`: Last activity timestamp
+    - `is_current`: Boolean indicating current session
+  - 401: Not authenticated
+}

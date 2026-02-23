@@ -1,0 +1,38 @@
+meta {
+  name: Unlock User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/users/:uuid/unlock/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+params:path {
+  uuid: user-uuid-here
+}
+
+docs {
+  # Unlock User Account (Admin/Manager Only)
+
+  Unlocks a user account that was locked due to failed login attempts.
+
+  ## Path Parameters
+  - `uuid`: User's UUID
+
+  ## Response
+  - 200: Account unlocked
+  - 400: Account not locked
+  - 403: Not authorized
+  - 404: User not found
+  - 401: Not authenticated
+
+  ## Note
+  Accounts are automatically locked after 5 consecutive failed login attempts.
+}

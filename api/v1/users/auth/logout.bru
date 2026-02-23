@@ -1,0 +1,34 @@
+meta {
+  name: Logout
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/users/logout/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "refresh": "{{refreshToken}}"
+  }
+}
+
+docs {
+  # Logout
+
+  Blacklists the refresh token to invalidate the session.
+
+  ## Request Body
+  - `refresh` (required): The refresh token to blacklist
+
+  ## Response
+  - 200: Successfully logged out
+  - 400: Invalid token
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Token Refresh
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/users/token/refresh/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh": "{{refreshToken}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.access) {
+    bru.setEnvVar("accessToken", res.body.access);
+  }
+}
+
+docs {
+  # Refresh Access Token
+
+  Get a new access token using refresh token.
+
+  ## Request Body
+  - `refresh` (required): Valid refresh token
+
+  ## Response
+  - 200: Returns new `access` token
+  - 401: Invalid or expired refresh token
+}

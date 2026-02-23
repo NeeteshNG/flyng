@@ -1,0 +1,51 @@
+meta {
+  name: Login Attempts
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/users/login-attempts/?page=1&page_size=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+query {
+  page: 1
+  page_size: 20
+  ~email: test@example.com
+  ~successful: false
+  ~start_date: 2024-01-01
+  ~end_date: 2024-12-31
+}
+
+docs {
+  # Login Attempts Audit Log (Admin Only)
+
+  Returns paginated list of login attempts for security auditing.
+
+  ## Query Parameters
+  - `page` (optional): Page number
+  - `page_size` (optional): Items per page (max: 100)
+  - `email` (optional): Filter by user email
+  - `successful` (optional): Filter by success status (true/false)
+  - `start_date` (optional): Filter from date (YYYY-MM-DD)
+  - `end_date` (optional): Filter to date (YYYY-MM-DD)
+
+  ## Response
+  - 200: Paginated login attempt records
+  - 403: Not authorized (admin only)
+  - 401: Not authenticated
+
+  ## Record Fields
+  - `email`: Attempted email
+  - `ip_address`: Client IP
+  - `user_agent`: Browser/client info
+  - `successful`: Whether login succeeded
+  - `failure_reason`: Why login failed (if applicable)
+  - `created_at`: Timestamp
+}

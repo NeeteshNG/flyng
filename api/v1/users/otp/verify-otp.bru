@@ -1,0 +1,34 @@
+meta {
+  name: Verify OTP
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/verify-otp/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@example.com",
+    "otp": "123456",
+    "otp_type": "password_reset"
+  }
+}
+
+docs {
+  # Verify OTP
+
+  Verifies an OTP code sent to user's email.
+
+  ## Request Body
+  - `email` (required): User's email address
+  - `otp` (required): 6-digit OTP code
+  - `otp_type` (required): Type of OTP (must match sent type)
+
+  ## Response
+  - 200: OTP verified successfully (returns reset_token for password_reset)
+  - 400: Invalid or expired OTP
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Get Profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/profile/
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+docs {
+  # Get User Profile
+
+  Returns the authenticated user's profile information.
+
+  ## Response
+  - 200: User profile data
+  - 401: Not authenticated
+}

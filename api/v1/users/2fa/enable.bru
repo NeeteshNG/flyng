@@ -1,0 +1,41 @@
+meta {
+  name: 2FA Enable
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/users/2fa/enable/
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "totp_code": "123456"
+  }
+}
+
+docs {
+  # Enable Two-Factor Authentication
+
+  Activates 2FA by verifying a TOTP code.
+
+  ## Prerequisites
+  Must call Setup 2FA first to get the secret.
+
+  ## Request Body
+  - `totp_code` (required): 6-digit code from authenticator app
+
+  ## Response
+  - 200: 2FA enabled, returns backup codes
+  - 400: Invalid code or 2FA not set up
+  - 401: Not authenticated
+
+  ## Important
+  Save the backup codes! They can be used if you lose access to your authenticator app.
+}

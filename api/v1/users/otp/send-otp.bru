@@ -1,0 +1,39 @@
+meta {
+  name: Send OTP
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/users/send-otp/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "test@example.com",
+    "otp_type": "password_reset"
+  }
+}
+
+docs {
+  # Send OTP
+
+  Sends an OTP to the user's email for verification.
+
+  ## Request Body
+  - `email` (required): User's email address
+  - `otp_type` (required): Type of OTP
+    - `password_reset`: For resetting forgotten password
+    - `email_verification`: For verifying email address
+    - `email_change`: For changing email address
+
+  ## Response
+  - 200: OTP sent successfully
+  - 400: Invalid email or rate limited
+  - 404: User not found
+
+  ## Note
+  In development, OTP is logged to console. Check Docker logs.
+}
