@@ -29,8 +29,8 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY backend/pyproject.toml .
 
 # Install dependencies from pyproject.toml (single source of truth)
-# Generate a requirements.txt from pyproject.toml and install
-RUN python -c "import tomllib; f=open('pyproject.toml','rb'); d=tomllib.load(f); print('\n'.join(d['project']['dependencies']))" > /tmp/requirements.txt \
+# Generate requirements.txt from pyproject.toml and install both main and dev dependencies
+RUN python -c "import tomllib; f=open('pyproject.toml','rb'); d=tomllib.load(f); deps=d['project']['dependencies']; dev=d['project'].get('optional-dependencies',{}).get('dev',[]); print('\n'.join(deps+dev))" > /tmp/requirements.txt \
     && uv pip install --system -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 

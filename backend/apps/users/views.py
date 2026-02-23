@@ -13,7 +13,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,6 +21,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+
+from apps.core.choices import OTPType
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsAdmin, IsManager
 
@@ -29,6 +32,7 @@ from .models import (
     EmailChangeRequest,
     LoginAttempt,
     PasswordHistory,
+    UserSession,
 )
 from .serializers import (
     ChangePasswordSerializer,
@@ -98,7 +102,7 @@ class RegisterView(generics.CreateAPIView):
         try:
             otp = OTP.generate(
                 email=user.email,
-                otp_type=OTP.OTPType.EMAIL_VERIFICATION,
+                otp_type=OTPType.EMAIL_VERIFICATION,
                 validity_minutes=30,
             )
             send_mail(
@@ -123,8 +127,97 @@ class LoginView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
+            # Create session record for the logged-in user
+            try:
+                email = request.data.get("email", "").lower()
+                user = User.objects.get(email=email)
+                self._create_session(request, user)
+            except User.DoesNotExist:
+                pass
+
             response.data = {"success": True, "message": "Login successful", "data": response.data}
         return response
+
+    def _create_session(self, request, user):
+        """Create a session record for tracking."""
+        import secrets
+
+        # Get client info
+        ip_address = self._get_client_ip(request)
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+        # Parse user agent for device info
+        device_type, browser, os = self._parse_user_agent(user_agent)
+
+        # Generate unique session key
+        session_key = secrets.token_hex(32)
+
+        # Session expires based on JWT refresh token lifetime (7 days default)
+        expires_at = timezone.now() + timedelta(days=7)
+
+        UserSession.objects.create(
+            user=user,
+            session_key=session_key,
+            ip_address=ip_address,
+            user_agent=user_agent[:500] if user_agent else "",
+            device_type=device_type,
+            browser=browser,
+            os=os,
+            expires_at=expires_at,
+        )
+
+    def _get_client_ip(self, request):
+        """Get client IP address from request."""
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(",")[0].strip()
+        else:
+            ip = request.META.get("REMOTE_ADDR", "127.0.0.1")
+        return ip
+
+    def _parse_user_agent(self, user_agent):
+        """Parse user agent string for device info."""
+        user_agent_lower = user_agent.lower() if user_agent else ""
+
+        # Detect device type
+        if "mobile" in user_agent_lower or "android" in user_agent_lower:
+            device_type = "mobile"
+        elif "tablet" in user_agent_lower or "ipad" in user_agent_lower:
+            device_type = "tablet"
+        else:
+            device_type = "desktop"
+
+        # Detect browser
+        browser = "Unknown"
+        if "chrome" in user_agent_lower and "edg" not in user_agent_lower:
+            browser = "Chrome"
+        elif "firefox" in user_agent_lower:
+            browser = "Firefox"
+        elif "safari" in user_agent_lower and "chrome" not in user_agent_lower:
+            browser = "Safari"
+        elif "edg" in user_agent_lower:
+            browser = "Edge"
+
+        # Detect OS
+        os = "Unknown"
+        if "windows" in user_agent_lower:
+            os = "Windows"
+        elif "mac" in user_agent_lower:
+            os = "macOS"
+        elif "linux" in user_agent_lower:
+            os = "Linux"
+        elif "android" in user_agent_lower:
+            os = "Android"
+        elif "iphone" in user_agent_lower or "ipad" in user_agent_lower:
+            os = "iOS"
+
+        return device_type, browser, os
+
+
+class LogoutSerializer(serializers.Serializer):
+    """Serializer for logout request."""
+
+    refresh = serializers.CharField(required=False, help_text="Refresh token to blacklist")
 
 
 class LogoutView(APIView):
@@ -134,6 +227,10 @@ class LogoutView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=LogoutSerializer,
+        responses={200: OpenApiResponse(description="Logout successful")},
+    )
     def post(self, request):
         try:
             refresh_token = request.data.get("refresh")
@@ -191,6 +288,13 @@ class ChangePasswordView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=ChangePasswordSerializer,
+        responses={
+            200: OpenApiResponse(description="Password changed successfully"),
+            400: OpenApiResponse(description="Validation error or incorrect password"),
+        },
+    )
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={"user": request.user})
         serializer.is_valid(raise_exception=True)
@@ -225,6 +329,10 @@ class TwoFactorSetupView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={200: OpenApiResponse(description="QR code and secret key returned")},
+    )
     def post(self, request):
         user = request.user
 
@@ -257,6 +365,10 @@ class TwoFactorEnableView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=TwoFactorEnableSerializer,
+        responses={200: OpenApiResponse(description="2FA enabled with backup codes")},
+    )
     def post(self, request):
         serializer = TwoFactorEnableSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -292,6 +404,10 @@ class TwoFactorDisableView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=TwoFactorDisableSerializer,
+        responses={200: OpenApiResponse(description="2FA disabled")},
+    )
     def post(self, request):
         serializer = TwoFactorDisableSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -320,6 +436,10 @@ class TwoFactorBackupCodesView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={200: OpenApiResponse(description="New backup codes generated")},
+    )
     def post(self, request):
         user = request.user
 
@@ -402,6 +522,10 @@ class SessionTerminateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=TerminateSessionSerializer,
+        responses={200: OpenApiResponse(description="Session(s) terminated")},
+    )
     def post(self, request):
         serializer = TerminateSessionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -440,6 +564,10 @@ class EmailChangeRequestView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=EmailChangeRequestSerializer,
+        responses={200: OpenApiResponse(description="Verification code sent to new email")},
+    )
     def post(self, request):
         serializer = EmailChangeRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -458,7 +586,7 @@ class EmailChangeRequestView(APIView):
         # Generate OTP for new email
         otp = OTP.generate(
             email=new_email,
-            otp_type=OTP.OTPType.EMAIL_CHANGE,
+            otp_type=OTPType.EMAIL_CHANGE,
             validity_minutes=30,
             new_email=new_email,
         )
@@ -482,6 +610,10 @@ class EmailChangeConfirmView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=EmailChangeConfirmSerializer,
+        responses={200: OpenApiResponse(description="Email changed successfully")},
+    )
     def post(self, request):
         serializer = EmailChangeConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -505,7 +637,7 @@ class EmailChangeConfirmView(APIView):
         try:
             otp = OTP.objects.filter(
                 email=email_request.new_email,
-                otp_type=OTP.OTPType.EMAIL_CHANGE,
+                otp_type=OTPType.EMAIL_CHANGE,
                 is_used=False,
             ).latest("created_at")
         except OTP.DoesNotExist:
@@ -618,6 +750,10 @@ class UnlockUserView(APIView):
 
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    @extend_schema(
+        request=None,
+        responses={200: OpenApiResponse(description="User unlocked")},
+    )
     def post(self, request, uuid):
         try:
             user = User.objects.get(uuid=uuid)
@@ -635,6 +771,10 @@ class ForcePasswordChangeView(APIView):
 
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    @extend_schema(
+        request=None,
+        responses={200: OpenApiResponse(description="User forced to change password")},
+    )
     def post(self, request, uuid):
         try:
             user = User.objects.get(uuid=uuid)
@@ -660,12 +800,16 @@ class SendOTPView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=SendOTPSerializer,
+        responses={200: OpenApiResponse(description="OTP sent to email")},
+    )
     def post(self, request):
         serializer = SendOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data["email"]
-        otp_type = serializer.validated_data.get("otp_type", OTP.OTPType.EMAIL_VERIFICATION)
+        otp_type = serializer.validated_data.get("otp_type", OTPType.EMAIL_VERIFICATION)
 
         # Check if user exists
         if not User.objects.filter(email=email).exists():
@@ -690,7 +834,7 @@ class SendOTPView(APIView):
 
         # Send email
         subject = "Your FlyNG verification code"
-        if otp_type == OTP.OTPType.PASSWORD_RESET:
+        if otp_type == OTPType.PASSWORD_RESET:
             subject = "Reset your FlyNG password"
 
         send_mail(
@@ -711,13 +855,17 @@ class VerifyOTPView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=VerifyOTPSerializer,
+        responses={200: OpenApiResponse(description="OTP verified")},
+    )
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         email = serializer.validated_data["email"]
         otp_code = serializer.validated_data["otp"]
-        otp_type = serializer.validated_data.get("otp_type", OTP.OTPType.EMAIL_VERIFICATION)
+        otp_type = serializer.validated_data.get("otp_type", OTPType.EMAIL_VERIFICATION)
 
         try:
             otp = OTP.objects.filter(
@@ -740,7 +888,7 @@ class VerifyOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if otp_type == OTP.OTPType.EMAIL_VERIFICATION:
+        if otp_type == OTPType.EMAIL_VERIFICATION:
             try:
                 user = User.objects.get(email=email)
                 user.is_verified = True
@@ -758,6 +906,10 @@ class ResetPasswordView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=ResetPasswordSerializer,
+        responses={200: OpenApiResponse(description="Password reset successfully")},
+    )
     def post(self, request):
         serializer = ResetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -769,7 +921,7 @@ class ResetPasswordView(APIView):
         try:
             otp = OTP.objects.filter(
                 email=email,
-                otp_type=OTP.OTPType.PASSWORD_RESET,
+                otp_type=OTPType.PASSWORD_RESET,
                 is_used=False,
             ).latest("created_at")
         except OTP.DoesNotExist:
