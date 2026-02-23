@@ -128,12 +128,12 @@ services:
       dockerfile: docker/frontend/Dockerfile.dev
     container_name: flyng_frontend
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api/v1}
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "3000:3000"
     depends_on:
       - backend
     command: npm run dev -- --host 0.0.0.0

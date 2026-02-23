@@ -1,92 +1,74 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAppSelector } from './hooks/useRedux'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'sonner'
 
-// Layouts
-import DashboardLayout from './components/layouts/DashboardLayout'
-import AuthLayout from './components/layouts/AuthLayout'
+import { AuthProvider } from '@/components/providers/auth-provider'
+import { AuthGuard } from '@/components/layout/auth-guard'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
-// Pages
-import Login from './pages/auth/Login'
-import Register from './pages/auth/Register'
-import ForgotPassword from './pages/auth/ForgotPassword'
-import Dashboard from './pages/dashboard/Dashboard'
-import NotFound from './pages/NotFound'
+// Auth pages
+import LoginPage from '@/pages/auth/login'
+import RegisterPage from '@/pages/auth/register'
+import ForgotPasswordPage from '@/pages/auth/forgot-password'
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth)
+// Dashboard pages
+import DashboardHome from '@/pages/dashboard/home'
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  return <>{children}</>
-}
-
-// Public Route Component (redirect if already authenticated)
-const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth)
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  return <>{children}</>
-}
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+})
 
 function App() {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <AuthLayout>
-              <Login />
-            </AuthLayout>
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <AuthLayout>
-              <Register />
-            </AuthLayout>
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/forgot-password"
-        element={
-          <PublicRoute>
-            <AuthLayout>
-              <ForgotPassword />
-            </AuthLayout>
-          </PublicRoute>
-        }
-      />
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+          {/* Auth routes (public) */}
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/register" element={<RegisterPage />} />
+          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
 
-      {/* Protected Routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout>
-              <Dashboard />
-            </DashboardLayout>
-          </ProtectedRoute>
-        }
-      />
+          {/* Dashboard routes (protected) */}
+          <Route
+            path="/dashboard"
+            element={
+              <AuthGuard>
+                <DashboardLayout />
+              </AuthGuard>
+            }
+          >
+            <Route index element={<DashboardHome />} />
+            {/* Add more dashboard routes here */}
+            <Route path="*" element={<ComingSoon />} />
+          </Route>
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Redirect root to dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+          {/* 404 */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+      <Toaster position="top-right" richColors />
+    </QueryClientProvider>
+  )
+}
+
+// Placeholder for coming soon pages
+function ComingSoon() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px]">
+      <h2 className="text-2xl font-bold mb-2">Coming Soon</h2>
+      <p className="text-muted-foreground">This feature is under development.</p>
+    </div>
   )
 }
 
