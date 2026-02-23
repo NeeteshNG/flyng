@@ -38,11 +38,18 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
 
+interface NavChild {
+  name: string
+  path: string
+  roles?: string[] // If specified, only show to these roles
+}
+
 interface NavItem {
   name: string
   path?: string
   icon: React.ElementType
-  children?: { name: string; path: string }[]
+  children?: NavChild[]
+  roles?: string[] // If specified, only show to these roles
 }
 
 const navigation: NavItem[] = [
@@ -105,11 +112,18 @@ const navigation: NavItem[] = [
     name: 'Settings',
     icon: Settings,
     children: [
-      { name: 'Users', path: '/dashboard/users' },
+      { name: 'Users', path: '/dashboard/users', roles: ['ADMIN', 'MANAGER'] },
       { name: 'Settings', path: '/dashboard/settings' },
     ],
   },
 ]
+
+// Helper to check if user has required role
+const hasRole = (userRole: string | undefined, allowedRoles?: string[]): boolean => {
+  if (!allowedRoles || allowedRoles.length === 0) return true
+  if (!userRole) return false
+  return allowedRoles.includes(userRole)
+}
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -173,12 +187,23 @@ export function DashboardLayout() {
   const NavItems = ({ mobile = false }: { mobile?: boolean }) => (
     <nav className="flex-1 space-y-1 px-2 py-4">
       {navigation.map((item) => {
+        // Check if user has permission to see this nav item
+        if (!hasRole(user?.role, item.roles)) return null
+
         const isExpanded = expandedItems.includes(item.name)
         const isActive = item.path
           ? location.pathname === item.path
           : item.children?.some((child) => location.pathname === child.path)
 
         if (item.children) {
+          // Filter children based on role
+          const visibleChildren = item.children.filter((child) =>
+            hasRole(user?.role, child.roles)
+          )
+
+          // Don't render parent if no visible children
+          if (visibleChildren.length === 0) return null
+
           return (
             <div key={item.name}>
               <button
@@ -205,7 +230,7 @@ export function DashboardLayout() {
               </button>
               {isExpanded && (sidebarOpen || mobile) && (
                 <div className="ml-8 mt-1 space-y-1">
-                  {item.children.map((child) => (
+                  {visibleChildren.map((child) => (
                     <Link
                       key={child.path}
                       to={child.path}
