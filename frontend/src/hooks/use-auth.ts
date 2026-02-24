@@ -27,7 +27,7 @@ export function useAuth() {
 
       try {
         const response = await authApi.getProfile()
-        setUser(response.data)
+        setUser(response.data.data)
       } catch {
         clearAuth()
       } finally {

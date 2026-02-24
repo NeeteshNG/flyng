@@ -78,7 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(serializers.ModelSerializer):
     """
-    Lightweight serializer for user lists.
+    Serializer for user lists with all necessary fields for display.
     """
 
     full_name = serializers.CharField(read_only=True)
@@ -89,11 +89,18 @@ class UserListSerializer(serializers.ModelSerializer):
             "id",
             "uuid",
             "email",
+            "first_name",
+            "last_name",
             "full_name",
+            "phone",
             "role",
             "is_verified",
             "is_active",
             "two_factor_enabled",
+            "profile_picture",
+            "created_at",
+            "updated_at",
+            "last_login",
         ]
 
 

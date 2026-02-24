@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,7 +8,6 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Sheet,
   SheetContent,
@@ -32,6 +31,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { AvatarUpload } from '@/components/ui/avatar-upload'
 
 import usersApi, { User } from '@/api/endpoints/users'
 
@@ -59,6 +59,7 @@ export default function UserFormSheet({
 }: UserFormSheetProps) {
   const queryClient = useQueryClient()
   const isEditing = !!user
+  const [profilePicture, setProfilePicture] = useState<File | null>(null)
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
@@ -83,6 +84,7 @@ export default function UserFormSheet({
         phone: user.phone || '',
         role: user.role,
       })
+      setProfilePicture(null)
     } else {
       form.reset({
         email: '',
@@ -92,25 +94,36 @@ export default function UserFormSheet({
         phone: '',
         role: 'VIEWER',
       })
+      setProfilePicture(null)
     }
   }, [user, form])
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: UserFormValues) =>
-      usersApi.createUser({
+    mutationFn: async (data: UserFormValues) => {
+      // First create the user
+      const response = await usersApi.createUser({
         email: data.email,
         password: data.password!,
         first_name: data.first_name,
         last_name: data.last_name,
         phone: data.phone,
         role: data.role,
-      }),
+      })
+
+      // Then upload profile picture if provided
+      if (profilePicture && response.data.data?.uuid) {
+        await usersApi.updateProfilePicture(response.data.data.uuid, profilePicture)
+      }
+
+      return response
+    },
     onSuccess: () => {
       toast.success('User created successfully')
       queryClient.invalidateQueries({ queryKey: ['users'] })
       onOpenChange(false)
       form.reset()
+      setProfilePicture(null)
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } }
@@ -120,17 +133,25 @@ export default function UserFormSheet({
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (data: UserFormValues) =>
-      usersApi.updateUser(user!.uuid, {
+    mutationFn: async (data: UserFormValues) => {
+      // First update user data
+      await usersApi.updateUser(user!.uuid, {
         first_name: data.first_name,
         last_name: data.last_name,
         phone: data.phone,
         role: data.role,
-      }),
+      })
+
+      // Then upload profile picture if changed
+      if (profilePicture) {
+        await usersApi.updateProfilePicture(user!.uuid, profilePicture)
+      }
+    },
     onSuccess: () => {
       toast.success('User updated successfully')
       queryClient.invalidateQueries({ queryKey: ['users'] })
       onOpenChange(false)
+      setProfilePicture(null)
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { message?: string } } }
@@ -152,9 +173,21 @@ export default function UserFormSheet({
 
   const isPending = createMutation.isPending || updateMutation.isPending
 
+  const getInitials = () => {
+    const firstName = form.watch('first_name')
+    const lastName = form.watch('last_name')
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase()
+    }
+    if (firstName) {
+      return firstName[0].toUpperCase()
+    }
+    return 'U'
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md">
+      <SheetContent className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEditing ? 'Edit User' : 'Add New User'}</SheetTitle>
           <SheetDescription>
@@ -166,6 +199,16 @@ export default function UserFormSheet({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            {/* Profile Picture */}
+            <div className="flex justify-center pb-2">
+              <AvatarUpload
+                value={isEditing ? user?.profile_picture : null}
+                onChange={setProfilePicture}
+                fallback={getInitials()}
+                disabled={isPending}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="email"

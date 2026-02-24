@@ -96,6 +96,29 @@ const usersApi = {
       `/users/${uuid}/force-password-change/`
     )
   },
+
+  // Update profile picture
+  updateProfilePicture: (uuid: string, file: File) => {
+    const formData = new FormData()
+    formData.append('profile_picture', file)
+    return apiClient.patch<{ success: boolean; message: string; data: User }>(
+      `/users/${uuid}/`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+  },
+
+  // Remove profile picture
+  removeProfilePicture: (uuid: string) => {
+    return apiClient.patch<{ success: boolean; message: string; data: User }>(
+      `/users/${uuid}/`,
+      { profile_picture: null }
+    )
+  },
 }
 
 export default usersApi
