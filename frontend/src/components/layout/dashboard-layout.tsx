@@ -385,7 +385,7 @@ export function DashboardLayout() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 px-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="" alt={getUserDisplayName()} />
+                      <AvatarImage src={user?.profile_picture || ''} alt={getUserDisplayName()} />
                       <AvatarFallback className="bg-primary/10 text-primary font-medium">
                         {getUserInitials()}
                       </AvatarFallback>

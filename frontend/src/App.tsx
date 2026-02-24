@@ -14,6 +14,8 @@ import ForgotPasswordPage from '@/pages/auth/forgot-password'
 // Dashboard pages
 import DashboardHome from '@/pages/dashboard/home'
 import UsersPage from '@/pages/dashboard/users'
+import ProfilePage from '@/pages/dashboard/profile'
+import SettingsPage from '@/pages/dashboard/settings'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -47,6 +49,8 @@ function App() {
           >
             <Route index element={<DashboardHome />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>

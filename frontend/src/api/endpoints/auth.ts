@@ -45,6 +45,9 @@ export interface User {
   is_active: boolean
   is_verified: boolean
   two_factor_enabled: boolean
+  profile_picture: string | null
+  last_login: string | null
+  password_changed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -96,7 +99,21 @@ export const authApi = {
     apiClient.get<{ success: boolean; data: User }>('/users/profile/'),
 
   updateProfile: (data: ProfileUpdateRequest) =>
-    apiClient.patch<User>('/users/profile/', data),
+    apiClient.patch<{ success: boolean; data: User }>('/users/profile/', data),
+
+  updateProfilePicture: (file: File) => {
+    const formData = new FormData()
+    formData.append('profile_picture', file)
+    return apiClient.patch<{ success: boolean; data: User }>(
+      '/users/profile/',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+  },
 
   changePassword: (data: ChangePasswordRequest) =>
     apiClient.post('/users/change-password/', data),
