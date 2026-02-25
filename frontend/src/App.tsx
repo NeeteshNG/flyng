@@ -16,6 +16,7 @@ import DashboardHome from '@/pages/dashboard/home'
 import UsersPage from '@/pages/dashboard/users'
 import ProfilePage from '@/pages/dashboard/profile'
 import SettingsPage from '@/pages/dashboard/settings'
+import WarehousesPage from '@/pages/dashboard/warehouses'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -51,6 +52,7 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="warehouses" element={<WarehousesPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>
