@@ -23,6 +23,7 @@ urlpatterns = [
             [
                 path("users/", include("apps.users.urls")),
                 path("", include("apps.warehouses.urls")),
+                path("", include("apps.inventory.urls")),
             ]
         ),
     ),
