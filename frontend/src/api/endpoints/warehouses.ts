@@ -390,6 +390,64 @@ const warehousesApi = {
   getWorkAreaDetail: (uuid: string) => {
     return apiClient.get<DroneWorkArea>(`/work-areas/${uuid}/`)
   },
+
+  createWorkArea: (data: {
+    ground_control_station: number
+    name: string
+    code: string
+    description?: string
+    area_type?: string
+    min_x?: string
+    max_x?: string
+    min_y?: string
+    max_y?: string
+    min_z?: string
+    max_z?: string
+    tether_length_m?: string
+    tether_anchor_x?: string
+    tether_anchor_y?: string
+    tether_anchor_z?: string
+    max_flight_speed_mps?: string
+    max_drones?: number
+    is_active?: boolean
+  }) => {
+    return apiClient.post<{ success: boolean; message: string; data: DroneWorkArea }>(
+      '/work-areas/',
+      data
+    )
+  },
+
+  updateWorkArea: (uuid: string, data: Partial<{
+    ground_control_station: number
+    name: string
+    code: string
+    description: string
+    area_type: string
+    min_x: string
+    max_x: string
+    min_y: string
+    max_y: string
+    min_z: string
+    max_z: string
+    tether_length_m: string
+    tether_anchor_x: string
+    tether_anchor_y: string
+    tether_anchor_z: string
+    max_flight_speed_mps: string
+    max_drones: number
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<{ success: boolean; message: string; data: DroneWorkArea }>(
+      `/work-areas/${uuid}/`,
+      data
+    )
+  },
+
+  deleteWorkArea: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/work-areas/${uuid}/`
+    )
+  },
 }
 
 export default warehousesApi

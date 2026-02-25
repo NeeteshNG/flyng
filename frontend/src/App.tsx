@@ -19,6 +19,7 @@ import SettingsPage from '@/pages/dashboard/settings'
 import WarehousesPage from '@/pages/dashboard/warehouses'
 import ZonesPage from '@/pages/dashboard/zones'
 import GCSPage from '@/pages/dashboard/gcs'
+import WorkAreasPage from '@/pages/dashboard/work-areas'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -57,6 +58,7 @@ function App() {
             <Route path="warehouses" element={<WarehousesPage />} />
             <Route path="zones" element={<ZonesPage />} />
             <Route path="ground-stations" element={<GCSPage />} />
+            <Route path="work-areas" element={<WorkAreasPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>
