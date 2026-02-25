@@ -332,6 +332,48 @@ const warehousesApi = {
     return apiClient.get<GroundControlStation>(`/ground-control-stations/${uuid}/`)
   },
 
+  createGCS: (data: {
+    zone: number
+    name: string
+    code: string
+    description?: string
+    hardware_id: string
+    ip_address?: string
+    firmware_version?: string
+    max_drones?: number
+    status?: string
+    is_active?: boolean
+  }) => {
+    return apiClient.post<{ success: boolean; message: string; data: GroundControlStation }>(
+      '/ground-control-stations/',
+      data
+    )
+  },
+
+  updateGCS: (uuid: string, data: Partial<{
+    zone: number
+    name: string
+    code: string
+    description: string
+    hardware_id: string
+    ip_address: string
+    firmware_version: string
+    max_drones: number
+    status: string
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<{ success: boolean; message: string; data: GroundControlStation }>(
+      `/ground-control-stations/${uuid}/`,
+      data
+    )
+  },
+
+  deleteGCS: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/ground-control-stations/${uuid}/`
+    )
+  },
+
   // Work Areas
   getWorkAreas: (params?: {
     page?: number
