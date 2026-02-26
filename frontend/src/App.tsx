@@ -21,6 +21,7 @@ import ZonesPage from '@/pages/dashboard/zones'
 import GCSPage from '@/pages/dashboard/gcs'
 import WorkAreasPage from '@/pages/dashboard/work-areas'
 import LocationsPage from '@/pages/dashboard/locations'
+import BinsPage from '@/pages/dashboard/bins'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -61,6 +62,7 @@ function App() {
             <Route path="ground-stations" element={<GCSPage />} />
             <Route path="work-areas" element={<WorkAreasPage />} />
             <Route path="locations" element={<LocationsPage />} />
+            <Route path="bins" element={<BinsPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>
