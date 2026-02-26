@@ -22,6 +22,8 @@ import GCSPage from '@/pages/dashboard/gcs'
 import WorkAreasPage from '@/pages/dashboard/work-areas'
 import LocationsPage from '@/pages/dashboard/locations'
 import BinsPage from '@/pages/dashboard/bins'
+import LabelTypesPage from '@/pages/dashboard/label-types'
+import BinTemplatesPage from '@/pages/dashboard/bin-templates'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -63,6 +65,8 @@ function App() {
             <Route path="work-areas" element={<WorkAreasPage />} />
             <Route path="locations" element={<LocationsPage />} />
             <Route path="bins" element={<BinsPage />} />
+            <Route path="label-types" element={<LabelTypesPage />} />
+            <Route path="bin-templates" element={<BinTemplatesPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>

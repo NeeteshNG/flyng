@@ -65,15 +65,49 @@ export interface StorageBinListResponse {
   results: StorageBin[]
 }
 
+export interface BinLabelType {
+  id: number
+  uuid: string
+  organization: number
+  name: string
+  label_type: number
+  label_type_display: string
+  dictionary_size: string
+  marker_size_mm: number
+  config: Record<string, unknown>
+  is_active: boolean
+  template_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BinLabelTypeListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: BinLabelType[]
+}
+
 export interface BinTemplate {
   id: number
   uuid: string
+  organization: number
+  label_type: number
+  label_type_name: string
+  label_type_display?: string
+  coordinate_type_display?: string
   name: string
   description: string
   width: string
   height: string
   depth: string
   max_weight_kg: string
+  coordinate_type: number
+  config?: Record<string, unknown>
+  is_active: boolean
+  bin_count: number
+  created_at: string
+  updated_at: string
 }
 
 export interface BinTemplateListResponse {
@@ -217,9 +251,111 @@ const inventoryApi = {
     page?: number
     page_size?: number
     search?: string
+    label_type?: number
+    is_active?: boolean
     ordering?: string
   }) => {
     return apiClient.get<BinTemplateListResponse>('/bin-templates/', { params })
+  },
+
+  getBinTemplate: (uuid: string) => {
+    return apiClient.get<BinTemplate>(`/bin-templates/${uuid}/`)
+  },
+
+  createBinTemplate: (data: {
+    organization: number
+    label_type: number
+    name: string
+    description?: string
+    width: string
+    height: string
+    depth: string
+    max_weight_kg: string
+    coordinate_type?: number
+    config?: Record<string, unknown>
+    is_active?: boolean
+  }) => {
+    return apiClient.post<{ success: boolean; message: string; data: BinTemplate }>(
+      '/bin-templates/',
+      data
+    )
+  },
+
+  updateBinTemplate: (uuid: string, data: Partial<{
+    organization: number
+    label_type: number
+    name: string
+    description: string
+    width: string
+    height: string
+    depth: string
+    max_weight_kg: string
+    coordinate_type: number
+    config: Record<string, unknown>
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<{ success: boolean; message: string; data: BinTemplate }>(
+      `/bin-templates/${uuid}/`,
+      data
+    )
+  },
+
+  deleteBinTemplate: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/bin-templates/${uuid}/`
+    )
+  },
+
+  // Label Types
+  getLabelTypes: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    label_type?: number
+    is_active?: boolean
+    ordering?: string
+  }) => {
+    return apiClient.get<BinLabelTypeListResponse>('/label-types/', { params })
+  },
+
+  getLabelType: (uuid: string) => {
+    return apiClient.get<BinLabelType>(`/label-types/${uuid}/`)
+  },
+
+  createLabelType: (data: {
+    organization: number
+    name: string
+    label_type: number
+    dictionary_size?: string
+    marker_size_mm?: number
+    config?: Record<string, unknown>
+    is_active?: boolean
+  }) => {
+    return apiClient.post<{ success: boolean; message: string; data: BinLabelType }>(
+      '/label-types/',
+      data
+    )
+  },
+
+  updateLabelType: (uuid: string, data: Partial<{
+    organization: number
+    name: string
+    label_type: number
+    dictionary_size: string
+    marker_size_mm: number
+    config: Record<string, unknown>
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<{ success: boolean; message: string; data: BinLabelType }>(
+      `/label-types/${uuid}/`,
+      data
+    )
+  },
+
+  deleteLabelType: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/label-types/${uuid}/`
+    )
   },
 }
 
