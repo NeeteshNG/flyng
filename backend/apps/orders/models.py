@@ -314,8 +314,11 @@ class PickOrder(AuditedModel):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        # Run full validation on save
-        self.full_clean()
+        # Skip history to avoid conflict with django-modeltranslation
+        self.skip_history_when_saving = True
+        # Run full validation on save (skip if using update_fields for state transitions)
+        if not kwargs.get("update_fields"):
+            self.full_clean()
         super().save(*args, **kwargs)
 
     @property

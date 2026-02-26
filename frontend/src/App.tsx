@@ -27,6 +27,8 @@ import BinTemplatesPage from '@/pages/dashboard/bin-templates'
 import CategoriesPage from '@/pages/dashboard/categories'
 import ItemsPage from '@/pages/dashboard/items'
 import InventoryPage from '@/pages/dashboard/inventory'
+import OrdersPage from '@/pages/dashboard/orders'
+import CreateOrderPage from '@/pages/dashboard/orders/create'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -73,6 +75,8 @@ function App() {
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="inventory" element={<InventoryPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="orders/create" element={<CreateOrderPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>
