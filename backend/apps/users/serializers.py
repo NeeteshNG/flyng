@@ -9,12 +9,14 @@ Production-level serializers with:
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
 from rest_framework import serializers
 
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from apps.core.choices import OTPType
+from apps.core.utils import get_client_ip
 
 from .models import (
     LoginAttempt,
@@ -358,17 +360,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                             }
                         )
 
-        # Successful login
-        LoginAttempt.record(
-            email=email,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            success=True,
-            two_factor_used=user.requires_2fa(),
-        )
+        # Successful login - use transaction for atomicity
+        with transaction.atomic():
+            LoginAttempt.record(
+                email=email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=True,
+                two_factor_used=user.requires_2fa(),
+            )
 
-        # Reset failed attempts and record IP
-        user.record_successful_login(ip_address)
+            # Reset failed attempts and record IP
+            user.record_successful_login(ip_address)
 
         # Add user data to response
         data["user"] = {
@@ -391,14 +394,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
     def _get_client_ip(self, request):
-        """Extract client IP from request."""
-        if not request:
-            return "0.0.0.0"
-
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "0.0.0.0")
+        """Extract client IP from request using shared utility."""
+        return get_client_ip(request)
 
     @classmethod
     def get_token(cls, user):

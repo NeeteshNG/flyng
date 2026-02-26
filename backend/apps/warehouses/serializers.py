@@ -83,11 +83,16 @@ class WarehouseContactCreateSerializer(serializers.ModelSerializer):
 
 
 class WarehouseListSerializer(serializers.ModelSerializer):
-    """Serializer for listing warehouses."""
+    """Serializer for listing warehouses.
+
+    Note: zone_count and contact_count are annotated in the ViewSet's get_queryset()
+    to avoid N+1 queries. They will be populated from the queryset annotation.
+    """
 
     organization_name = serializers.CharField(source="organization.name", read_only=True)
-    zone_count = serializers.SerializerMethodField()
-    contact_count = serializers.SerializerMethodField()
+    # These fields are populated by annotations in the queryset
+    zone_count = serializers.IntegerField(read_only=True)
+    contact_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Warehouse
@@ -110,12 +115,6 @@ class WarehouseListSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "uuid", "created_at", "updated_at"]
-
-    def get_zone_count(self, obj):
-        return obj.zones.filter(is_active=True).count()
-
-    def get_contact_count(self, obj):
-        return obj.contacts.filter(is_active=True).count()
 
 
 class WarehouseDetailSerializer(serializers.ModelSerializer):
@@ -164,6 +163,9 @@ class WarehouseDetailSerializer(serializers.ModelSerializer):
         return obj.coordinates
 
     def get_zone_count(self, obj):
+        # Use annotation if available, otherwise fallback to query
+        if hasattr(obj, "zone_count"):
+            return obj.zone_count
         return obj.zones.filter(is_active=True).count()
 
 
@@ -231,10 +233,14 @@ class WarehouseCreateUpdateSerializer(serializers.ModelSerializer):
 
 # Zone Serializers
 class WarehouseZoneListSerializer(serializers.ModelSerializer):
-    """Serializer for listing warehouse zones."""
+    """Serializer for listing warehouse zones.
+
+    Note: gcs_count is annotated in the ViewSet's get_queryset() to avoid N+1 queries.
+    """
 
     warehouse_name = serializers.CharField(source="warehouse.name", read_only=True)
-    gcs_count = serializers.SerializerMethodField()
+    # This field is populated by annotation in the queryset
+    gcs_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = WarehouseZone
@@ -257,9 +263,6 @@ class WarehouseZoneListSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "uuid", "created_at", "updated_at"]
-
-    def get_gcs_count(self, obj):
-        return obj.ground_control_stations.filter(is_active=True).count()
 
 
 class WarehouseZoneDetailSerializer(serializers.ModelSerializer):
@@ -327,11 +330,15 @@ class WarehouseZoneCreateUpdateSerializer(serializers.ModelSerializer):
 
 # Ground Control Station Serializers
 class GroundControlStationListSerializer(serializers.ModelSerializer):
-    """Serializer for listing GCS."""
+    """Serializer for listing GCS.
+
+    Note: work_area_count is annotated in the ViewSet's get_queryset() to avoid N+1 queries.
+    """
 
     zone_name = serializers.CharField(source="zone.name", read_only=True)
     warehouse_name = serializers.CharField(source="zone.warehouse.name", read_only=True)
-    work_area_count = serializers.SerializerMethodField()
+    # This field is populated by annotation in the queryset
+    work_area_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = GroundControlStation
@@ -354,9 +361,6 @@ class GroundControlStationListSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "uuid", "created_at", "updated_at"]
-
-    def get_work_area_count(self, obj):
-        return obj.work_areas.filter(is_active=True).count()
 
 
 class GroundControlStationDetailSerializer(serializers.ModelSerializer):

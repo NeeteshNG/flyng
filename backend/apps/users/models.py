@@ -30,6 +30,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import OTPType, UserRole
 from apps.core.models import TimeStampedModel
+from apps.core.utils import get_client_ip, parse_user_agent
 
 
 class UserManager(BaseUserManager):
@@ -616,69 +617,23 @@ class UserSession(TimeStampedModel):
 
     @classmethod
     def create_session(cls, user, request, session_key, expires_hours=24):
-        """Create a new session with device info."""
+        """Create a new session with device info using shared utilities."""
         user_agent = request.META.get("HTTP_USER_AGENT", "")
-        ip_address = cls._get_client_ip(request)
+        ip_address = get_client_ip(request)
 
-        # Parse user agent for device info
-        device_info = cls._parse_user_agent(user_agent)
+        # Parse user agent for device info using shared utility
+        ua_info = parse_user_agent(user_agent)
 
         return cls.objects.create(
             user=user,
             session_key=session_key,
             ip_address=ip_address,
             user_agent=user_agent[:500],
-            device_type=device_info.get("device", ""),
-            browser=device_info.get("browser", ""),
-            os=device_info.get("os", ""),
+            device_type=ua_info.device,
+            browser=ua_info.browser,
+            os=ua_info.os,
             expires_at=timezone.now() + timedelta(hours=expires_hours),
         )
-
-    @classmethod
-    def _get_client_ip(cls, request):
-        """Extract client IP from request."""
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "0.0.0.0")
-
-    @classmethod
-    def _parse_user_agent(cls, user_agent):
-        """Basic user agent parsing (can be enhanced with user-agents library)."""
-        user_agent_lower = user_agent.lower()
-
-        # Detect device type
-        device = "desktop"
-        if "mobile" in user_agent_lower or "android" in user_agent_lower:
-            device = "mobile"
-        elif "tablet" in user_agent_lower or "ipad" in user_agent_lower:
-            device = "tablet"
-
-        # Detect browser
-        browser = "Unknown"
-        if "chrome" in user_agent_lower and "edg" not in user_agent_lower:
-            browser = "Chrome"
-        elif "firefox" in user_agent_lower:
-            browser = "Firefox"
-        elif "safari" in user_agent_lower and "chrome" not in user_agent_lower:
-            browser = "Safari"
-        elif "edg" in user_agent_lower:
-            browser = "Edge"
-
-        # Detect OS
-        os = "Unknown"
-        if "windows" in user_agent_lower:
-            os = "Windows"
-        elif "mac os" in user_agent_lower or "macos" in user_agent_lower:
-            os = "macOS"
-        elif "linux" in user_agent_lower:
-            os = "Linux"
-        elif "android" in user_agent_lower:
-            os = "Android"
-        elif "iphone" in user_agent_lower or "ipad" in user_agent_lower:
-            os = "iOS"
-
-        return {"device": device, "browser": browser, "os": os}
 
     @classmethod
     def cleanup_expired(cls):

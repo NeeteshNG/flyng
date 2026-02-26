@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   Plus,
   Search,
@@ -13,6 +14,7 @@ import {
   MapPin,
   Wrench,
   AlertTriangle,
+  X,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -41,10 +43,24 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 import warehousesApi, { GroundControlStation } from '@/api/endpoints/warehouses'
+import { getErrorMessage } from '@/lib/api-error'
+import { useFormat } from '@/hooks'
 import GCSFormSheet from './gcs-form-sheet'
 import GCSDetailSheet from './gcs-detail-sheet'
+
+const PAGE_SIZE = 20
 
 const GCS_STATUSES = [
   { value: 'ONLINE', label: 'Online', color: 'bg-green-500', icon: Wifi },
@@ -54,26 +70,77 @@ const GCS_STATUSES = [
 ]
 
 export default function GCSPage() {
+  const queryClient = useQueryClient()
+  const { formatDateTime } = useFormat()
+
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedGCS, setSelectedGCS] = useState<GroundControlStation | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [gcsToDelete, setGcsToDelete] = useState<GroundControlStation | null>(null)
 
+  // Main GCS query with pagination
   const { data, isLoading, error } = useQuery({
-    queryKey: ['gcs', search, statusFilter, activeFilter],
+    queryKey: ['gcs', search, statusFilter, activeFilter, page],
     queryFn: () =>
       warehousesApi.getGCS({
         search: search || undefined,
         status: statusFilter === 'all' ? undefined : statusFilter,
         is_active: activeFilter === 'all' ? undefined : activeFilter === 'active',
         ordering: 'zone__warehouse__name,zone__name,name',
+        page,
+        page_size: PAGE_SIZE,
+      }),
+  })
+
+  // Separate stats query
+  const { data: statsData } = useQuery({
+    queryKey: ['gcs-stats'],
+    queryFn: () =>
+      warehousesApi.getGCS({
+        page_size: 1000,
       }),
   })
 
   const gcsList = data?.data?.results || []
   const totalCount = data?.data?.count || 0
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  // Stats from separate query
+  const allGCS = statsData?.data?.results || []
+  const onlineCount = allGCS.filter((g) => g.status === 'ONLINE').length
+  const offlineCount = allGCS.filter((g) => g.status === 'OFFLINE').length
+  const issueCount = allGCS.filter((g) => g.status === 'ERROR' || g.status === 'MAINTENANCE').length
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (uuid: string) =>
+      warehousesApi.deleteGCS ? warehousesApi.deleteGCS(uuid) : Promise.reject('API not available'),
+    onSuccess: () => {
+      toast.success('GCS deleted successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['gcs'] })
+      queryClient.refetchQueries({ queryKey: ['gcs-stats'] })
+      queryClient.refetchQueries({ queryKey: ['zones'] })
+      setDeleteDialogOpen(false)
+      setGcsToDelete(null)
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete GCS'), { duration: 5000 })
+    },
+  })
+
+  const hasFilters = search || statusFilter !== 'all' || activeFilter !== 'all'
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('all')
+    setActiveFilter('all')
+    setPage(1)
+  }
 
   const handleAdd = () => {
     setSelectedGCS(null)
@@ -90,15 +157,15 @@ export default function GCSPage() {
     setDetailOpen(true)
   }
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Never'
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  const handleDelete = (gcs: GroundControlStation) => {
+    setGcsToDelete(gcs)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (gcsToDelete) {
+      deleteMutation.mutate(gcsToDelete.uuid)
+    }
   }
 
   const getStatusInfo = (status: string) => {
@@ -129,7 +196,7 @@ export default function GCSPage() {
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCount}</div>
+            <div className="text-2xl font-bold">{allGCS.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -138,9 +205,7 @@ export default function GCSPage() {
             <Wifi className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {gcsList.filter((g) => g.status === 'ONLINE').length}
-            </div>
+            <div className="text-2xl font-bold">{onlineCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -149,9 +214,7 @@ export default function GCSPage() {
             <WifiOff className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {gcsList.filter((g) => g.status === 'OFFLINE').length}
-            </div>
+            <div className="text-2xl font-bold">{offlineCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -160,9 +223,7 @@ export default function GCSPage() {
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {gcsList.filter((g) => g.status === 'ERROR' || g.status === 'MAINTENANCE').length}
-            </div>
+            <div className="text-2xl font-bold">{issueCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -182,11 +243,20 @@ export default function GCSPage() {
               <Input
                 placeholder="Search GCS..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value)
+                setPage(1)
+              }}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -199,7 +269,13 @@ export default function GCSPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={activeFilter} onValueChange={setActiveFilter}>
+            <Select
+              value={activeFilter}
+              onValueChange={(value) => {
+                setActiveFilter(value)
+                setPage(1)
+              }}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Active" />
               </SelectTrigger>
@@ -209,6 +285,12 @@ export default function GCSPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
           </div>
 
           {/* Table */}
@@ -224,103 +306,138 @@ export default function GCSPage() {
             </div>
           ) : gcsList.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No ground control stations found. Add your first GCS to get started.
+              {hasFilters
+                ? 'No ground control stations match your filters. Try adjusting your search criteria.'
+                : 'No ground control stations found. Add your first GCS to get started.'}
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>GCS</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Max Drones</TableHead>
-                    <TableHead>Work Areas</TableHead>
-                    <TableHead>Last Heartbeat</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gcsList.map((gcs) => {
-                    const statusInfo = getStatusInfo(gcs.status)
-                    const StatusIcon = statusInfo.icon
-                    return (
-                      <TableRow key={gcs.uuid}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{gcs.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {gcs.code}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GCS</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Max Drones</TableHead>
+                      <TableHead>Work Areas</TableHead>
+                      <TableHead>Last Heartbeat</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gcsList.map((gcs) => {
+                      const statusInfo = getStatusInfo(gcs.status)
+                      const StatusIcon = statusInfo.icon
+                      return (
+                        <TableRow key={gcs.uuid}>
+                          <TableCell>
                             <div>
-                              <div className="text-sm">{gcs.zone_name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {gcs.warehouse_name}
+                              <div className="font-medium">{gcs.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {gcs.code}
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
-                              className="gap-1"
-                            >
-                              <StatusIcon className="h-3 w-3" />
-                              {statusInfo.label}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <div className="text-sm">{gcs.zone_name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {gcs.warehouse_name}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className="gap-1"
+                              >
+                                <StatusIcon className="h-3 w-3" />
+                                {statusInfo.label}
+                              </Badge>
+                              {!gcs.is_active && (
+                                <Badge variant="secondary">Disabled</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {gcs.max_drones} drones
                             </Badge>
-                            {!gcs.is_active && (
-                              <Badge variant="secondary">Disabled</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {gcs.max_drones} drones
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {gcs.work_area_count || 0} areas
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(gcs.last_heartbeat)}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleView(gcs)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(gcs)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {gcs.work_area_count || 0} areas
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {gcs.last_heartbeat ? formatDateTime(gcs.last_heartbeat) : 'Never'}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(gcs)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(gcs)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDelete(gcs)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {(page - 1) * PAGE_SIZE + 1} to{' '}
+                    {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} GCS
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -338,6 +455,28 @@ export default function GCSPage() {
         onOpenChange={setDetailOpen}
         gcs={selectedGCS}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Ground Control Station</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{gcsToDelete?.name}"? This action cannot be
+              undone and will deactivate all associated work areas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

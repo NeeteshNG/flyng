@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { getErrorMessage } from '@/lib/api-error'
 import {
   Sheet,
   SheetContent,
@@ -113,6 +114,8 @@ export default function WorkAreaFormSheet({
   const areaType = form.watch('area_type')
 
   useEffect(() => {
+    if (!open) return
+
     if (workArea) {
       form.reset({
         ground_control_station: workArea.ground_control_station,
@@ -156,22 +159,22 @@ export default function WorkAreaFormSheet({
         is_active: true,
       })
     }
-  }, [workArea, form, gcsList])
+  }, [open, workArea, form, gcsList])
 
   const createMutation = useMutation({
     mutationFn: (data: WorkAreaFormValues) => {
       return warehousesApi.createWorkArea ? warehousesApi.createWorkArea(data) : Promise.reject('API not available')
     },
     onSuccess: () => {
-      toast.success('Work area created successfully')
-      queryClient.invalidateQueries({ queryKey: ['work-areas'] })
-      queryClient.invalidateQueries({ queryKey: ['gcs'] })
+      toast.success('Work area created successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['work-areas'] })
+      queryClient.refetchQueries({ queryKey: ['work-areas-stats'] })
+      queryClient.refetchQueries({ queryKey: ['gcs'] })
       onOpenChange(false)
       form.reset()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to create work area')
+      toast.error(getErrorMessage(error, 'Failed to create work area'), { duration: 5000 })
     },
   })
 
@@ -180,14 +183,14 @@ export default function WorkAreaFormSheet({
       return warehousesApi.updateWorkArea ? warehousesApi.updateWorkArea(workArea!.uuid, data) : Promise.reject('API not available')
     },
     onSuccess: () => {
-      toast.success('Work area updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['work-areas'] })
-      queryClient.invalidateQueries({ queryKey: ['gcs'] })
+      toast.success('Work area updated successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['work-areas'] })
+      queryClient.refetchQueries({ queryKey: ['work-areas-stats'] })
+      queryClient.refetchQueries({ queryKey: ['gcs'] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to update work area')
+      toast.error(getErrorMessage(error, 'Failed to update work area'), { duration: 5000 })
     },
   })
 

@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { getErrorMessage } from '@/lib/api-error'
 import {
   Sheet,
   SheetContent,
@@ -101,6 +102,8 @@ export default function ZoneFormSheet({
   })
 
   useEffect(() => {
+    if (!open) return
+
     if (zone) {
       form.reset({
         warehouse: zone.warehouse,
@@ -130,7 +133,7 @@ export default function ZoneFormSheet({
         is_no_fly_zone: false,
       })
     }
-  }, [zone, form, warehouses])
+  }, [open, zone, form, warehouses])
 
   const createMutation = useMutation({
     mutationFn: (data: ZoneFormValues) =>
@@ -139,15 +142,15 @@ export default function ZoneFormSheet({
         area_sqft: data.area_sqft || null,
       }),
     onSuccess: () => {
-      toast.success('Zone created successfully')
-      queryClient.invalidateQueries({ queryKey: ['zones'] })
-      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      toast.success('Zone created successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['zones'] })
+      queryClient.refetchQueries({ queryKey: ['zones-stats'] })
+      queryClient.refetchQueries({ queryKey: ['warehouses'] })
       onOpenChange(false)
       form.reset()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to create zone')
+      toast.error(getErrorMessage(error, 'Failed to create zone'), { duration: 5000 })
     },
   })
 
@@ -158,14 +161,14 @@ export default function ZoneFormSheet({
         area_sqft: data.area_sqft || null,
       }),
     onSuccess: () => {
-      toast.success('Zone updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['zones'] })
-      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      toast.success('Zone updated successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['zones'] })
+      queryClient.refetchQueries({ queryKey: ['zones-stats'] })
+      queryClient.refetchQueries({ queryKey: ['warehouses'] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to update zone')
+      toast.error(getErrorMessage(error, 'Failed to update zone'), { duration: 5000 })
     },
   })
 

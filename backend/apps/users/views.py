@@ -12,6 +12,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -26,6 +27,7 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
 from apps.core.choices import OTPType
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsAdmin, IsManager
+from apps.core.utils import get_client_ip, parse_user_agent
 
 from .models import (
     OTP,
@@ -142,12 +144,12 @@ class LoginView(TokenObtainPairView):
         """Create a session record for tracking."""
         import secrets
 
-        # Get client info
-        ip_address = self._get_client_ip(request)
+        # Get client info using shared utilities
+        ip_address = get_client_ip(request)
         user_agent = request.META.get("HTTP_USER_AGENT", "")
 
-        # Parse user agent for device info
-        device_type, browser, os = self._parse_user_agent(user_agent)
+        # Parse user agent for device info using shared utility
+        ua_info = parse_user_agent(user_agent)
 
         # Generate unique session key
         session_key = secrets.token_hex(32)
@@ -160,58 +162,11 @@ class LoginView(TokenObtainPairView):
             session_key=session_key,
             ip_address=ip_address,
             user_agent=user_agent[:500] if user_agent else "",
-            device_type=device_type,
-            browser=browser,
-            os=os,
+            device_type=ua_info.device,
+            browser=ua_info.browser,
+            os=ua_info.os,
             expires_at=expires_at,
         )
-
-    def _get_client_ip(self, request):
-        """Get client IP address from request."""
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(",")[0].strip()
-        else:
-            ip = request.META.get("REMOTE_ADDR", "127.0.0.1")
-        return ip
-
-    def _parse_user_agent(self, user_agent):
-        """Parse user agent string for device info."""
-        user_agent_lower = user_agent.lower() if user_agent else ""
-
-        # Detect device type
-        if "mobile" in user_agent_lower or "android" in user_agent_lower:
-            device_type = "mobile"
-        elif "tablet" in user_agent_lower or "ipad" in user_agent_lower:
-            device_type = "tablet"
-        else:
-            device_type = "desktop"
-
-        # Detect browser
-        browser = "Unknown"
-        if "chrome" in user_agent_lower and "edg" not in user_agent_lower:
-            browser = "Chrome"
-        elif "firefox" in user_agent_lower:
-            browser = "Firefox"
-        elif "safari" in user_agent_lower and "chrome" not in user_agent_lower:
-            browser = "Safari"
-        elif "edg" in user_agent_lower:
-            browser = "Edge"
-
-        # Detect OS
-        os = "Unknown"
-        if "windows" in user_agent_lower:
-            os = "Windows"
-        elif "mac" in user_agent_lower:
-            os = "macOS"
-        elif "linux" in user_agent_lower:
-            os = "Linux"
-        elif "android" in user_agent_lower:
-            os = "Android"
-        elif "iphone" in user_agent_lower or "ipad" in user_agent_lower:
-            os = "iOS"
-
-        return device_type, browser, os
 
 
 class LogoutSerializer(serializers.Serializer):

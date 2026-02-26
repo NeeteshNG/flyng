@@ -2,6 +2,7 @@
 Warehouse API Views
 """
 
+from django.db.models import Count, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -54,8 +55,14 @@ class WarehouseViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def get_queryset(self):
-        return Warehouse.objects.select_related("organization", "profile").prefetch_related(
-            "contacts", "zones"
+        """Return warehouses with annotated counts to avoid N+1 queries."""
+        return (
+            Warehouse.objects.select_related("organization", "profile")
+            .prefetch_related("contacts", "zones")
+            .annotate(
+                zone_count=Count("zones", filter=Q(zones__is_active=True)),
+                contact_count=Count("contacts", filter=Q(contacts__is_active=True)),
+            )
         )
 
     def get_serializer_class(self):
@@ -154,8 +161,16 @@ class WarehouseZoneViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def get_queryset(self):
-        return WarehouseZone.objects.select_related("warehouse").prefetch_related(
-            "ground_control_stations"
+        """Return zones with annotated GCS count to avoid N+1 queries."""
+        return (
+            WarehouseZone.objects.select_related("warehouse")
+            .prefetch_related("ground_control_stations")
+            .annotate(
+                gcs_count=Count(
+                    "ground_control_stations",
+                    filter=Q(ground_control_stations__is_active=True),
+                )
+            )
         )
 
     def get_serializer_class(self):
@@ -204,8 +219,13 @@ class GroundControlStationViewSet(viewsets.ModelViewSet):
     lookup_field = "uuid"
 
     def get_queryset(self):
-        return GroundControlStation.objects.select_related("zone", "zone__warehouse").prefetch_related(
-            "work_areas"
+        """Return GCS with annotated work area count to avoid N+1 queries."""
+        return (
+            GroundControlStation.objects.select_related("zone", "zone__warehouse")
+            .prefetch_related("work_areas")
+            .annotate(
+                work_area_count=Count("work_areas", filter=Q(work_areas__is_active=True))
+            )
         )
 
     def get_serializer_class(self):

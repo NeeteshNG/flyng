@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { getErrorMessage } from '@/lib/api-error'
 import {
   Sheet,
   SheetContent,
@@ -97,6 +98,8 @@ export default function GCSFormSheet({
   })
 
   useEffect(() => {
+    if (!open) return
+
     if (gcs) {
       form.reset({
         zone: gcs.zone,
@@ -124,22 +127,22 @@ export default function GCSFormSheet({
         is_active: true,
       })
     }
-  }, [gcs, form, zones])
+  }, [open, gcs, form, zones])
 
   const createMutation = useMutation({
     mutationFn: (data: GCSFormValues) => {
       return warehousesApi.createGCS ? warehousesApi.createGCS(data) : Promise.reject('API not available')
     },
     onSuccess: () => {
-      toast.success('GCS created successfully')
-      queryClient.invalidateQueries({ queryKey: ['gcs'] })
-      queryClient.invalidateQueries({ queryKey: ['zones'] })
+      toast.success('GCS created successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['gcs'] })
+      queryClient.refetchQueries({ queryKey: ['gcs-stats'] })
+      queryClient.refetchQueries({ queryKey: ['zones'] })
       onOpenChange(false)
       form.reset()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to create GCS')
+      toast.error(getErrorMessage(error, 'Failed to create GCS'), { duration: 5000 })
     },
   })
 
@@ -148,14 +151,14 @@ export default function GCSFormSheet({
       return warehousesApi.updateGCS ? warehousesApi.updateGCS(gcs!.uuid, data) : Promise.reject('API not available')
     },
     onSuccess: () => {
-      toast.success('GCS updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['gcs'] })
-      queryClient.invalidateQueries({ queryKey: ['zones'] })
+      toast.success('GCS updated successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['gcs'] })
+      queryClient.refetchQueries({ queryKey: ['gcs-stats'] })
+      queryClient.refetchQueries({ queryKey: ['zones'] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to update GCS')
+      toast.error(getErrorMessage(error, 'Failed to update GCS'), { duration: 5000 })
     },
   })
 

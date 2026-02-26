@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { getErrorMessage } from '@/lib/api-error'
 import {
   Sheet,
   SheetContent,
@@ -125,6 +126,8 @@ export default function WarehouseFormSheet({
   })
 
   useEffect(() => {
+    if (!open) return
+
     if (warehouse) {
       form.reset({
         name: warehouse.name,
@@ -158,7 +161,7 @@ export default function WarehouseFormSheet({
         is_active: true,
       })
     }
-  }, [warehouse, form])
+  }, [open, warehouse, form])
 
   const createMutation = useMutation({
     mutationFn: (data: WarehouseFormValues) =>
@@ -169,14 +172,14 @@ export default function WarehouseFormSheet({
         longitude: data.longitude || null,
       }),
     onSuccess: () => {
-      toast.success('Warehouse created successfully')
-      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      toast.success('Warehouse created successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['warehouses'] })
+      queryClient.refetchQueries({ queryKey: ['warehouses-stats'] })
       onOpenChange(false)
       form.reset()
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to create warehouse')
+      toast.error(getErrorMessage(error, 'Failed to create warehouse'), { duration: 5000 })
     },
   })
 
@@ -188,13 +191,13 @@ export default function WarehouseFormSheet({
         longitude: data.longitude || null,
       }),
     onSuccess: () => {
-      toast.success('Warehouse updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['warehouses'] })
+      toast.success('Warehouse updated successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['warehouses'] })
+      queryClient.refetchQueries({ queryKey: ['warehouses-stats'] })
       onOpenChange(false)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to update warehouse')
+      toast.error(getErrorMessage(error, 'Failed to update warehouse'), { duration: 5000 })
     },
   })
 

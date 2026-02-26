@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
   Search,
@@ -10,7 +10,12 @@ import {
   Trash2,
   Eye,
   Layers,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -43,25 +56,74 @@ import warehousesApi, { Warehouse } from '@/api/endpoints/warehouses'
 import WarehouseFormSheet from './warehouse-form-sheet'
 import WarehouseDetailSheet from './warehouse-detail-sheet'
 
+const PAGE_SIZE = 20
+
 export default function WarehousesPage() {
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | null>(null)
+
+  // Build filter params
+  const getFilterParams = () => {
+    const params: Record<string, unknown> = {
+      search: search || undefined,
+      ordering: 'name',
+      page,
+      page_size: PAGE_SIZE,
+    }
+
+    if (statusFilter === 'active') {
+      params.is_active = true
+    } else if (statusFilter === 'inactive') {
+      params.is_active = false
+    }
+
+    return params
+  }
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['warehouses', search, statusFilter],
-    queryFn: () =>
-      warehousesApi.getWarehouses({
-        search: search || undefined,
-        is_active: statusFilter === 'all' ? undefined : statusFilter === 'active',
-        ordering: 'name',
-      }),
+    queryKey: ['warehouses', search, statusFilter, page],
+    queryFn: () => warehousesApi.getWarehouses(getFilterParams()),
+  })
+
+  // Separate query for stats (unfiltered)
+  const { data: statsData } = useQuery({
+    queryKey: ['warehouses-stats'],
+    queryFn: () => warehousesApi.getWarehouses({ page_size: 1000 }),
   })
 
   const warehouses = data?.data?.results || []
   const totalCount = data?.data?.count || 0
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  // Calculate stats from unfiltered data
+  const allWarehouses = statsData?.data?.results || []
+  const activeCount = allWarehouses.filter((w) => w.is_active).length
+  const totalZones = allWarehouses.reduce((sum, w) => sum + (w.zone_count || 0), 0)
+  const uniqueCities = new Set(allWarehouses.map((w) => w.city)).size
+  const totalStats = statsData?.data?.count || 0
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (uuid: string) => warehousesApi.deleteWarehouse(uuid),
+    onSuccess: () => {
+      setDeleteDialogOpen(false)
+      setWarehouseToDelete(null)
+      toast.success('Warehouse deleted successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['warehouses'], type: 'all' })
+      queryClient.refetchQueries({ queryKey: ['warehouses-stats'], type: 'all' })
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } }
+      toast.error(err.response?.data?.message || 'Failed to delete warehouse', { duration: 5000 })
+    },
+  })
 
   const handleAdd = () => {
     setSelectedWarehouse(null)
@@ -77,6 +139,25 @@ export default function WarehousesPage() {
     setSelectedWarehouse(warehouse)
     setDetailOpen(true)
   }
+
+  const handleDelete = (warehouse: Warehouse) => {
+    setWarehouseToDelete(warehouse)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (warehouseToDelete) {
+      deleteMutation.mutate(warehouseToDelete.uuid)
+    }
+  }
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatusFilter('all')
+    setPage(1)
+  }
+
+  const hasActiveFilters = search || statusFilter !== 'all'
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -110,7 +191,7 @@ export default function WarehousesPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCount}</div>
+            <div className="text-2xl font-bold">{totalStats}</div>
           </CardContent>
         </Card>
         <Card>
@@ -119,9 +200,7 @@ export default function WarehousesPage() {
             <div className="h-2 w-2 rounded-full bg-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {warehouses.filter((w) => w.is_active).length}
-            </div>
+            <div className="text-2xl font-bold">{activeCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -130,9 +209,7 @@ export default function WarehousesPage() {
             <Layers className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {warehouses.reduce((sum, w) => sum + (w.zone_count || 0), 0)}
-            </div>
+            <div className="text-2xl font-bold">{totalZones}</div>
           </CardContent>
         </Card>
         <Card>
@@ -141,9 +218,7 @@ export default function WarehousesPage() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(warehouses.map((w) => w.city)).size}
-            </div>
+            <div className="text-2xl font-bold">{uniqueCities}</div>
           </CardContent>
         </Card>
       </div>
@@ -163,11 +238,20 @@ export default function WarehousesPage() {
               <Input
                 placeholder="Search warehouses..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value)
+                setPage(1)
+              }}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -177,6 +261,12 @@ export default function WarehousesPage() {
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
+            )}
           </div>
 
           {/* Table */}
@@ -192,7 +282,9 @@ export default function WarehousesPage() {
             </div>
           ) : warehouses.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No warehouses found. Add your first warehouse to get started.
+              {hasActiveFilters
+                ? 'No warehouses found. Try adjusting your filters.'
+                : 'No warehouses found. Add your first warehouse to get started.'}
             </div>
           ) : (
             <div className="rounded-md border">
@@ -257,7 +349,10 @@ export default function WarehousesPage() {
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(warehouse)}
+                              className="text-destructive focus:text-destructive"
+                            >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
                             </DropdownMenuItem>
@@ -268,6 +363,35 @@ export default function WarehousesPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages} ({totalCount} warehouses)
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -286,6 +410,38 @@ export default function WarehousesPage() {
         onOpenChange={setDetailOpen}
         warehouse={selectedWarehouse}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Warehouse</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete warehouse{' '}
+              <span className="font-medium">{warehouseToDelete?.name}</span>?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
