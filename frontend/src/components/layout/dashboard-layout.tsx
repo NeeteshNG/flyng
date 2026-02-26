@@ -78,9 +78,9 @@ const navigation: NavItem[] = [
     name: 'Inventory',
     icon: Package,
     children: [
+      { name: 'Categories', path: '/dashboard/categories' },
       { name: 'Items', path: '/dashboard/items' },
-      { name: 'Inventory List', path: '/dashboard/inventory' },
-      { name: 'Low Stock', path: '/dashboard/low-stock' },
+      { name: 'Stock', path: '/dashboard/inventory' },
     ],
   },
   {

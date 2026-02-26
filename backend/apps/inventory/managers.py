@@ -167,8 +167,6 @@ class InventoryItemManager(models.Manager):
             .select_related(
                 "organization",
                 "category",
-                "created_by",
-                "updated_by",
             )
         )
 
@@ -217,8 +215,6 @@ class InventoryStockManager(models.Manager):
                 "bin",
                 "bin__location",
                 "item",
-                "created_by",
-                "updated_by",
             )
         )
 

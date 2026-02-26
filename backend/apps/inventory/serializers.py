@@ -6,7 +6,15 @@ Serializers for storage locations, bins, items, and stock.
 
 from rest_framework import serializers
 
-from .models import BinLabelType, StorageLocation, StorageBin, StorageBinTemplate
+from .models import (
+    BinLabelType,
+    InventoryItem,
+    InventoryStock,
+    ItemCategory,
+    StorageBin,
+    StorageBinTemplate,
+    StorageLocation,
+)
 
 
 class StorageLocationListSerializer(serializers.ModelSerializer):
@@ -438,5 +446,335 @@ class BinLabelTypeCreateUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"name": "Label type name already exists in this organization."}
                 )
+
+        return data
+
+
+# --- Item Category Serializers ---
+
+
+class ItemCategoryListSerializer(serializers.ModelSerializer):
+    """Serializer for listing item categories."""
+
+    parent_name = serializers.CharField(source="parent.name", read_only=True, default=None)
+    children_count = serializers.IntegerField(read_only=True)
+    item_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ItemCategory
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "parent",
+            "parent_name",
+            "name",
+            "code",
+            "description",
+            "level",
+            "display_order",
+            "is_active",
+            "children_count",
+            "item_count",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class ItemCategoryDetailSerializer(serializers.ModelSerializer):
+    """Serializer for item category details."""
+
+    parent_name = serializers.CharField(source="parent.name", read_only=True, default=None)
+    full_path = serializers.ReadOnlyField()
+    children_count = serializers.IntegerField(read_only=True)
+    item_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ItemCategory
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "parent",
+            "parent_name",
+            "name",
+            "code",
+            "description",
+            "level",
+            "display_order",
+            "is_active",
+            "full_path",
+            "children_count",
+            "item_count",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class ItemCategoryCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating item categories."""
+
+    class Meta:
+        model = ItemCategory
+        fields = [
+            "organization",
+            "parent",
+            "name",
+            "code",
+            "description",
+            "display_order",
+            "is_active",
+        ]
+
+    def validate(self, data):
+        """Validate category data."""
+        organization = data.get("organization") or (
+            self.instance.organization if self.instance else None
+        )
+        code = data.get("code") or (self.instance.code if self.instance else None)
+
+        if organization and code:
+            qs = ItemCategory.objects.filter(organization=organization, code=code)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"code": "Category code already exists in this organization."}
+                )
+
+        # Validate parent belongs to same organization
+        parent = data.get("parent")
+        if parent and organization and parent.organization_id != organization.id:
+            raise serializers.ValidationError(
+                {"parent": "Parent category must belong to the same organization."}
+            )
+
+        return data
+
+
+# --- Inventory Item Serializers ---
+
+
+class InventoryItemListSerializer(serializers.ModelSerializer):
+    """Serializer for listing inventory items."""
+
+    category_name = serializers.CharField(source="category.name", read_only=True, default=None)
+    uom_display = serializers.CharField(source="get_unit_of_measure_display", read_only=True)
+    total_stock = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = InventoryItem
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "category",
+            "category_name",
+            "sku",
+            "name",
+            "barcode",
+            "weight_kg",
+            "unit_of_measure",
+            "uom_display",
+            "unit_price",
+            "min_stock_level",
+            "reorder_point",
+            "is_active",
+            "total_stock",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class InventoryItemDetailSerializer(serializers.ModelSerializer):
+    """Serializer for inventory item details."""
+
+    category_name = serializers.CharField(source="category.name", read_only=True, default=None)
+    uom_display = serializers.CharField(source="get_unit_of_measure_display", read_only=True)
+    volume_cm3 = serializers.ReadOnlyField()
+    total_stock = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = InventoryItem
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "category",
+            "category_name",
+            "sku",
+            "name",
+            "description",
+            "barcode",
+            "weight_kg",
+            "length_cm",
+            "width_cm",
+            "height_cm",
+            "unit_of_measure",
+            "uom_display",
+            "unit_price",
+            "min_stock_level",
+            "reorder_point",
+            "reorder_quantity",
+            "is_active",
+            "volume_cm3",
+            "total_stock",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class InventoryItemCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating inventory items."""
+
+    class Meta:
+        model = InventoryItem
+        fields = [
+            "organization",
+            "category",
+            "sku",
+            "name",
+            "description",
+            "barcode",
+            "weight_kg",
+            "length_cm",
+            "width_cm",
+            "height_cm",
+            "unit_of_measure",
+            "unit_price",
+            "min_stock_level",
+            "reorder_point",
+            "reorder_quantity",
+            "is_active",
+        ]
+
+    def validate(self, data):
+        """Validate item data."""
+        organization = data.get("organization") or (
+            self.instance.organization if self.instance else None
+        )
+        sku = data.get("sku") or (self.instance.sku if self.instance else None)
+
+        if organization and sku:
+            qs = InventoryItem.objects.filter(organization=organization, sku=sku)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"sku": "SKU already exists in this organization."}
+                )
+
+        return data
+
+
+# --- Inventory Stock Serializers ---
+
+
+class InventoryStockListSerializer(serializers.ModelSerializer):
+    """Serializer for listing inventory stock."""
+
+    bin_code = serializers.CharField(source="bin.code", read_only=True)
+    location_code = serializers.CharField(source="bin.location.code", read_only=True)
+    item_sku = serializers.CharField(source="item.sku", read_only=True)
+    item_name = serializers.CharField(source="item.name", read_only=True)
+    available_quantity = serializers.ReadOnlyField()
+    is_expired = serializers.ReadOnlyField()
+
+    class Meta:
+        model = InventoryStock
+        fields = [
+            "id",
+            "uuid",
+            "bin",
+            "bin_code",
+            "location_code",
+            "item",
+            "item_sku",
+            "item_name",
+            "quantity",
+            "reserved_quantity",
+            "available_quantity",
+            "lot_number",
+            "expiry_date",
+            "is_expired",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class InventoryStockDetailSerializer(serializers.ModelSerializer):
+    """Serializer for inventory stock details."""
+
+    bin_code = serializers.CharField(source="bin.code", read_only=True)
+    location_code = serializers.CharField(source="bin.location.code", read_only=True)
+    warehouse_name = serializers.CharField(
+        source="bin.location.zone.warehouse.name", read_only=True
+    )
+    zone_name = serializers.CharField(source="bin.location.zone.name", read_only=True)
+    item_sku = serializers.CharField(source="item.sku", read_only=True)
+    item_name = serializers.CharField(source="item.name", read_only=True)
+    available_quantity = serializers.ReadOnlyField()
+    is_expired = serializers.ReadOnlyField()
+    total_weight_kg = serializers.ReadOnlyField()
+
+    class Meta:
+        model = InventoryStock
+        fields = [
+            "id",
+            "uuid",
+            "bin",
+            "bin_code",
+            "location_code",
+            "warehouse_name",
+            "zone_name",
+            "item",
+            "item_sku",
+            "item_name",
+            "quantity",
+            "reserved_quantity",
+            "available_quantity",
+            "lot_number",
+            "expiry_date",
+            "manufacture_date",
+            "received_at",
+            "last_counted_at",
+            "is_expired",
+            "total_weight_kg",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class InventoryStockCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating inventory stock."""
+
+    class Meta:
+        model = InventoryStock
+        fields = [
+            "bin",
+            "item",
+            "quantity",
+            "reserved_quantity",
+            "lot_number",
+            "expiry_date",
+            "manufacture_date",
+            "received_at",
+            "last_counted_at",
+            "notes",
+        ]
+
+    def validate(self, data):
+        """Validate stock data."""
+        quantity = data.get("quantity", self.instance.quantity if self.instance else 0)
+        reserved = data.get(
+            "reserved_quantity",
+            self.instance.reserved_quantity if self.instance else 0,
+        )
+
+        if reserved > quantity:
+            raise serializers.ValidationError(
+                {"reserved_quantity": "Reserved quantity cannot exceed total quantity."}
+            )
 
         return data

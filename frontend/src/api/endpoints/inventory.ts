@@ -117,6 +117,99 @@ export interface BinTemplateListResponse {
   results: BinTemplate[]
 }
 
+export interface ItemCategory {
+  id: number
+  uuid: string
+  organization: number
+  parent: number | null
+  parent_name: string | null
+  name: string
+  code: string
+  description: string
+  level: number
+  display_order: number
+  is_active: boolean
+  full_path?: string
+  children_count: number
+  item_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ItemCategoryListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: ItemCategory[]
+}
+
+export interface InventoryItem {
+  id: number
+  uuid: string
+  organization: number
+  category: number | null
+  category_name: string | null
+  sku: string
+  name: string
+  description?: string
+  barcode: string
+  weight_kg: string | null
+  length_cm: string | null
+  width_cm: string | null
+  height_cm: string | null
+  unit_of_measure: string
+  uom_display: string
+  unit_price: string | null
+  min_stock_level: number
+  reorder_point: number
+  reorder_quantity?: number
+  is_active: boolean
+  volume_cm3?: string | null
+  total_stock: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InventoryItemListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: InventoryItem[]
+}
+
+export interface InventoryStock {
+  id: number
+  uuid: string
+  bin: number
+  bin_code: string
+  location_code: string
+  warehouse_name?: string
+  zone_name?: string
+  item: number
+  item_sku: string
+  item_name: string
+  quantity: number
+  reserved_quantity: number
+  available_quantity: number
+  lot_number: string
+  expiry_date: string | null
+  manufacture_date?: string | null
+  received_at?: string | null
+  last_counted_at?: string | null
+  is_expired: boolean
+  total_weight_kg?: string | null
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface InventoryStockListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: InventoryStock[]
+}
+
 // API functions
 const inventoryApi = {
   // Storage Locations
@@ -355,6 +448,176 @@ const inventoryApi = {
   deleteLabelType: (uuid: string) => {
     return apiClient.delete<{ success: boolean; message: string }>(
       `/label-types/${uuid}/`
+    )
+  },
+
+  // Item Categories
+  getItemCategories: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    organization?: number
+    parent?: number
+    level?: number
+    is_active?: boolean
+    ordering?: string
+  }) => {
+    return apiClient.get<ItemCategoryListResponse>('/item-categories/', { params })
+  },
+
+  getItemCategory: (uuid: string) => {
+    return apiClient.get<ItemCategory>(`/item-categories/${uuid}/`)
+  },
+
+  createItemCategory: (data: {
+    organization: number
+    parent?: number | null
+    name: string
+    code: string
+    description?: string
+    display_order?: number
+    is_active?: boolean
+  }) => {
+    return apiClient.post<ItemCategory>('/item-categories/', data)
+  },
+
+  updateItemCategory: (uuid: string, data: Partial<{
+    organization: number
+    parent: number | null
+    name: string
+    code: string
+    description: string
+    display_order: number
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<ItemCategory>(`/item-categories/${uuid}/`, data)
+  },
+
+  deleteItemCategory: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/item-categories/${uuid}/`
+    )
+  },
+
+  // Inventory Items
+  getInventoryItems: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    organization?: number
+    category?: number
+    unit_of_measure?: string
+    is_active?: boolean
+    ordering?: string
+  }) => {
+    return apiClient.get<InventoryItemListResponse>('/items/', { params })
+  },
+
+  getInventoryItem: (uuid: string) => {
+    return apiClient.get<InventoryItem>(`/items/${uuid}/`)
+  },
+
+  createInventoryItem: (data: {
+    organization: number
+    category?: number | null
+    sku: string
+    name: string
+    description?: string
+    barcode?: string
+    weight_kg?: string
+    length_cm?: string
+    width_cm?: string
+    height_cm?: string
+    unit_of_measure?: string
+    unit_price?: string
+    min_stock_level?: number
+    reorder_point?: number
+    reorder_quantity?: number
+    is_active?: boolean
+  }) => {
+    return apiClient.post<InventoryItem>('/items/', data)
+  },
+
+  updateInventoryItem: (uuid: string, data: Partial<{
+    organization: number
+    category: number | null
+    sku: string
+    name: string
+    description: string
+    barcode: string
+    weight_kg: string
+    length_cm: string
+    width_cm: string
+    height_cm: string
+    unit_of_measure: string
+    unit_price: string
+    min_stock_level: number
+    reorder_point: number
+    reorder_quantity: number
+    is_active: boolean
+  }>) => {
+    return apiClient.patch<InventoryItem>(`/items/${uuid}/`, data)
+  },
+
+  deleteInventoryItem: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/items/${uuid}/`
+    )
+  },
+
+  // Inventory Stock
+  getInventoryStock: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    bin?: number
+    item?: number
+    location?: number
+    zone?: number
+    warehouse?: number
+    lot_number?: string
+    ordering?: string
+  }) => {
+    return apiClient.get<InventoryStockListResponse>('/stock/', { params })
+  },
+
+  getStockRecord: (uuid: string) => {
+    return apiClient.get<InventoryStock>(`/stock/${uuid}/`)
+  },
+
+  createStockRecord: (data: {
+    bin: number
+    item: number
+    quantity: number
+    reserved_quantity?: number
+    lot_number?: string
+    expiry_date?: string | null
+    manufacture_date?: string | null
+    received_at?: string | null
+    last_counted_at?: string | null
+    notes?: string
+  }) => {
+    return apiClient.post<InventoryStock>('/stock/', data)
+  },
+
+  updateStockRecord: (uuid: string, data: Partial<{
+    bin: number
+    item: number
+    quantity: number
+    reserved_quantity: number
+    lot_number: string
+    expiry_date: string | null
+    manufacture_date: string | null
+    received_at: string | null
+    last_counted_at: string | null
+    notes: string
+  }>) => {
+    return apiClient.patch<InventoryStock>(`/stock/${uuid}/`, data)
+  },
+
+  deleteStockRecord: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/stock/${uuid}/`
     )
   },
 }

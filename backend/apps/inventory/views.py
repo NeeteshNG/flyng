@@ -13,20 +13,39 @@ from rest_framework.response import Response
 
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
-from .models import BinLabelType, StorageLocation, StorageBin, StorageBinTemplate
+from django.db.models import Sum
+
+from .models import (
+    BinLabelType,
+    InventoryItem,
+    InventoryStock,
+    ItemCategory,
+    StorageBin,
+    StorageBinTemplate,
+    StorageLocation,
+)
 from .serializers import (
     BinLabelTypeCreateUpdateSerializer,
     BinLabelTypeDetailSerializer,
     BinLabelTypeListSerializer,
-    StorageLocationCreateUpdateSerializer,
-    StorageLocationDetailSerializer,
-    StorageLocationListSerializer,
+    InventoryItemCreateUpdateSerializer,
+    InventoryItemDetailSerializer,
+    InventoryItemListSerializer,
+    InventoryStockCreateUpdateSerializer,
+    InventoryStockDetailSerializer,
+    InventoryStockListSerializer,
+    ItemCategoryCreateUpdateSerializer,
+    ItemCategoryDetailSerializer,
+    ItemCategoryListSerializer,
     StorageBinCreateUpdateSerializer,
     StorageBinDetailSerializer,
     StorageBinListSerializer,
     StorageBinTemplateCreateUpdateSerializer,
     StorageBinTemplateDetailSerializer,
     StorageBinTemplateListSerializer,
+    StorageLocationCreateUpdateSerializer,
+    StorageLocationDetailSerializer,
+    StorageLocationListSerializer,
 )
 
 
@@ -303,5 +322,219 @@ class BinLabelTypeViewSet(viewsets.ModelViewSet):
         instance.save()
         return Response(
             {"success": True, "message": "Label type deactivated successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+# --- Item Category Views ---
+
+
+class ItemCategoryFilter(django_filters.FilterSet):
+    """Filter for item categories."""
+
+    organization = django_filters.NumberFilter(field_name="organization")
+    parent = django_filters.NumberFilter(field_name="parent")
+    level = django_filters.NumberFilter(field_name="level")
+    is_active = django_filters.BooleanFilter(field_name="is_active")
+
+    class Meta:
+        model = ItemCategory
+        fields = [
+            "organization",
+            "parent",
+            "level",
+            "is_active",
+        ]
+
+
+class ItemCategoryViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for item categories.
+
+    list: Get all item categories
+    create: Create a new item category
+    retrieve: Get an item category by UUID
+    update: Update an item category
+    partial_update: Partially update an item category
+    destroy: Soft delete an item category
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ItemCategoryFilter
+    search_fields = ["name", "code", "description"]
+    ordering_fields = ["name", "code", "level", "display_order", "created_at"]
+    ordering = ["level", "display_order", "name"]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        """Return categories with annotated counts."""
+        return (
+            ItemCategory.objects.select_related("organization", "parent")
+            .annotate(
+                children_count=Count("children", filter=Q(children__is_active=True)),
+                item_count=Count("items", filter=Q(items__is_active=True)),
+            )
+            .order_by("level", "display_order", "name")
+        )
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "list":
+            return ItemCategoryListSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return ItemCategoryCreateUpdateSerializer
+        return ItemCategoryDetailSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete by setting is_active to False."""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response(
+            {"success": True, "message": "Category deactivated successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+# --- Inventory Item Views ---
+
+
+class InventoryItemFilter(django_filters.FilterSet):
+    """Filter for inventory items."""
+
+    organization = django_filters.NumberFilter(field_name="organization")
+    category = django_filters.NumberFilter(field_name="category")
+    unit_of_measure = django_filters.CharFilter(field_name="unit_of_measure")
+    is_active = django_filters.BooleanFilter(field_name="is_active")
+
+    class Meta:
+        model = InventoryItem
+        fields = [
+            "organization",
+            "category",
+            "unit_of_measure",
+            "is_active",
+        ]
+
+
+class InventoryItemViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for inventory items.
+
+    list: Get all inventory items
+    create: Create a new inventory item
+    retrieve: Get an inventory item by UUID
+    update: Update an inventory item
+    partial_update: Partially update an inventory item
+    destroy: Soft delete an inventory item
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = InventoryItemFilter
+    search_fields = ["sku", "name", "barcode", "description"]
+    ordering_fields = ["sku", "name", "unit_price", "created_at"]
+    ordering = ["sku"]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        """Return items with annotated total stock."""
+        return (
+            InventoryItem.objects.select_related("organization", "category")
+            .annotate(
+                total_stock=Sum("stocks__quantity"),
+            )
+            .order_by("sku")
+        )
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "list":
+            return InventoryItemListSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return InventoryItemCreateUpdateSerializer
+        return InventoryItemDetailSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete by setting is_active to False."""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save()
+        return Response(
+            {"success": True, "message": "Item deactivated successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+# --- Inventory Stock Views ---
+
+
+class InventoryStockFilter(django_filters.FilterSet):
+    """Filter for inventory stock."""
+
+    bin = django_filters.NumberFilter(field_name="bin")
+    item = django_filters.NumberFilter(field_name="item")
+    location = django_filters.NumberFilter(field_name="bin__location")
+    zone = django_filters.NumberFilter(field_name="bin__location__zone")
+    warehouse = django_filters.NumberFilter(field_name="bin__location__zone__warehouse")
+    lot_number = django_filters.CharFilter(field_name="lot_number")
+
+    class Meta:
+        model = InventoryStock
+        fields = [
+            "bin",
+            "item",
+            "location",
+            "zone",
+            "warehouse",
+            "lot_number",
+        ]
+
+
+class InventoryStockViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for inventory stock.
+
+    list: Get all inventory stock records
+    create: Create a new stock record
+    retrieve: Get a stock record by UUID
+    update: Update a stock record
+    partial_update: Partially update a stock record
+    destroy: Delete a stock record
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = InventoryStockFilter
+    search_fields = ["item__sku", "item__name", "bin__code", "lot_number"]
+    ordering_fields = ["quantity", "expiry_date", "created_at"]
+    ordering = ["-created_at"]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        """Return stock records with related data."""
+        return InventoryStock.objects.select_related(
+            "bin",
+            "bin__location",
+            "bin__location__zone",
+            "bin__location__zone__warehouse",
+            "item",
+        ).order_by("-created_at")
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "list":
+            return InventoryStockListSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return InventoryStockCreateUpdateSerializer
+        return InventoryStockDetailSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete stock record."""
+        instance = self.get_object()
+        instance.delete()
+        return Response(
+            {"success": True, "message": "Stock record deleted successfully"},
             status=status.HTTP_200_OK,
         )
