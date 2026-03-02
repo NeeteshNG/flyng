@@ -18,8 +18,6 @@ class DroneBatteryManager(models.Manager):
             .get_queryset()
             .select_related(
                 "warehouse",
-                "created_by",
-                "updated_by",
             )
         )
 
