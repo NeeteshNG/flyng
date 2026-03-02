@@ -25,6 +25,7 @@ urlpatterns = [
                 path("", include("apps.warehouses.urls")),
                 path("", include("apps.inventory.urls")),
                 path("", include("apps.orders.urls")),
+                path("", include("apps.drones.urls")),
             ]
         ),
     ),

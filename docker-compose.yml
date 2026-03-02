@@ -45,14 +45,14 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-flyng_secret}
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:3001}
       # Migration control - set to true in dev for convenience
       - RUN_MIGRATIONS=true
       - COLLECT_STATIC=true
       - SYNC_DEPENDENCIES=true
       # Auto-create superuser in dev
       - CREATE_SUPERUSER=${CREATE_SUPERUSER:-true}
-      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-admin@flyng.local}
+      - SUPERUSER_EMAIL=${SUPERUSER_EMAIL:-admin@flyng.in}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD:-admin123}
     volumes:
       - ./backend:/app
