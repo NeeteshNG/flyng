@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import {
   Sheet,
   SheetContent,
@@ -34,6 +35,7 @@ import {
 import { AvatarUpload } from '@/components/ui/avatar-upload'
 
 import usersApi, { User } from '@/api/endpoints/users'
+import { getErrorMessage } from '@/lib/api-error'
 
 const userFormSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -42,6 +44,8 @@ const userFormSchema = z.object({
   last_name: z.string().min(1, 'Last name is required'),
   phone: z.string().optional(),
   role: z.enum(['ADMIN', 'MANAGER', 'OPERATOR', 'VIEWER']),
+  is_active: z.boolean().optional(),
+  is_verified: z.boolean().optional(),
 })
 
 type UserFormValues = z.infer<typeof userFormSchema>
@@ -70,38 +74,44 @@ export default function UserFormSheet({
       last_name: '',
       phone: '',
       role: 'VIEWER',
+      is_active: true,
+      is_verified: false,
     },
   })
 
-  // Reset form when user changes
+  // Reset form when sheet opens
   useEffect(() => {
-    if (user) {
-      form.reset({
-        email: user.email,
-        password: '',
-        first_name: user.first_name,
-        last_name: user.last_name,
-        phone: user.phone || '',
-        role: user.role,
-      })
-      setProfilePicture(null)
-    } else {
-      form.reset({
-        email: '',
-        password: '',
-        first_name: '',
-        last_name: '',
-        phone: '',
-        role: 'VIEWER',
-      })
+    if (open) {
+      if (user) {
+        form.reset({
+          email: user.email,
+          password: '',
+          first_name: user.first_name,
+          last_name: user.last_name,
+          phone: user.phone || '',
+          role: user.role,
+          is_active: user.is_active,
+          is_verified: user.is_verified,
+        })
+      } else {
+        form.reset({
+          email: '',
+          password: '',
+          first_name: '',
+          last_name: '',
+          phone: '',
+          role: 'VIEWER',
+          is_active: true,
+          is_verified: false,
+        })
+      }
       setProfilePicture(null)
     }
-  }, [user, form])
+  }, [open, user, form])
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: UserFormValues) => {
-      // First create the user
       const response = await usersApi.createUser({
         email: data.email,
         password: data.password!,
@@ -111,7 +121,6 @@ export default function UserFormSheet({
         role: data.role,
       })
 
-      // Then upload profile picture if provided
       if (profilePicture && response.data.data?.uuid) {
         await usersApi.updateProfilePicture(response.data.data.uuid, profilePicture)
       }
@@ -119,43 +128,43 @@ export default function UserFormSheet({
       return response
     },
     onSuccess: () => {
-      toast.success('User created successfully')
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast.success('User created successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['users'] })
+      queryClient.refetchQueries({ queryKey: ['users-stats'] })
       onOpenChange(false)
       form.reset()
       setProfilePicture(null)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to create user')
+      toast.error(getErrorMessage(error, 'Failed to create user'), { duration: 5000 })
     },
   })
 
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: UserFormValues) => {
-      // First update user data
       await usersApi.updateUser(user!.uuid, {
         first_name: data.first_name,
         last_name: data.last_name,
         phone: data.phone,
         role: data.role,
+        is_active: data.is_active,
+        is_verified: data.is_verified,
       })
 
-      // Then upload profile picture if changed
       if (profilePicture) {
         await usersApi.updateProfilePicture(user!.uuid, profilePicture)
       }
     },
     onSuccess: () => {
-      toast.success('User updated successfully')
-      queryClient.invalidateQueries({ queryKey: ['users'] })
+      toast.success('User updated successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['users'] })
+      queryClient.refetchQueries({ queryKey: ['users-stats'] })
       onOpenChange(false)
       setProfilePicture(null)
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } }
-      toast.error(err.response?.data?.message || 'Failed to update user')
+      toast.error(getErrorMessage(error, 'Failed to update user'), { duration: 5000 })
     },
   })
 
@@ -319,6 +328,51 @@ export default function UserFormSheet({
                 </FormItem>
               )}
             />
+
+            {isEditing && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="is_active"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Active</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Enable or disable this user account
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="is_verified"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel>Verified</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Mark this user's email as verified
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
 
             <SheetFooter className="pt-4">
               <Button

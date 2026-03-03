@@ -6,15 +6,18 @@ export interface User {
   email: string
   first_name: string
   last_name: string
+  full_name: string
   phone: string | null
   role: 'ADMIN' | 'MANAGER' | 'OPERATOR' | 'VIEWER'
   is_verified: boolean
   is_active: boolean
   two_factor_enabled: boolean
+  has_2fa: boolean
   profile_picture: string | null
   created_at: string
   updated_at: string
   last_login: string | null
+  password_changed_at: string | null
 }
 
 export interface UserListResponse {
@@ -40,6 +43,8 @@ export interface UserUpdateRequest {
   phone?: string
   role?: string
   is_active?: boolean
+  is_verified?: boolean
+  force_password_change?: boolean
 }
 
 const usersApi = {
@@ -50,6 +55,8 @@ const usersApi = {
     search?: string
     role?: string
     is_active?: boolean
+    is_verified?: boolean
+    two_factor_enabled?: boolean
     ordering?: string
   }) => {
     return apiClient.get<UserListResponse>('/users/', { params })
