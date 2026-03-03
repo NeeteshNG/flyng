@@ -4,10 +4,11 @@ Inventory Views
 API views for storage locations, bins, items, and stock.
 """
 
-from django.db.models import Count, Q
+from django.db.models import Count, F, Q
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -407,6 +408,7 @@ class InventoryItemFilter(django_filters.FilterSet):
     category = django_filters.NumberFilter(field_name="category")
     unit_of_measure = django_filters.CharFilter(field_name="unit_of_measure")
     is_active = django_filters.BooleanFilter(field_name="is_active")
+    low_stock = django_filters.BooleanFilter(method="filter_low_stock")
 
     class Meta:
         model = InventoryItem
@@ -415,7 +417,18 @@ class InventoryItemFilter(django_filters.FilterSet):
             "category",
             "unit_of_measure",
             "is_active",
+            "low_stock",
         ]
+
+    def filter_low_stock(self, queryset, name, value):
+        """Filter items where total stock is below min_stock_level."""
+        if value:
+            return queryset.filter(
+                min_stock_level__gt=0,
+            ).filter(
+                Q(total_stock__lt=F("min_stock_level")) | Q(total_stock__isnull=True)
+            )
+        return queryset
 
 
 class InventoryItemViewSet(viewsets.ModelViewSet):
@@ -465,6 +478,25 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
             {"success": True, "message": "Item deactivated successfully"},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=["get"])
+    def stats(self, request):
+        """Return aggregate stats for inventory items."""
+        qs = self.get_queryset()
+        total = qs.count()
+        active = qs.filter(is_active=True).count()
+        low_stock = qs.filter(
+            min_stock_level__gt=0,
+        ).filter(
+            Q(total_stock__lt=F("min_stock_level")) | Q(total_stock__isnull=True)
+        ).count()
+        total_stock_qty = qs.aggregate(total=Sum("total_stock"))["total"] or 0
+        return Response({
+            "total": total,
+            "active": active,
+            "low_stock": low_stock,
+            "total_stock_qty": total_stock_qty,
+        })
 
 
 # --- Inventory Stock Views ---

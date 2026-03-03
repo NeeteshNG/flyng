@@ -37,6 +37,7 @@ export default function ItemsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [lowStockFilter, setLowStockFilter] = useState(false)
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -54,17 +55,18 @@ export default function ItemsPage() {
     if (statusFilter === 'active') params.is_active = true
     else if (statusFilter === 'inactive') params.is_active = false
     if (categoryFilter !== 'all') params.category = parseInt(categoryFilter)
+    if (lowStockFilter) params.low_stock = true
     return params
   }
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['inventory-items', search, statusFilter, categoryFilter, page],
+    queryKey: ['inventory-items', search, statusFilter, categoryFilter, lowStockFilter, page],
     queryFn: () => inventoryApi.getInventoryItems(getFilterParams()),
   })
 
   const { data: statsData } = useQuery({
     queryKey: ['inventory-items-stats'],
-    queryFn: () => inventoryApi.getInventoryItems({ page_size: 1000 }),
+    queryFn: () => inventoryApi.getItemStats(),
   })
 
   const { data: categoriesData } = useQuery({
@@ -76,11 +78,11 @@ export default function ItemsPage() {
   const totalCount = data?.data?.count || 0
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
-  const allItems = statsData?.data?.results || []
-  const totalStats = statsData?.data?.count || 0
-  const activeCount = allItems.filter((i) => i.is_active).length
-  const lowStockCount = allItems.filter((i) => i.min_stock_level > 0 && (i.total_stock || 0) < i.min_stock_level).length
-  const totalStockQty = allItems.reduce((sum, i) => sum + (i.total_stock || 0), 0)
+  const stats = statsData?.data
+  const totalStats = stats?.total || 0
+  const activeCount = stats?.active || 0
+  const lowStockCount = stats?.low_stock || 0
+  const totalStockQty = stats?.total_stock_qty || 0
   const filterCategories = categoriesData?.data?.results || []
 
   const deleteMutation = useMutation({
@@ -103,8 +105,8 @@ export default function ItemsPage() {
   const handleDelete = (item: InventoryItem) => { setItemToDelete(item); setDeleteDialogOpen(true) }
   const confirmDelete = () => { if (itemToDelete) deleteMutation.mutate(itemToDelete.uuid) }
 
-  const clearFilters = () => { setSearch(''); setStatusFilter('all'); setCategoryFilter('all'); setPage(1) }
-  const hasActiveFilters = search || statusFilter !== 'all' || categoryFilter !== 'all'
+  const clearFilters = () => { setSearch(''); setStatusFilter('all'); setCategoryFilter('all'); setLowStockFilter(false); setPage(1) }
+  const hasActiveFilters = search || statusFilter !== 'all' || categoryFilter !== 'all' || lowStockFilter
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -138,12 +140,23 @@ export default function ItemsPage() {
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{activeCount}</div></CardContent>
         </Card>
-        <Card>
+        <Card
+          className={`cursor-pointer transition-colors hover:bg-muted/50 ${lowStockFilter ? 'ring-2 ring-yellow-500 bg-yellow-500/5' : ''}`}
+          onClick={() => { setLowStockFilter((v) => !v); setPage(1) }}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Low Stock
+              {lowStockFilter && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">Filtered</Badge>}
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{lowStockCount}</div></CardContent>
+          <CardContent>
+            <div className={`text-2xl font-bold ${lowStockCount > 0 ? 'text-yellow-500' : ''}`}>{lowStockCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {lowStockFilter ? 'Click to show all' : 'Click to filter'}
+            </p>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -156,8 +169,20 @@ export default function ItemsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Item List</CardTitle>
-          <CardDescription>View and manage all inventory items</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            Item List
+            {lowStockFilter && (
+              <Badge variant="outline" className="text-yellow-500 border-yellow-500">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Low Stock Only
+              </Badge>
+            )}
+          </CardTitle>
+          <CardDescription>
+            {lowStockFilter
+              ? 'Showing items below their minimum stock level'
+              : 'View and manage all inventory items'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-4">
@@ -239,7 +264,12 @@ export default function ItemsPage() {
                             <Badge variant={isLowStock ? 'destructive' : 'secondary'}>
                               {item.total_stock ?? 0}
                             </Badge>
-                            {isLowStock && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+                            {isLowStock && (
+                              <>
+                                <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                                <span className="text-xs text-muted-foreground">/ {item.min_stock_level}</span>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>

@@ -508,9 +508,14 @@ const inventoryApi = {
     category?: number
     unit_of_measure?: string
     is_active?: boolean
+    low_stock?: boolean
     ordering?: string
   }) => {
     return apiClient.get<InventoryItemListResponse>('/items/', { params })
+  },
+
+  getItemStats: () => {
+    return apiClient.get<{ total: number; active: number; low_stock: number; total_stock_qty: number }>('/items/stats/')
   },
 
   getInventoryItem: (uuid: string) => {
