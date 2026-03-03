@@ -1,90 +1,65 @@
+import { useQuery } from '@tanstack/react-query'
 import {
-  Plane,
-  Package,
-  ShoppingCart,
-  AlertTriangle,
-  TrendingUp,
-  Activity,
-  ArrowUpRight,
-  ArrowDownRight,
-  Battery,
-  Warehouse,
+  Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip,
+} from 'recharts'
+import {
+  Plane, Package, ShoppingCart, AlertTriangle,
+  TrendingUp, Activity, Battery, Warehouse,
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 
-const stats = [
-  {
-    name: 'Active Drones',
-    value: '12',
-    change: '+2',
-    changeType: 'positive',
-    icon: Plane,
-    description: '3 in flight, 9 standby',
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
-  },
-  {
-    name: 'Total Items',
-    value: '2,847',
-    change: '+124',
-    changeType: 'positive',
-    icon: Package,
-    description: 'Across all locations',
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
-  },
-  {
-    name: 'Orders Today',
-    value: '48',
-    change: '+8%',
-    changeType: 'positive',
-    icon: ShoppingCart,
-    description: '12 in progress',
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
-  },
-  {
-    name: 'Low Stock Alerts',
-    value: '7',
-    change: '+3',
-    changeType: 'negative',
-    icon: AlertTriangle,
-    description: 'Needs attention',
-    color: 'text-amber-500',
-    bgColor: 'bg-amber-500/10',
-  },
-]
+import dashboardApi, { DashboardStats } from '@/api/endpoints/dashboard'
+import { useFormat } from '@/hooks/use-format'
 
-const quickStats = [
-  { label: 'Warehouses', value: '3', icon: Warehouse },
-  { label: 'Batteries', value: '24', icon: Battery },
-  { label: 'Jobs Completed', value: '156', icon: Activity },
-]
-
-const recentJobs = [
-  { id: 'JOB-001', status: 'Completed', drone: 'Drone-A1', location: 'Zone A - Rack 12', time: '2 min ago' },
-  { id: 'JOB-002', status: 'In Progress', drone: 'Drone-B3', location: 'Zone B - Rack 8', time: '5 min ago' },
-  { id: 'JOB-003', status: 'Queued', drone: 'Drone-A2', location: 'Zone A - Rack 5', time: '8 min ago' },
-  { id: 'JOB-004', status: 'Completed', drone: 'Drone-C1', location: 'Zone C - Rack 22', time: '12 min ago' },
-  { id: 'JOB-005', status: 'Completed', drone: 'Drone-A1', location: 'Zone A - Rack 7', time: '15 min ago' },
-]
-
-const getStatusVariant = (status: string) => {
+const getJobStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
   switch (status) {
-    case 'Completed':
-      return 'success'
-    case 'In Progress':
-      return 'info'
-    case 'Queued':
-      return 'warning'
-    default:
-      return 'secondary'
+    case 'COMPLETED': return 'default'
+    case 'IN_PROGRESS': return 'secondary'
+    case 'QUEUED':
+    case 'ASSIGNED': return 'outline'
+    case 'FAILED':
+    case 'CANCELLED': return 'destructive'
+    default: return 'outline'
   }
 }
 
+function StatCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-8 w-16 mb-2" />
+        <Skeleton className="h-3 w-32" />
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function DashboardHome() {
+  const { formatRelative, formatNumber } = useFormat()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => dashboardApi.getStats(),
+  })
+
+  const stats: DashboardStats | null = data?.data?.data || null
+
+  // Format chart data with short day labels
+  const chartData = (stats?.order_activity || []).map((d) => {
+    const date = new Date(d.date + 'T00:00:00')
+    return {
+      name: date.toLocaleDateString('en-IN', { weekday: 'short' }),
+      orders: d.count,
+    }
+  })
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -96,59 +71,144 @@ export default function DashboardHome() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.name} className="relative overflow-hidden">
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+        </div>
+      ) : stats ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Active Drones */}
+          <Card className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.name}
+                Active Drones
               </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Plane className="h-4 w-4 text-blue-500" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-                <div
-                  className={`flex items-center text-xs font-medium ${
-                    stat.changeType === 'positive' ? 'text-green-500' : 'text-red-500'
-                  }`}
-                >
-                  {stat.changeType === 'positive' ? (
-                    <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 mr-0.5" />
-                  )}
-                  {stat.change}
-                </div>
-              </div>
+              <div className="text-2xl font-bold">{stats.drones.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.drones.in_flight} in flight, {stats.drones.available} available
+              </p>
             </CardContent>
           </Card>
-        ))}
-      </div>
+
+          {/* Total Items */}
+          <Card className="relative overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Items
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Package className="h-4 w-4 text-purple-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatNumber(stats.items.total_stock_qty)}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.items.total} unique items in stock
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Orders */}
+          <Card className="relative overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Orders
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <ShoppingCart className="h-4 w-4 text-green-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.orders.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.orders.today} today, {stats.orders.in_progress} in progress
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Low Stock Alerts */}
+          <Card className="relative overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Low Stock Alerts
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-amber-500/10">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${stats.items.low_stock_count > 0 ? 'text-amber-500' : ''}`}>
+                {stats.items.low_stock_count}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.items.low_stock_count > 0 ? 'Needs attention' : 'All items well stocked'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Quick Stats Bar */}
-      <div className="grid gap-4 grid-cols-3">
-        {quickStats.map((stat) => (
-          <Card key={stat.label} className="bg-muted/50">
+      {isLoading ? (
+        <div className="grid gap-4 grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="bg-muted/50">
+              <CardContent className="flex items-center gap-4 py-4">
+                <Skeleton className="h-9 w-9 rounded-lg" />
+                <div>
+                  <Skeleton className="h-7 w-12 mb-1" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : stats ? (
+        <div className="grid gap-4 grid-cols-3">
+          <Card className="bg-muted/50">
             <CardContent className="flex items-center gap-4 py-4">
               <div className="p-2 rounded-lg bg-primary/10">
-                <stat.icon className="h-5 w-5 text-primary" />
+                <Warehouse className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className="text-2xl font-bold">{stats.warehouses.total}</p>
+                <p className="text-xs text-muted-foreground">Warehouses</p>
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          <Card className="bg-muted/50">
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Battery className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.batteries.total}</p>
+                <p className="text-xs text-muted-foreground">Batteries</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/50">
+            <CardContent className="flex items-center gap-4 py-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Activity className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{stats.jobs.completed}</p>
+                <p className="text-xs text-muted-foreground">Jobs Completed</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
       {/* Charts and tables row */}
       <div className="grid gap-4 lg:grid-cols-7">
-        {/* Activity chart placeholder */}
+        {/* Order Activity Chart */}
         <Card className="lg:col-span-4">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -163,19 +223,50 @@ export default function DashboardHome() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg bg-muted/20">
-              <div className="text-center">
-                <TrendingUp className="h-12 w-12 mx-auto text-muted-foreground/50 mb-2" />
-                <p className="text-muted-foreground">Chart coming soon...</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  Order trends will be displayed here
-                </p>
+            {isLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: 'hsl(var(--popover-foreground))',
+                    }}
+                    formatter={(value: number) => [value, 'Orders']}
+                  />
+                  <Bar
+                    dataKey="orders"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={48}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-muted-foreground">No order data available</p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Recent jobs */}
+        {/* Recent Jobs */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -186,31 +277,53 @@ export default function DashboardHome() {
                 </CardTitle>
                 <CardDescription>Latest drone job activities</CardDescription>
               </div>
-              <Badge variant="outline">{recentJobs.length} jobs</Badge>
+              {stats && (
+                <Badge variant="outline">{stats.jobs.total} total</Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentJobs.map((job) => (
-                <div
-                  key={job.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">{job.id}</p>
-                      <Badge variant={getStatusVariant(job.status)} className="text-[10px] px-1.5 py-0">
-                        {job.status}
-                      </Badge>
+            {isLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : stats && stats.recent_jobs.length > 0 ? (
+              <div className="space-y-3">
+                {stats.recent_jobs.map((job) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{job.job_number}</p>
+                        <Badge
+                          variant={getJobStatusVariant(job.status)}
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {job.status_display}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {job.drone_name || 'Unassigned'}
+                        {job.source_bin_code && ` \u2022 ${job.source_bin_code}`}
+                        {job.destination_bin_code && ` \u2192 ${job.destination_bin_code}`}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {job.drone} • {job.location}
+                    <p className="text-xs text-muted-foreground whitespace-nowrap ml-2">
+                      {formatRelative(job.created_at)}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">{job.time}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Activity className="h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No recent jobs</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

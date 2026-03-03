@@ -4,7 +4,11 @@ Organization API Views
 
 import hashlib
 import secrets
+from datetime import timedelta
 
+from django.db.models import Count, F, Q, Sum
+from django.db.models.functions import TruncDate
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -85,6 +89,165 @@ class BillingOverviewView(APIView):
             org_data["subscription"] = None
 
         return Response({"success": True, "data": org_data})
+
+
+class DashboardStatsView(APIView):
+    """
+    Get aggregated dashboard stats for the current user's organization.
+
+    GET /api/v1/dashboard/stats/
+    Returns counts, breakdowns, recent jobs, and order activity chart data.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.batteries.models import DroneBattery
+        from apps.drones.models import Drone
+        from apps.inventory.models import InventoryItem, InventoryStock
+        from apps.jobs.models import DroneJob
+        from apps.orders.models import PickOrder
+        from apps.warehouses.models import Warehouse
+
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org_id = organization.id
+        now = timezone.now()
+
+        # --- Drones ---
+        drones_qs = Drone.objects.filter(
+            work_area__ground_control_station__zone__warehouse__organization=org_id
+        )
+        total_drones = drones_qs.count()
+        drone_by_status = dict(
+            drones_qs.values_list("status").annotate(count=Count("id")).values_list("status", "count")
+        )
+
+        # --- Warehouses ---
+        total_warehouses = Warehouse.objects.filter(organization=org_id, is_active=True).count()
+
+        # --- Batteries ---
+        batteries_qs = DroneBattery.objects.filter(
+            warehouse__organization=org_id
+        )
+        total_batteries = batteries_qs.count()
+        battery_by_status = dict(
+            batteries_qs.values_list("status").annotate(count=Count("id")).values_list("status", "count")
+        )
+
+        # --- Items & Stock ---
+        items_qs = InventoryItem.objects.filter(organization=org_id, is_active=True)
+        total_items = items_qs.count()
+        total_stock_qty = (
+            InventoryStock.objects.filter(item__organization=org_id)
+            .aggregate(total=Sum("quantity"))["total"]
+            or 0
+        )
+
+        # Low stock: items where total stock < min_stock_level
+        low_stock_count = (
+            items_qs.filter(min_stock_level__gt=0)
+            .annotate(total_stock=Sum("stocks__quantity"))
+            .filter(Q(total_stock__lt=F("min_stock_level")) | Q(total_stock__isnull=True))
+            .count()
+        )
+
+        # --- Orders ---
+        orders_qs = PickOrder.objects.filter(organization=org_id)
+        total_orders = orders_qs.count()
+        order_by_status = dict(
+            orders_qs.values_list("status").annotate(count=Count("id")).values_list("status", "count")
+        )
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        orders_today = orders_qs.filter(created_at__gte=today_start).count()
+        in_progress_orders = order_by_status.get("PICKING", 0) + order_by_status.get("PACKING", 0)
+
+        # --- Jobs ---
+        jobs_qs = DroneJob.objects.filter(organization=org_id)
+        total_jobs = jobs_qs.count()
+        job_by_status = dict(
+            jobs_qs.values_list("status").annotate(count=Count("id")).values_list("status", "count")
+        )
+        completed_jobs = job_by_status.get("COMPLETED", 0)
+
+        # --- Recent jobs (last 5) ---
+        recent_jobs_qs = (
+            jobs_qs.select_related("drone", "source_bin", "destination_bin")
+            .order_by("-created_at")[:5]
+        )
+        recent_jobs = []
+        for job in recent_jobs_qs:
+            recent_jobs.append({
+                "id": job.id,
+                "job_number": job.job_number,
+                "status": job.status,
+                "status_display": job.get_status_display(),
+                "drone_name": job.drone.name if job.drone else None,
+                "source_bin_code": job.source_bin.code if job.source_bin else None,
+                "destination_bin_code": job.destination_bin.code if job.destination_bin else None,
+                "created_at": job.created_at.isoformat(),
+            })
+
+        # --- Order activity (last 7 days) ---
+        seven_days_ago = now - timedelta(days=6)
+        seven_days_ago = seven_days_ago.replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_orders = dict(
+            orders_qs.filter(created_at__gte=seven_days_ago)
+            .annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .values_list("day", "count")
+        )
+        # Fill in all 7 days
+        order_activity = []
+        for i in range(7):
+            day = (seven_days_ago + timedelta(days=i)).date()
+            order_activity.append({
+                "date": day.isoformat(),
+                "count": daily_orders.get(day, 0),
+            })
+
+        return Response({
+            "success": True,
+            "data": {
+                "drones": {
+                    "total": total_drones,
+                    "by_status": drone_by_status,
+                    "in_flight": drone_by_status.get("IN_FLIGHT", 0),
+                    "available": drone_by_status.get("AVAILABLE", 0),
+                },
+                "warehouses": {
+                    "total": total_warehouses,
+                },
+                "batteries": {
+                    "total": total_batteries,
+                    "by_status": battery_by_status,
+                },
+                "items": {
+                    "total": total_items,
+                    "total_stock_qty": total_stock_qty,
+                    "low_stock_count": low_stock_count,
+                },
+                "orders": {
+                    "total": total_orders,
+                    "by_status": order_by_status,
+                    "today": orders_today,
+                    "in_progress": in_progress_orders,
+                },
+                "jobs": {
+                    "total": total_jobs,
+                    "by_status": job_by_status,
+                    "completed": completed_jobs,
+                },
+                "recent_jobs": recent_jobs,
+                "order_activity": order_activity,
+            },
+        })
 
 
 def get_user_organization(user):
