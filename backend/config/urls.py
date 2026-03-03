@@ -28,6 +28,7 @@ urlpatterns = [
                 path("", include("apps.drones.urls")),
                 path("", include("apps.batteries.urls")),
                 path("", include("apps.jobs.urls")),
+                path("", include("apps.logs.urls")),
             ]
         ),
     ),

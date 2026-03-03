@@ -34,6 +34,8 @@ import TelemetryPage from '@/pages/dashboard/telemetry'
 import MaintenancePage from '@/pages/dashboard/maintenance'
 import BatteriesPage from '@/pages/dashboard/batteries'
 import JobsPage from '@/pages/dashboard/jobs'
+import LogFilesPage from '@/pages/dashboard/log-files'
+import GraphTemplatesPage from '@/pages/dashboard/graph-templates'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -87,6 +89,8 @@ function App() {
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="batteries" element={<BatteriesPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="log-files" element={<LogFilesPage />} />
+            <Route path="graph-templates" element={<GraphTemplatesPage />} />
             {/* Add more dashboard routes here */}
             <Route path="*" element={<ComingSoon />} />
           </Route>
