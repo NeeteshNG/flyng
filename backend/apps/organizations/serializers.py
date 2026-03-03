@@ -4,7 +4,13 @@ Organization API Serializers
 
 from rest_framework import serializers
 
-from apps.organizations.models import Organization, OrganizationMembership, Plan, Subscription
+from apps.organizations.models import (
+    Organization,
+    OrganizationAPIKey,
+    OrganizationMembership,
+    Plan,
+    Subscription,
+)
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -140,5 +146,86 @@ class OrganizationMembershipSerializer(serializers.ModelSerializer):
             "user_role",
             "is_active",
             "joined_at",
+        ]
+        read_only_fields = fields
+
+
+class APIKeyListSerializer(serializers.ModelSerializer):
+    """Serializer for listing API keys (no sensitive data)."""
+
+    created_by_name = serializers.CharField(
+        source="created_by_user.get_full_name", read_only=True
+    )
+    is_expired = serializers.BooleanField(read_only=True)
+    is_valid = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = OrganizationAPIKey
+        fields = [
+            "id",
+            "name",
+            "prefix",
+            "description",
+            "is_active",
+            "is_expired",
+            "is_valid",
+            "scopes",
+            "rate_limit_per_minute",
+            "expires_at",
+            "last_used_at",
+            "last_used_ip",
+            "usage_count",
+            "created_by_user",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class APIKeyCreateSerializer(serializers.Serializer):
+    """Serializer for creating a new API key."""
+
+    name = serializers.CharField(max_length=100)
+    description = serializers.CharField(required=False, default="", allow_blank=True)
+    scopes = serializers.ListField(
+        child=serializers.CharField(max_length=50),
+        required=False,
+        default=list,
+    )
+    expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+
+    def validate_name(self, value):
+        organization = self.context.get("organization")
+        if organization and OrganizationAPIKey.objects.filter(
+            organization=organization, name=value, is_active=True
+        ).exists():
+            raise serializers.ValidationError("An active API key with this name already exists.")
+        return value
+
+
+class APIKeyCreateResponseSerializer(serializers.ModelSerializer):
+    """Serializer for the create response (includes the raw key, shown only once)."""
+
+    raw_key = serializers.CharField(read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by_user.get_full_name", read_only=True
+    )
+
+    class Meta:
+        model = OrganizationAPIKey
+        fields = [
+            "id",
+            "name",
+            "prefix",
+            "description",
+            "is_active",
+            "scopes",
+            "rate_limit_per_minute",
+            "expires_at",
+            "created_by_user",
+            "created_by_name",
+            "created_at",
+            "raw_key",
         ]
         read_only_fields = fields
