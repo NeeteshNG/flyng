@@ -6,6 +6,7 @@ import {
   Package,
   MapPin,
   ShoppingCart,
+  Briefcase,
   Settings,
   FileText,
   Box,
@@ -91,6 +92,11 @@ const navigation: NavItem[] = [
       { name: 'Create Order', path: '/dashboard/orders/create' },
       { name: 'Order History', path: '/dashboard/orders' },
     ],
+  },
+  {
+    name: 'Jobs',
+    icon: Briefcase,
+    path: '/dashboard/jobs',
   },
   {
     name: 'Bin Setup',
