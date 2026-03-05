@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from django.db.models import Sum
@@ -74,7 +76,7 @@ class StorageLocationFilter(django_filters.FilterSet):
         ]
 
 
-class StorageLocationViewSet(viewsets.ModelViewSet):
+class StorageLocationViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for storage locations.
 
@@ -117,6 +119,7 @@ class StorageLocationViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated storage location")
         return Response(
             {"success": True, "message": "Storage location deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -145,7 +148,7 @@ class StorageBinFilter(django_filters.FilterSet):
         ]
 
 
-class StorageBinViewSet(viewsets.ModelViewSet):
+class StorageBinViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for storage bins.
 
@@ -189,6 +192,7 @@ class StorageBinViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated storage bin")
         return Response(
             {"success": True, "message": "Storage bin deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -213,7 +217,7 @@ class StorageBinTemplateFilter(django_filters.FilterSet):
         ]
 
 
-class StorageBinTemplateViewSet(viewsets.ModelViewSet):
+class StorageBinTemplateViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for bin templates.
 
@@ -256,6 +260,7 @@ class StorageBinTemplateViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated bin template")
         return Response(
             {"success": True, "message": "Bin template deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -278,7 +283,7 @@ class BinLabelTypeFilter(django_filters.FilterSet):
         ]
 
 
-class BinLabelTypeViewSet(viewsets.ModelViewSet):
+class BinLabelTypeViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for bin label types.
 
@@ -321,6 +326,7 @@ class BinLabelTypeViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated label type")
         return Response(
             {"success": True, "message": "Label type deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -348,7 +354,7 @@ class ItemCategoryFilter(django_filters.FilterSet):
         ]
 
 
-class ItemCategoryViewSet(viewsets.ModelViewSet):
+class ItemCategoryViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for item categories.
 
@@ -392,6 +398,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated category")
         return Response(
             {"success": True, "message": "Category deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -431,7 +438,7 @@ class InventoryItemFilter(django_filters.FilterSet):
         return queryset
 
 
-class InventoryItemViewSet(viewsets.ModelViewSet):
+class InventoryItemViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for inventory items.
 
@@ -474,6 +481,7 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated item")
         return Response(
             {"success": True, "message": "Item deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -524,7 +532,7 @@ class InventoryStockFilter(django_filters.FilterSet):
         ]
 
 
-class InventoryStockViewSet(viewsets.ModelViewSet):
+class InventoryStockViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for inventory stock.
 
@@ -565,6 +573,7 @@ class InventoryStockViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Delete stock record."""
         instance = self.get_object()
+        self.log_activity(ActivityAction.DELETE, instance, "Deleted stock record")
         instance.delete()
         return Response(
             {"success": True, "message": "Stock record deleted successfully"},

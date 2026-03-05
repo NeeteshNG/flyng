@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from .models import BatteryChargingSession, BatterySwapRecord, DroneBattery
@@ -72,7 +74,7 @@ class DroneBatteryFilter(django_filters.FilterSet):
         return queryset
 
 
-class DroneBatteryViewSet(viewsets.ModelViewSet):
+class DroneBatteryViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drone batteries.
 
@@ -128,6 +130,7 @@ class DroneBatteryViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save(update_fields=["is_active", "updated_at"])
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated battery")
         return Response(
             {"success": True, "message": "Battery deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -177,7 +180,7 @@ class BatteryChargingSessionFilter(django_filters.FilterSet):
         fields = ["battery", "status", "started_after", "started_before"]
 
 
-class BatteryChargingSessionViewSet(viewsets.ModelViewSet):
+class BatteryChargingSessionViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for battery charging sessions.
 
@@ -247,7 +250,7 @@ class BatterySwapRecordFilter(django_filters.FilterSet):
         ]
 
 
-class BatterySwapRecordViewSet(viewsets.ModelViewSet):
+class BatterySwapRecordViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for battery swap records.
 

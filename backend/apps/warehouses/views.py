@@ -9,6 +9,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManager, IsAdminOrManagerOrReadOnly
 from apps.warehouses.models import (
     DroneWorkArea,
@@ -34,7 +36,7 @@ from apps.warehouses.serializers import (
 )
 
 
-class WarehouseViewSet(viewsets.ModelViewSet):
+class WarehouseViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for Warehouse CRUD operations.
 
@@ -74,15 +76,18 @@ class WarehouseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        self.log_activity(ActivityAction.CREATE, serializer.instance, "Created warehouse")
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+        self.log_activity(ActivityAction.UPDATE, serializer.instance, "Updated warehouse")
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete by setting is_active to False."""
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated warehouse")
         return Response(
             {"success": True, "message": "Warehouse deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -121,7 +126,7 @@ class WarehouseViewSet(viewsets.ModelViewSet):
         return Response({"success": True, "data": serializer.data})
 
 
-class WarehouseContactViewSet(viewsets.ModelViewSet):
+class WarehouseContactViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """ViewSet for WarehouseContact CRUD operations."""
 
     permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
@@ -141,13 +146,14 @@ class WarehouseContactViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated contact")
         return Response(
             {"success": True, "message": "Contact deactivated successfully"},
             status=status.HTTP_200_OK,
         )
 
 
-class WarehouseZoneViewSet(viewsets.ModelViewSet):
+class WarehouseZoneViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for WarehouseZone CRUD operations.
     """
@@ -182,15 +188,18 @@ class WarehouseZoneViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        self.log_activity(ActivityAction.CREATE, serializer.instance, "Created zone")
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+        self.log_activity(ActivityAction.UPDATE, serializer.instance, "Updated zone")
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete by setting is_active to False."""
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated zone")
         return Response(
             {"success": True, "message": "Zone deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -205,7 +214,7 @@ class WarehouseZoneViewSet(viewsets.ModelViewSet):
         return Response({"success": True, "data": serializer.data})
 
 
-class GroundControlStationViewSet(viewsets.ModelViewSet):
+class GroundControlStationViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for GroundControlStation CRUD operations.
     """
@@ -237,15 +246,18 @@ class GroundControlStationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        self.log_activity(ActivityAction.CREATE, serializer.instance, "Created GCS")
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+        self.log_activity(ActivityAction.UPDATE, serializer.instance, "Updated GCS")
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete by setting is_active to False."""
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated GCS")
         return Response(
             {"success": True, "message": "GCS deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -260,7 +272,7 @@ class GroundControlStationViewSet(viewsets.ModelViewSet):
         return Response({"success": True, "data": serializer.data})
 
 
-class DroneWorkAreaViewSet(viewsets.ModelViewSet):
+class DroneWorkAreaViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for DroneWorkArea CRUD operations.
     """
@@ -289,15 +301,18 @@ class DroneWorkAreaViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
+        self.log_activity(ActivityAction.CREATE, serializer.instance, "Created work area")
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+        self.log_activity(ActivityAction.UPDATE, serializer.instance, "Updated work area")
 
     def destroy(self, request, *args, **kwargs):
         """Soft delete by setting is_active to False."""
         instance = self.get_object()
         instance.is_active = False
         instance.save()
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated work area")
         return Response(
             {"success": True, "message": "Work area deactivated successfully"},
             status=status.HTTP_200_OK,

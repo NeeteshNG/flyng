@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from .models import DroneFlightLog, FlightGraphTemplate, FlightLogGraph
@@ -57,7 +59,7 @@ class DroneFlightLogFilter(django_filters.FilterSet):
         ]
 
 
-class DroneFlightLogViewSet(viewsets.ModelViewSet):
+class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drone flight logs.
 
@@ -158,7 +160,7 @@ class FlightGraphTemplateFilter(django_filters.FilterSet):
         return queryset.filter(organization__isnull=False)
 
 
-class FlightGraphTemplateViewSet(viewsets.ModelViewSet):
+class FlightGraphTemplateViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for flight graph templates.
 
@@ -212,6 +214,7 @@ class FlightGraphTemplateViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save(update_fields=["is_active", "updated_at"])
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated template")
         return Response(
             {"success": True, "message": "Template deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -235,7 +238,7 @@ class FlightLogGraphFilter(django_filters.FilterSet):
         fields = ["log", "template", "is_generated"]
 
 
-class FlightLogGraphViewSet(viewsets.ModelViewSet):
+class FlightLogGraphViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for flight log graphs.
 

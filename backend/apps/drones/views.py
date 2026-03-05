@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from .models import Drone, DroneMaintenanceRecord, DroneTelemetryLog
@@ -63,7 +65,7 @@ class DroneFilter(django_filters.FilterSet):
         ]
 
 
-class DroneViewSet(viewsets.ModelViewSet):
+class DroneViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drones.
 
@@ -124,6 +126,7 @@ class DroneViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_active = False
         instance.save(update_fields=["is_active", "updated_at"])
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated drone")
         return Response(
             {"success": True, "message": "Drone deactivated successfully"},
             status=status.HTTP_200_OK,
@@ -170,7 +173,7 @@ class DroneTelemetryLogFilter(django_filters.FilterSet):
         fields = ["drone", "flight_mode", "timestamp_after", "timestamp_before"]
 
 
-class DroneTelemetryLogViewSet(viewsets.ModelViewSet):
+class DroneTelemetryLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drone telemetry logs.
 
@@ -227,7 +230,7 @@ class DroneMaintenanceRecordFilter(django_filters.FilterSet):
         fields = ["drone", "maintenance_type", "performed_by", "is_completed"]
 
 
-class DroneMaintenanceRecordViewSet(viewsets.ModelViewSet):
+class DroneMaintenanceRecordViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drone maintenance records.
 
@@ -326,5 +329,6 @@ class DroneMaintenanceRecordViewSet(viewsets.ModelViewSet):
         drone.last_maintenance_at = record.completed_at
         drone.save(update_fields=["last_maintenance_at", "updated_at"])
 
+        self.log_activity(ActivityAction.UPDATE, record, "Completed maintenance record")
         serializer = DroneMaintenanceRecordDetailSerializer(record)
         return Response(serializer.data)

@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from .models import PickOrder, PickOrderBatch, PickOrderLine
@@ -58,7 +60,7 @@ class PickOrderFilter(django_filters.FilterSet):
         ]
 
 
-class PickOrderViewSet(viewsets.ModelViewSet):
+class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for pick orders.
 
@@ -124,6 +126,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         reason = request.data.get("reason", "")
         success = instance.cancel(reason=reason)
         if success:
+            self.log_activity(ActivityAction.DELETE, instance, "Cancelled order")
             return Response(
                 {"success": True, "message": "Order cancelled successfully"},
                 status=status.HTTP_200_OK,
@@ -139,6 +142,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.confirm(user=request.user)
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Confirmed order")
             return Response(
                 {"success": True, "message": "Order confirmed successfully"},
                 status=status.HTTP_200_OK,
@@ -154,6 +158,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.start_picking(user=request.user)
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Started picking order")
             return Response(
                 {"success": True, "message": "Picking started successfully"},
                 status=status.HTTP_200_OK,
@@ -169,6 +174,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.complete_picking()
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Completed picking order")
             return Response(
                 {"success": True, "message": "Picking completed successfully"},
                 status=status.HTTP_200_OK,
@@ -184,6 +190,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.pack()
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Packed order")
             return Response(
                 {"success": True, "message": "Order packed successfully"},
                 status=status.HTTP_200_OK,
@@ -199,6 +206,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.ship()
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Shipped order")
             return Response(
                 {"success": True, "message": "Order shipped successfully"},
                 status=status.HTTP_200_OK,
@@ -214,6 +222,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.deliver()
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Delivered order")
             return Response(
                 {"success": True, "message": "Order delivered successfully"},
                 status=status.HTTP_200_OK,
@@ -229,6 +238,7 @@ class PickOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         success = order.hold()
         if success:
+            self.log_activity(ActivityAction.UPDATE, order, "Put order on hold")
             return Response(
                 {"success": True, "message": "Order put on hold"},
                 status=status.HTTP_200_OK,
@@ -260,7 +270,7 @@ class PickOrderLineFilter(django_filters.FilterSet):
         ]
 
 
-class PickOrderLineViewSet(viewsets.ModelViewSet):
+class PickOrderLineViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for pick order lines.
 
@@ -302,6 +312,7 @@ class PickOrderLineViewSet(viewsets.ModelViewSet):
         quantity = request.data.get("quantity", line.quantity)
         notes = request.data.get("notes", "")
         line.pick(quantity=quantity, user=request.user, notes=notes)
+        self.log_activity(ActivityAction.UPDATE, line, "Picked order line")
         return Response(
             {"success": True, "message": "Line picked successfully"},
             status=status.HTTP_200_OK,
@@ -329,7 +340,7 @@ class PickOrderBatchFilter(django_filters.FilterSet):
         ]
 
 
-class PickOrderBatchViewSet(viewsets.ModelViewSet):
+class PickOrderBatchViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for pick order batches.
 
@@ -388,6 +399,7 @@ class PickOrderBatchViewSet(viewsets.ModelViewSet):
             kwargs["batch_number"] = f"{prefix}-{suffix}"
 
         serializer.save(**kwargs)
+        self.log_activity(ActivityAction.CREATE, serializer.instance, "Created batch")
 
     @action(detail=True, methods=["post"])
     def complete(self, request, uuid=None):
@@ -395,6 +407,7 @@ class PickOrderBatchViewSet(viewsets.ModelViewSet):
         batch = self.get_object()
         success = batch.complete()
         if success:
+            self.log_activity(ActivityAction.UPDATE, batch, "Completed batch")
             return Response(
                 {"success": True, "message": "Batch completed successfully"},
                 status=status.HTTP_200_OK,

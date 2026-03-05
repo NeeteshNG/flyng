@@ -12,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.choices import ActivityAction
+from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
 
 from .models import DroneJob, DroneJobEvent
@@ -69,7 +71,7 @@ class DroneJobFilter(django_filters.FilterSet):
         )
 
 
-class DroneJobViewSet(viewsets.ModelViewSet):
+class DroneJobViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """
     ViewSet for drone jobs.
 
@@ -144,6 +146,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job cannot be cancelled in its current state."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.DELETE, instance, "Cancelled job")
         return Response(
             {"success": True, "message": "Job cancelled successfully"},
             status=status.HTTP_200_OK,
@@ -169,6 +172,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be queued from NEW status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Queued job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -199,6 +203,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be assigned from QUEUED status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, f"Assigned job to drone {drone.name}")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -214,6 +219,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be started from ASSIGNED status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Started job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -232,6 +238,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be completed from IN_PROGRESS status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Completed job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -249,6 +256,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only fail from ASSIGNED or IN_PROGRESS status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Job failed")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -264,6 +272,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be paused from IN_PROGRESS status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Paused job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -279,6 +288,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job can only be resumed from PAUSED status."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Resumed job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
@@ -294,6 +304,7 @@ class DroneJobViewSet(viewsets.ModelViewSet):
                 {"error": "Job cannot be retried (either not failed or max retries reached)."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        self.log_activity(ActivityAction.UPDATE, job, "Retried job")
         serializer = DroneJobDetailSerializer(
             self.get_queryset().get(pk=job.pk)
         )
