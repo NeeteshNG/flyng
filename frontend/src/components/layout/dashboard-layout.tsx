@@ -17,7 +17,6 @@ import {
   LogOut,
   User,
   Bell,
-  Search,
   Moon,
   Sun,
   CreditCard,
@@ -26,8 +25,8 @@ import {
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { GlobalSearch } from '@/components/shared/global-search'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -364,17 +363,8 @@ export function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </Button>
 
-            {/* Search */}
-            <div className="w-64 sm:w-80 lg:w-96">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search anything..."
-                  className="pl-10 bg-muted/50 border-0 focus-visible:ring-1"
-                />
-              </div>
-            </div>
+            {/* Global Search */}
+            <GlobalSearch />
           </div>
 
           <div className="flex items-center gap-2">

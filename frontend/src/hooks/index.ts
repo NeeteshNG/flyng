@@ -7,3 +7,4 @@
 export { useDeleteDialog } from './use-delete-dialog'
 export { useListPage } from './use-list-page'
 export { useFormat, format } from './use-format'
+export { useGlobalSearch } from './use-global-search'
