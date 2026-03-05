@@ -28,7 +28,15 @@ import qrcode
 from django_cryptography.fields import encrypt
 from phonenumber_field.modelfields import PhoneNumberField
 
-from apps.core.choices import ActivityAction, OTPType, UserRole
+from apps.core.choices import (
+    ActivityAction,
+    DateFormatChoices,
+    LanguageChoices,
+    OTPType,
+    ThemeChoices,
+    UserRole,
+    validate_timezone,
+)
 from apps.core.models import ReadOnlyModel, TimeStampedModel
 from apps.core.utils import get_client_ip, parse_user_agent
 
@@ -1001,3 +1009,82 @@ class UserActivity(ReadOnlyModel):
         """Delete activity logs older than N days."""
         cutoff = timezone.now() - timedelta(days=days)
         return cls.objects.filter(created_at__lt=cutoff).delete()
+
+
+class UserPreferences(TimeStampedModel):
+    """
+    Per-user preferences that override organization defaults.
+
+    All preference fields are nullable: None means "use organization default".
+    Only non-null values represent explicit user overrides.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="preferences",
+        verbose_name=_("User"),
+    )
+
+    # Appearance
+    theme = models.CharField(
+        max_length=10,
+        choices=ThemeChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Theme"),
+        help_text=_("Color theme preference"),
+    )
+
+    # Regional (overrides org defaults)
+    timezone = models.CharField(
+        max_length=64,
+        validators=[validate_timezone],
+        null=True,
+        blank=True,
+        verbose_name=_("Timezone"),
+        help_text=_("Personal timezone override"),
+    )
+    date_format = models.CharField(
+        max_length=20,
+        choices=DateFormatChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Date Format"),
+        help_text=_("Personal date format preference"),
+    )
+    language = models.CharField(
+        max_length=10,
+        choices=LanguageChoices.choices,
+        null=True,
+        blank=True,
+        verbose_name=_("Language"),
+        help_text=_("Personal language preference"),
+    )
+
+    # Notification preferences (overrides org defaults)
+    email_notifications_enabled = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_("Email Notifications Enabled"),
+        help_text=_("Personal email notification preference"),
+    )
+    daily_summary_enabled = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name=_("Daily Summary Enabled"),
+        help_text=_("Personal daily summary preference"),
+    )
+    daily_summary_time = models.TimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Daily Summary Time"),
+        help_text=_("Personal daily summary time"),
+    )
+
+    class Meta:
+        verbose_name = _("User Preferences")
+        verbose_name_plural = _("User Preferences")
+
+    def __str__(self):
+        return f"Preferences for {self.user.email}"

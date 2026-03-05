@@ -22,6 +22,7 @@ from .models import (
     LoginAttempt,
     PasswordHistory,
     UserActivity,
+    UserPreferences,
     UserSession,
 )
 
@@ -668,3 +669,28 @@ class UserActivitySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+
+# =============================================================================
+# USER PREFERENCES SERIALIZERS
+# =============================================================================
+
+
+class UserPreferencesSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user preferences (read + partial update).
+
+    All fields are nullable. A null value means "use org default".
+    """
+
+    class Meta:
+        model = UserPreferences
+        fields = [
+            "theme",
+            "timezone",
+            "date_format",
+            "language",
+            "email_notifications_enabled",
+            "daily_summary_enabled",
+            "daily_summary_time",
+        ]

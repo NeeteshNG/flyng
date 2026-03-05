@@ -27,6 +27,7 @@ urlpatterns = [
     # PROFILE & PASSWORD
     # ==========================================================================
     path("profile/", views.ProfileView.as_view(), name="profile"),
+    path("preferences/", views.UserPreferencesView.as_view(), name="user_preferences"),
     path("change-password/", views.ChangePasswordView.as_view(), name="change_password"),
     # ==========================================================================
     # OTP / PASSWORD RESET / EMAIL VERIFICATION

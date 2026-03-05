@@ -19,6 +19,7 @@ from apps.organizations.models import (
     Organization,
     OrganizationAPIKey,
     OrganizationMembership,
+    OrganizationSettings,
     Plan,
     Subscription,
 )
@@ -27,6 +28,7 @@ from apps.organizations.serializers import (
     APIKeyCreateSerializer,
     APIKeyListSerializer,
     OrganizationBillingSerializer,
+    OrganizationSettingsSerializer,
     PlanSerializer,
     SubscriptionSerializer,
 )
@@ -387,6 +389,82 @@ def get_user_organization(user):
     return membership.organization if membership else None
 
 
+class OrganizationSettingsView(APIView):
+    """
+    Get or update organization settings.
+
+    GET /api/v1/settings/
+    PATCH /api/v1/settings/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        settings, _ = OrganizationSettings.objects.get_or_create(
+            organization=organization
+        )
+        serializer = OrganizationSettingsSerializer(settings)
+        return Response({"success": True, "data": serializer.data})
+
+    def patch(self, request):
+        if not request.user.is_manager():
+            return Response(
+                {"success": False, "message": "Admin or Manager access required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        settings, _ = OrganizationSettings.objects.get_or_create(
+            organization=organization
+        )
+        serializer = OrganizationSettingsSerializer(
+            settings, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"success": True, "data": serializer.data})
+
+
+class OrganizationSettingsRegenerateWebhookView(APIView):
+    """
+    Regenerate the webhook secret.
+
+    POST /api/v1/settings/regenerate-webhook-secret/
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+
+    def post(self, request):
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found for this user"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        settings, _ = OrganizationSettings.objects.get_or_create(
+            organization=organization
+        )
+        settings.regenerate_webhook_secret()
+        return Response({
+            "success": True,
+            "message": "Webhook secret regenerated successfully.",
+        })
+
+
 class APIKeyListCreateView(APIView):
     """
     List and create API keys for the current user's organization.
@@ -490,3 +568,36 @@ class APIKeyRevokeView(APIView):
         api_key.is_active = False
         api_key.save_without_historical_record(update_fields=["is_active"])
         return Response({"success": True, "message": "API key revoked successfully"})
+
+
+class ReferenceDataView(APIView):
+    """
+    Reference data for dropdowns (timezones, currencies).
+
+    GET /api/v1/reference-data/
+    Returns all valid timezones and currencies.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.core.choices import CURRENCY_CHOICES, get_all_timezones
+
+        timezones = [
+            {"value": tz, "label": tz.replace("_", " ")}
+            for tz in get_all_timezones()
+        ]
+        currencies = [
+            {"value": code, "label": f"{code} — {name}"}
+            for code, name in CURRENCY_CHOICES
+        ]
+
+        return Response(
+            {
+                "success": True,
+                "data": {
+                    "timezones": timezones,
+                    "currencies": currencies,
+                },
+            }
+        )

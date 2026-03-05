@@ -16,6 +16,7 @@ import DashboardHome from '@/pages/dashboard/home'
 import UsersPage from '@/pages/dashboard/users'
 import ProfilePage from '@/pages/dashboard/profile'
 import SettingsPage from '@/pages/dashboard/settings'
+import OrganizationSettingsPage from '@/pages/dashboard/organization'
 import WarehousesPage from '@/pages/dashboard/warehouses'
 import ZonesPage from '@/pages/dashboard/zones'
 import GCSPage from '@/pages/dashboard/gcs'
@@ -76,6 +77,7 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="organization" element={<OrganizationSettingsPage />} />
             <Route path="warehouses" element={<WarehousesPage />} />
             <Route path="zones" element={<ZonesPage />} />
             <Route path="ground-stations" element={<GCSPage />} />

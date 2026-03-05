@@ -35,6 +35,7 @@ from .models import (
     LoginAttempt,
     PasswordHistory,
     UserActivity,
+    UserPreferences,
     UserSession,
 )
 from .serializers import (
@@ -52,6 +53,7 @@ from .serializers import (
     UserAdminUpdateSerializer,
     UserCreateSerializer,
     UserListSerializer,
+    UserPreferencesSerializer,
     UserSerializer,
     UserSessionSerializer,
     UserUpdateSerializer,
@@ -242,6 +244,113 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
         return Response(
             {"success": True, "message": "Profile updated successfully", "data": UserSerializer(instance).data}
+        )
+
+
+class UserPreferencesView(APIView):
+    """
+    Get or update user preferences.
+
+    GET  /api/v1/users/preferences/  - Returns effective preferences (merged with org defaults)
+    PATCH /api/v1/users/preferences/ - Update user preferences (partial update)
+    DELETE /api/v1/users/preferences/ - Reset all preferences to org defaults
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    FALLBACK_FIELDS = [
+        "timezone",
+        "date_format",
+        "language",
+        "email_notifications_enabled",
+        "daily_summary_enabled",
+        "daily_summary_time",
+    ]
+
+    def get(self, request):
+        from apps.organizations.models import OrganizationSettings
+        from apps.organizations.views import get_user_organization
+
+        preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+
+        # Get org settings for fallback
+        org_settings = None
+        organization = get_user_organization(request.user)
+        if organization:
+            org_settings, _ = OrganizationSettings.objects.get_or_create(
+                organization=organization
+            )
+
+        # Build effective preferences
+        effective = {}
+        overrides = {}
+
+        # Theme has no org default — defaults to "system"
+        effective["theme"] = preferences.theme or "system"
+        overrides["theme"] = preferences.theme is not None
+
+        # Fields that fall back to org defaults
+        for field in self.FALLBACK_FIELDS:
+            user_value = getattr(preferences, field)
+            overrides[field] = user_value is not None
+            if user_value is not None:
+                effective[field] = user_value
+            elif org_settings:
+                effective[field] = getattr(org_settings, field)
+            else:
+                effective[field] = None
+
+        # Serialize time field
+        if effective.get("daily_summary_time") and hasattr(
+            effective["daily_summary_time"], "strftime"
+        ):
+            effective["daily_summary_time"] = effective[
+                "daily_summary_time"
+            ].strftime("%H:%M")
+
+        effective["overrides"] = overrides
+
+        raw_serializer = UserPreferencesSerializer(preferences)
+
+        return Response(
+            {
+                "success": True,
+                "data": {
+                    "effective": effective,
+                    "raw": raw_serializer.data,
+                },
+            }
+        )
+
+    def patch(self, request):
+        preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+        serializer = UserPreferencesSerializer(
+            preferences, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Preferences saved successfully.",
+                "data": serializer.data,
+            }
+        )
+
+    def delete(self, request):
+        """Reset all preferences to org defaults."""
+        preferences, _ = UserPreferences.objects.get_or_create(user=request.user)
+
+        for field in ["theme"] + self.FALLBACK_FIELDS:
+            setattr(preferences, field, None)
+        preferences.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": "Preferences reset to organization defaults.",
+            }
         )
 
 

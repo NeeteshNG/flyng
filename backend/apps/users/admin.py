@@ -21,6 +21,7 @@ from .models import (
     PasswordHistory,
     TwoFactorAuth,
     User,
+    UserPreferences,
     UserSession,
 )
 
@@ -423,3 +424,26 @@ class EmailChangeRequestAdmin(ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(UserPreferences)
+class UserPreferencesAdmin(ModelAdmin):
+    """
+    User Preferences Admin.
+    """
+
+    list_display = [
+        "user",
+        "theme",
+        "timezone",
+        "language",
+        "created_at",
+    ]
+    list_filter = [
+        "theme",
+        "language",
+    ]
+    search_fields = ["user__email", "user__first_name", "user__last_name"]
+    ordering = ["-created_at"]
+    list_per_page = 50
+    raw_id_fields = ["user"]

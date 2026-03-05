@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Bell,
   Moon,
@@ -7,20 +8,26 @@ import {
   Monitor,
   Palette,
   Mail,
-  MessageSquare,
-  ShieldCheck,
-  Smartphone,
-  LogOut,
-  Trash2,
-  Loader2,
+  Check,
+  ChevronsUpDown,
+  RotateCcw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -29,42 +36,79 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { cn } from '@/lib/utils'
 
-import { useAuth } from '@/hooks/use-auth'
-import { useAuthStore } from '@/stores/auth-store'
+import settingsApi from '@/api/endpoints/settings'
+import preferencesApi, {
+  UserPreferencesRaw,
+} from '@/api/endpoints/preferences'
+import { getErrorMessage } from '@/lib/api-error'
+
+const DATE_FORMAT_OPTIONS = [
+  { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
+  { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
+  { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
+]
+
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'Hindi' },
+]
 
 export default function SettingsPage() {
-  const { logout } = useAuth()
-  const { user } = useAuthStore()
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    const saved = localStorage.getItem('theme')
-    if (saved === 'dark') return 'dark'
-    if (saved === 'light') return 'light'
-    return 'system'
-  })
-  const [logoutAllOpen, setLogoutAllOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const queryClient = useQueryClient()
 
-  // Notification preferences (stored locally for now)
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: true,
-    orderUpdates: true,
-    droneAlerts: true,
-    lowStock: true,
-    systemUpdates: false,
+  // Combobox popover state
+  const [prefTzOpen, setPrefTzOpen] = useState(false)
+
+  // Fetch user preferences
+  const { data: prefsData, isLoading } = useQuery({
+    queryKey: ['user-preferences'],
+    queryFn: async () => {
+      const res = await preferencesApi.getPreferences()
+      return res.data.data
+    },
+  })
+
+  // Fetch reference data (timezones)
+  const { data: refData } = useQuery({
+    queryKey: ['reference-data'],
+    queryFn: async () => {
+      const res = await settingsApi.getReferenceData()
+      return res.data.data
+    },
+    staleTime: Infinity,
+  })
+
+  // User preferences mutation
+  const prefsMutation = useMutation({
+    mutationFn: (data: Partial<UserPreferencesRaw>) =>
+      preferencesApi.updatePreferences(data),
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['user-preferences'] })
+      toast.success('Preferences saved', { duration: 4000 })
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, 'Failed to save preferences'), {
+        duration: 5000,
+      })
+    },
   })
 
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
-    setTheme(newTheme)
-
+    // Apply immediately to DOM
     if (newTheme === 'system') {
       localStorage.removeItem('theme')
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -73,32 +117,38 @@ export default function SettingsPage() {
       localStorage.setItem('theme', newTheme)
       document.documentElement.classList.toggle('dark', newTheme === 'dark')
     }
-
-    toast.success(`Theme changed to ${newTheme}`)
+    // Persist to backend
+    prefsMutation.mutate({ theme: newTheme })
   }
 
-  const handleNotificationChange = (key: keyof typeof notifications) => {
-    setNotifications((prev) => {
-      const updated = { ...prev, [key]: !prev[key] }
-      localStorage.setItem('notification-preferences', JSON.stringify(updated))
-      return updated
-    })
-    toast.success('Notification preference updated')
-  }
+  const effective = prefsData?.effective
+  const overrides = prefsData?.effective.overrides
 
-  const handleLogoutAll = async () => {
-    setIsLoggingOut(true)
-    try {
-      // In a real app, this would call an API to terminate all sessions
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('All sessions terminated')
-      setLogoutAllOpen(false)
-      logout()
-    } catch {
-      toast.error('Failed to logout from all devices')
-    } finally {
-      setIsLoggingOut(false)
-    }
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your personal preferences
+          </p>
+        </div>
+        <div className="grid gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-72" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -107,12 +157,12 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your application preferences and account settings
+          Manage your personal preferences
         </p>
       </div>
 
       <div className="grid gap-6">
-        {/* Appearance Settings */}
+        {/* Appearance */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -123,7 +173,7 @@ export default function SettingsPage() {
               Customize how the application looks on your device
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label className="text-base">Theme</Label>
@@ -131,7 +181,12 @@ export default function SettingsPage() {
                   Select your preferred color theme
                 </p>
               </div>
-              <Select value={theme} onValueChange={(v) => handleThemeChange(v as typeof theme)}>
+              <Select
+                value={effective?.theme || 'system'}
+                onValueChange={(v) =>
+                  handleThemeChange(v as 'light' | 'dark' | 'system')
+                }
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
@@ -157,48 +212,186 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Language</Label>
-                <p className="text-sm text-muted-foreground">
-                  Choose your preferred language
-                </p>
+        {/* Regional Preferences (user-specific) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Regional Preferences
+            </CardTitle>
+            <CardDescription>
+              Override your organization's regional defaults for your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Timezone */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>Timezone</Label>
+                  {!overrides?.timezone && (
+                    <Badge variant="outline" className="text-xs">
+                      Org Default
+                    </Badge>
+                  )}
+                </div>
+                <Popover open={prefTzOpen} onOpenChange={setPrefTzOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={prefTzOpen}
+                      className="w-full justify-between font-normal"
+                    >
+                      {effective?.timezone
+                        ? refData?.timezones.find(
+                            (tz) => tz.value === effective.timezone
+                          )?.label || effective.timezone
+                        : 'Select timezone...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[320px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search timezone..." />
+                      <CommandList>
+                        <CommandEmpty>No timezone found.</CommandEmpty>
+                        <CommandGroup>
+                          {(refData?.timezones ?? []).map((tz) => (
+                            <CommandItem
+                              key={tz.value}
+                              value={tz.label}
+                              onSelect={() => {
+                                prefsMutation.mutate({ timezone: tz.value })
+                                setPrefTzOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  'mr-2 h-4 w-4',
+                                  effective?.timezone === tz.value
+                                    ? 'opacity-100'
+                                    : 'opacity-0'
+                                )}
+                              />
+                              {tz.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {overrides?.timezone && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-muted-foreground"
+                    onClick={() => prefsMutation.mutate({ timezone: null })}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Reset to org default
+                  </Button>
+                )}
               </div>
-              <Select defaultValue="en">
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      English
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="hi" disabled>
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      Hindi (Coming Soon)
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+
+              {/* Date Format */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>Date Format</Label>
+                  {!overrides?.date_format && (
+                    <Badge variant="outline" className="text-xs">
+                      Org Default
+                    </Badge>
+                  )}
+                </div>
+                <Select
+                  value={effective?.date_format || ''}
+                  onValueChange={(v) =>
+                    prefsMutation.mutate({ date_format: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DATE_FORMAT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {overrides?.date_format && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-muted-foreground"
+                    onClick={() =>
+                      prefsMutation.mutate({ date_format: null })
+                    }
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Reset to org default
+                  </Button>
+                )}
+              </div>
+
+              {/* Language */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label>Language</Label>
+                  {!overrides?.language && (
+                    <Badge variant="outline" className="text-xs">
+                      Org Default
+                    </Badge>
+                  )}
+                </div>
+                <Select
+                  value={effective?.language || ''}
+                  onValueChange={(v) =>
+                    prefsMutation.mutate({ language: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {overrides?.language && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-muted-foreground"
+                    onClick={() => prefsMutation.mutate({ language: null })}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Reset to org default
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Notification Settings */}
+        {/* Notification Preferences (user-specific) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5" />
-              Notifications
+              Notification Preferences
             </CardTitle>
             <CardDescription>
-              Configure how you receive notifications
+              Control your personal notification settings
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -206,200 +399,129 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <div className="space-y-0.5">
-                  <Label className="text-base">Email Notifications</Label>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-base">Email Notifications</Label>
+                    {!overrides?.email_notifications_enabled && (
+                      <Badge variant="outline" className="text-xs">
+                        Org Default
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Receive notifications via email
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={notifications.email}
-                onCheckedChange={() => handleNotificationChange('email')}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                <div className="space-y-0.5">
-                  <Label className="text-base">Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive push notifications in browser
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={notifications.push}
-                onCheckedChange={() => handleNotificationChange('push')}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <Label className="text-sm font-medium text-muted-foreground">
-                Notification Types
-              </Label>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Order Updates</Label>
-                  <p className="text-xs text-muted-foreground">
-                    When orders are created, updated, or completed
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
                 <Switch
-                  checked={notifications.orderUpdates}
-                  onCheckedChange={() => handleNotificationChange('orderUpdates')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Drone Alerts</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Critical drone status and battery alerts
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.droneAlerts}
-                  onCheckedChange={() => handleNotificationChange('droneAlerts')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Low Stock Alerts</Label>
-                  <p className="text-xs text-muted-foreground">
-                    When inventory items are running low
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.lowStock}
-                  onCheckedChange={() => handleNotificationChange('lowStock')}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>System Updates</Label>
-                  <p className="text-xs text-muted-foreground">
-                    News and updates about FlyNG
-                  </p>
-                </div>
-                <Switch
-                  checked={notifications.systemUpdates}
-                  onCheckedChange={() => handleNotificationChange('systemUpdates')}
+                  checked={effective?.email_notifications_enabled ?? true}
+                  onCheckedChange={(v) =>
+                    prefsMutation.mutate({
+                      email_notifications_enabled: v,
+                    })
+                  }
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Security Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
-              Security
-            </CardTitle>
-            <CardDescription>
-              Manage your account security settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Smartphone className="h-4 w-4 text-muted-foreground" />
-                <div className="space-y-0.5">
-                  <Label className="text-base">Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Add an extra layer of security to your account
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm">
-                {user?.two_factor_enabled ? 'Manage' : 'Enable'}
-              </Button>
-            </div>
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <LogOut className="h-4 w-4 text-muted-foreground" />
-                <div className="space-y-0.5">
-                  <Label className="text-base">Active Sessions</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Sign out from all other devices
-                  </p>
-                </div>
-              </div>
+            {overrides?.email_notifications_enabled && (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                onClick={() => setLogoutAllOpen(true)}
+                className="h-auto p-0 text-xs text-muted-foreground"
+                onClick={() =>
+                  prefsMutation.mutate({
+                    email_notifications_enabled: null,
+                  })
+                }
               >
-                Logout All
+                <RotateCcw className="mr-1 h-3 w-3" />
+                Reset to org default
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            )}
 
-        {/* Danger Zone */}
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-destructive">
-              <Trash2 className="h-5 w-5" />
-              Danger Zone
-            </CardTitle>
-            <CardDescription>
-              Irreversible actions that affect your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+            <Separator />
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-base">Delete Account</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-base">Daily Summary</Label>
+                  {!overrides?.daily_summary_enabled && (
+                    <Badge variant="outline" className="text-xs">
+                      Org Default
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  Permanently delete your account and all associated data
+                  Receive a daily summary of activity via email
                 </p>
               </div>
-              <Button variant="destructive" size="sm" disabled>
-                Delete Account
-              </Button>
+              <Switch
+                checked={effective?.daily_summary_enabled ?? false}
+                onCheckedChange={(v) =>
+                  prefsMutation.mutate({ daily_summary_enabled: v })
+                }
+              />
             </div>
+            {overrides?.daily_summary_enabled && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-0 text-xs text-muted-foreground"
+                onClick={() =>
+                  prefsMutation.mutate({ daily_summary_enabled: null })
+                }
+              >
+                <RotateCcw className="mr-1 h-3 w-3" />
+                Reset to org default
+              </Button>
+            )}
+
+            {effective?.daily_summary_enabled && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-base">Summary Time</Label>
+                      {!overrides?.daily_summary_time && (
+                        <Badge variant="outline" className="text-xs">
+                          Org Default
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Time to send the daily summary
+                    </p>
+                  </div>
+                  <Input
+                    type="time"
+                    className="w-32"
+                    value={effective?.daily_summary_time || '09:00'}
+                    onChange={(e) =>
+                      prefsMutation.mutate({
+                        daily_summary_time: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                {overrides?.daily_summary_time && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-0 text-xs text-muted-foreground"
+                    onClick={() =>
+                      prefsMutation.mutate({ daily_summary_time: null })
+                    }
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Reset to org default
+                  </Button>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
-
-      {/* Logout All Dialog */}
-      <Dialog open={logoutAllOpen} onOpenChange={setLogoutAllOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Logout from all devices?</DialogTitle>
-            <DialogDescription>
-              This will sign you out from all devices where you're currently
-              logged in, including this one. You'll need to log in again.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLogoutAllOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleLogoutAll}
-              disabled={isLoggingOut}
-            >
-              {isLoggingOut && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Logout All Devices
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

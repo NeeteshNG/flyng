@@ -30,15 +30,15 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import (
     BillingCycle,
-    CurrencyChoices,
     DateFormatChoices,
     InvitationStatus,
     LanguageChoices,
     MembershipRole,
     PlanType,
     SubscriptionStatus,
-    TimezoneChoices,
     UserRole,
+    validate_currency,
+    validate_timezone,
 )
 from apps.core.models import AuditedModel, BaseModel
 from apps.organizations.managers import (
@@ -512,9 +512,9 @@ class OrganizationSettings(BaseModel):
 
     # Regional settings
     timezone = models.CharField(
-        max_length=50,
-        choices=TimezoneChoices.choices,
-        default=TimezoneChoices.IST,
+        max_length=64,
+        default="Asia/Kolkata",
+        validators=[validate_timezone],
         verbose_name=_("Timezone"),
     )
     date_format = models.CharField(
@@ -525,8 +525,8 @@ class OrganizationSettings(BaseModel):
     )
     currency = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.choices,
-        default=CurrencyChoices.INR,
+        default="INR",
+        validators=[validate_currency],
         verbose_name=_("Currency"),
     )
     language = models.CharField(
@@ -1097,8 +1097,8 @@ class Subscription(AuditedModel):
     )
     currency = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.choices,
-        default=CurrencyChoices.INR,
+        default="INR",
+        validators=[validate_currency],
         verbose_name=_("Currency"),
     )
 

@@ -5,7 +5,7 @@ All model choices are defined here with i18n support for English and Hindi.
 Uses Django's gettext_lazy for lazy translation.
 
 Usage:
-    from apps.core.choices import UserRole, PlanType, TimezoneChoices
+    from apps.core.choices import UserRole, PlanType
 
     class MyModel(models.Model):
         role = models.CharField(choices=UserRole.choices, ...)
@@ -45,6 +45,17 @@ class OTPType(models.TextChoices):
     EMAIL_CHANGE = "EMAIL_CHANGE", _("Email Change Verification")
 
 
+class ThemeChoices(models.TextChoices):
+    """User theme preferences."""
+
+    # Translators: Light color theme
+    LIGHT = "light", _("Light")
+    # Translators: Dark color theme
+    DARK = "dark", _("Dark")
+    # Translators: Follow system/OS color theme
+    SYSTEM = "system", _("System")
+
+
 # =============================================================================
 # Organization Choices
 # =============================================================================
@@ -63,23 +74,6 @@ class PlanType(models.TextChoices):
     ENTERPRISE = "ENTERPRISE", _("Enterprise")
 
 
-class TimezoneChoices(models.TextChoices):
-    """Supported timezones."""
-
-    # Translators: India Standard Time
-    IST = "Asia/Kolkata", _("India Standard Time (IST)")
-    # Translators: Coordinated Universal Time
-    UTC = "UTC", _("Coordinated Universal Time (UTC)")
-    # Translators: Gulf Standard Time (Dubai)
-    DUBAI = "Asia/Dubai", _("Gulf Standard Time (GST)")
-    # Translators: Singapore Time
-    SINGAPORE = "Asia/Singapore", _("Singapore Time (SGT)")
-    # Translators: British Time
-    LONDON = "Europe/London", _("British Time (GMT/BST)")
-    # Translators: Eastern Time (US)
-    NEW_YORK = "America/New_York", _("Eastern Time (ET)")
-
-
 class DateFormatChoices(models.TextChoices):
     """Date format preferences."""
 
@@ -91,15 +85,6 @@ class DateFormatChoices(models.TextChoices):
     YMD = "YYYY-MM-DD", _("YYYY-MM-DD")
 
 
-class CurrencyChoices(models.TextChoices):
-    """Supported currencies."""
-
-    # Translators: Indian Rupee currency
-    INR = "INR", _("Indian Rupee (INR)")
-    # Translators: US Dollar currency
-    USD = "USD", _("US Dollar (USD)")
-
-
 class LanguageChoices(models.TextChoices):
     """Supported languages."""
 
@@ -107,6 +92,98 @@ class LanguageChoices(models.TextChoices):
     ENGLISH = "en", _("English")
     # Translators: Hindi language
     HINDI = "hi", _("Hindi")
+
+
+# =============================================================================
+# Timezone & Currency Validators
+# =============================================================================
+
+
+def get_all_timezones():
+    """Return all IANA timezones sorted."""
+    from zoneinfo import available_timezones
+
+    return sorted(available_timezones())
+
+
+# Comprehensive ISO 4217 currency list (all commonly used currencies)
+CURRENCY_CHOICES = [
+    ("AED", "UAE Dirham"),
+    ("ARS", "Argentine Peso"),
+    ("AUD", "Australian Dollar"),
+    ("BDT", "Bangladeshi Taka"),
+    ("BHD", "Bahraini Dinar"),
+    ("BRL", "Brazilian Real"),
+    ("CAD", "Canadian Dollar"),
+    ("CHF", "Swiss Franc"),
+    ("CNY", "Chinese Yuan"),
+    ("COP", "Colombian Peso"),
+    ("CZK", "Czech Koruna"),
+    ("DKK", "Danish Krone"),
+    ("EGP", "Egyptian Pound"),
+    ("EUR", "Euro"),
+    ("GBP", "British Pound"),
+    ("GHS", "Ghanaian Cedi"),
+    ("HKD", "Hong Kong Dollar"),
+    ("HUF", "Hungarian Forint"),
+    ("IDR", "Indonesian Rupiah"),
+    ("ILS", "Israeli Shekel"),
+    ("INR", "Indian Rupee"),
+    ("IQD", "Iraqi Dinar"),
+    ("JPY", "Japanese Yen"),
+    ("KES", "Kenyan Shilling"),
+    ("KRW", "South Korean Won"),
+    ("KWD", "Kuwaiti Dinar"),
+    ("LKR", "Sri Lankan Rupee"),
+    ("MAD", "Moroccan Dirham"),
+    ("MXN", "Mexican Peso"),
+    ("MYR", "Malaysian Ringgit"),
+    ("NGN", "Nigerian Naira"),
+    ("NOK", "Norwegian Krone"),
+    ("NPR", "Nepalese Rupee"),
+    ("NZD", "New Zealand Dollar"),
+    ("OMR", "Omani Rial"),
+    ("PEN", "Peruvian Sol"),
+    ("PHP", "Philippine Peso"),
+    ("PKR", "Pakistani Rupee"),
+    ("PLN", "Polish Zloty"),
+    ("QAR", "Qatari Riyal"),
+    ("RON", "Romanian Leu"),
+    ("RUB", "Russian Ruble"),
+    ("SAR", "Saudi Riyal"),
+    ("SEK", "Swedish Krona"),
+    ("SGD", "Singapore Dollar"),
+    ("THB", "Thai Baht"),
+    ("TRY", "Turkish Lira"),
+    ("TWD", "Taiwan Dollar"),
+    ("TZS", "Tanzanian Shilling"),
+    ("UAH", "Ukrainian Hryvnia"),
+    ("UGX", "Ugandan Shilling"),
+    ("USD", "US Dollar"),
+    ("UYU", "Uruguayan Peso"),
+    ("VND", "Vietnamese Dong"),
+    ("ZAR", "South African Rand"),
+]
+
+VALID_CURRENCY_CODES = {code for code, _ in CURRENCY_CHOICES}
+
+
+def validate_timezone(value):
+    """Validate that value is a valid IANA timezone."""
+    from zoneinfo import available_timezones
+
+    from django.core.exceptions import ValidationError
+
+    if value not in available_timezones():
+        raise ValidationError(f"'{value}' is not a valid IANA timezone.")
+
+
+def validate_currency(value):
+    """Validate that value is a supported ISO 4217 currency code."""
+    from django.core.exceptions import ValidationError
+
+    if value not in VALID_CURRENCY_CODES:
+        raise ValidationError(f"'{value}' is not a supported currency code.")
 
 
 # =============================================================================

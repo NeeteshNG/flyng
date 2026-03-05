@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,19 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
   Form,
   FormControl,
   FormField,
@@ -34,8 +47,10 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 
 import warehousesApi, { Warehouse } from '@/api/endpoints/warehouses'
+import settingsApi from '@/api/endpoints/settings'
 
 const warehouseFormSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -93,11 +108,6 @@ const INDIAN_STATES = [
   'Delhi',
 ]
 
-const TIMEZONES = [
-  { value: 'Asia/Kolkata', label: 'IST (Asia/Kolkata)' },
-  { value: 'UTC', label: 'UTC' },
-]
-
 export default function WarehouseFormSheet({
   open,
   onOpenChange,
@@ -105,6 +115,16 @@ export default function WarehouseFormSheet({
 }: WarehouseFormSheetProps) {
   const queryClient = useQueryClient()
   const isEditing = !!warehouse
+  const [tzOpen, setTzOpen] = useState(false)
+
+  const { data: refData } = useQuery({
+    queryKey: ['reference-data'],
+    queryFn: async () => {
+      const res = await settingsApi.getReferenceData()
+      return res.data.data
+    },
+    staleTime: Infinity,
+  })
 
   const form = useForm<WarehouseFormValues>({
     resolver: zodResolver(warehouseFormSchema),
@@ -422,22 +442,57 @@ export default function WarehouseFormSheet({
                 control={form.control}
                 name="timezone"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Timezone</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select timezone" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={tzOpen} onOpenChange={setTzOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={tzOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {field.value
+                              ? refData?.timezones.find(
+                                  (tz) => tz.value === field.value
+                                )?.label || field.value
+                              : 'Select timezone...'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[320px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search timezone..." />
+                          <CommandList>
+                            <CommandEmpty>No timezone found.</CommandEmpty>
+                            <CommandGroup>
+                              {(refData?.timezones ?? []).map((tz) => (
+                                <CommandItem
+                                  key={tz.value}
+                                  value={tz.label}
+                                  onSelect={() => {
+                                    field.onChange(tz.value)
+                                    setTzOpen(false)
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      field.value === tz.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  {tz.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}

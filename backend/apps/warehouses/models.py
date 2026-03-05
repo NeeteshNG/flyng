@@ -14,14 +14,14 @@ from django.utils.translation import gettext_lazy as _
 from django_cryptography.fields import encrypt
 
 from apps.core.choices import (
-    CurrencyChoices,
     DateFormatChoices,
     DroneWorkAreaType,
     GCSStatus,
     LanguageChoices,
     MeasurementStandard,
-    TimezoneChoices,
     WarehouseZoneType,
+    validate_currency,
+    validate_timezone,
 )
 from apps.core.models import AuditedModel, BaseModel
 from apps.warehouses.managers import (
@@ -121,9 +121,9 @@ class Warehouse(AuditedModel):
 
     # Timezone
     timezone = models.CharField(
-        max_length=50,
-        choices=TimezoneChoices.choices,
-        default=TimezoneChoices.IST,
+        max_length=64,
+        default="Asia/Kolkata",
+        validators=[validate_timezone],
         verbose_name=_("Timezone"),
         help_text=_("Warehouse timezone for scheduling"),
     )
@@ -249,8 +249,8 @@ class WarehouseProfile(BaseModel):
     )
     currency = models.CharField(
         max_length=3,
-        choices=CurrencyChoices.choices,
-        default=CurrencyChoices.INR,
+        default="INR",
+        validators=[validate_currency],
         verbose_name=_("Currency"),
         help_text=_("Default currency for warehouse operations"),
     )

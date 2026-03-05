@@ -8,6 +8,7 @@ from apps.organizations.models import (
     Organization,
     OrganizationAPIKey,
     OrganizationMembership,
+    OrganizationSettings,
     Plan,
     Subscription,
 )
@@ -148,6 +149,61 @@ class OrganizationMembershipSerializer(serializers.ModelSerializer):
             "joined_at",
         ]
         read_only_fields = fields
+
+
+class OrganizationSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for organization settings (read + partial update)."""
+
+    webhook_secret_set = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrganizationSettings
+        fields = [
+            # Regional
+            "timezone",
+            "date_format",
+            "currency",
+            "language",
+            # Inventory
+            "min_stock_threshold",
+            "enable_low_stock_alerts",
+            "auto_reorder_enabled",
+            # Notifications
+            "email_notifications_enabled",
+            "daily_summary_enabled",
+            "daily_summary_time",
+            # Drone Operations
+            "drone_idle_timeout_minutes",
+            "battery_low_threshold_percent",
+            "battery_critical_threshold_percent",
+            # Order
+            "auto_assign_jobs",
+            "order_priority_enabled",
+            # Security
+            "session_timeout_minutes",
+            "require_2fa_for_admins",
+            "password_expiry_days",
+            # Webhooks
+            "webhook_url",
+            "webhook_secret_set",
+        ]
+
+    def get_webhook_secret_set(self, obj):
+        return bool(obj.webhook_secret)
+
+    def validate(self, data):
+        # Ensure battery critical < battery low threshold
+        low = data.get("battery_low_threshold_percent")
+        critical = data.get("battery_critical_threshold_percent")
+        if low is None and self.instance:
+            low = self.instance.battery_low_threshold_percent
+        if critical is None and self.instance:
+            critical = self.instance.battery_critical_threshold_percent
+        if low is not None and critical is not None and critical >= low:
+            raise serializers.ValidationError(
+                {"battery_critical_threshold_percent": "Must be less than battery low threshold."}
+            )
+        return data
 
 
 class APIKeyListSerializer(serializers.ModelSerializer):
