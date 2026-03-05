@@ -38,6 +38,7 @@ import LogFilesPage from '@/pages/dashboard/log-files'
 import GraphTemplatesPage from '@/pages/dashboard/graph-templates'
 import BillingPage from '@/pages/dashboard/billing'
 import APIKeysPage from '@/pages/dashboard/api-keys'
+import AnalyticsPage from '@/pages/dashboard/analytics'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -70,6 +71,7 @@ function App() {
             }
           >
             <Route index element={<DashboardHome />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="settings" element={<SettingsPage />} />

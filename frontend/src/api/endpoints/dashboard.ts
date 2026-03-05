@@ -46,9 +46,34 @@ export interface DashboardStats {
   }[]
 }
 
+export interface AnalyticsData {
+  activity: {
+    date: string
+    orders: number
+    jobs: number
+  }[]
+  distributions: {
+    drones: { name: string; value: number }[]
+    orders: { name: string; value: number }[]
+    jobs: { name: string; value: number }[]
+    batteries: { name: string; value: number }[]
+    battery_health: { name: string; value: number }[]
+  }
+  inventory: {
+    total_items: number
+    in_stock: number
+    low_stock: number
+    out_of_stock: number
+  }
+}
+
 const dashboardApi = {
   getStats: () => {
     return apiClient.get<{ success: boolean; data: DashboardStats }>('/dashboard/stats/')
+  },
+
+  getAnalytics: () => {
+    return apiClient.get<{ success: boolean; data: AnalyticsData }>('/dashboard/analytics/')
   },
 }
 

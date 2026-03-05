@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home,
+  BarChart3,
   Plane,
   Package,
   MapPin,
@@ -55,6 +56,7 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: 'Home', path: '/dashboard', icon: Home },
+  { name: 'Analytics', path: '/dashboard/analytics', icon: BarChart3 },
   {
     name: 'Drones',
     icon: Plane,
