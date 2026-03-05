@@ -34,6 +34,7 @@ from .models import (
     EmailChangeRequest,
     LoginAttempt,
     PasswordHistory,
+    UserActivity,
     UserSession,
 )
 from .serializers import (
@@ -47,6 +48,7 @@ from .serializers import (
     TerminateSessionSerializer,
     TwoFactorDisableSerializer,
     TwoFactorEnableSerializer,
+    UserActivitySerializer,
     UserAdminUpdateSerializer,
     UserCreateSerializer,
     UserListSerializer,
@@ -134,6 +136,10 @@ class LoginView(TokenObtainPairView):
                 email = request.data.get("email", "").lower()
                 user = User.objects.get(email=email)
                 self._create_session(request, user)
+                try:
+                    UserActivity.log(user, "LOGIN", description="User logged in", request=request)
+                except Exception:
+                    pass  # Table may not exist yet (migration pending)
             except User.DoesNotExist:
                 pass
 
@@ -193,6 +199,10 @@ class LogoutView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
 
+            try:
+                UserActivity.log(request.user, "LOGOUT", description="User logged out", request=request)
+            except Exception:
+                pass  # Table may not exist yet (migration pending)
             return Response({"success": True, "message": "Logout successful"}, status=status.HTTP_200_OK)
         except Exception:
             return Response({"success": False, "message": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
@@ -921,3 +931,23 @@ class LoginAttemptListView(generics.ListAPIView):
     filterset_fields = ["email", "success", "ip_address", "two_factor_used"]
     search_fields = ["email", "ip_address"]
     ordering = ["-created_at"]
+
+
+class UserActivityListView(generics.ListAPIView):
+    """
+    List user activity log entries (Admin/Manager only).
+
+    GET /api/v1/users/activity/
+    Supports filtering by action, resource_type, user, and search by description.
+    """
+
+    serializer_class = UserActivitySerializer
+    permission_classes = [IsAuthenticated, IsManager]
+    pagination_class = StandardPagination
+    filterset_fields = ["action", "resource_type", "user"]
+    search_fields = ["description", "resource_name", "user__email", "user__first_name", "user__last_name"]
+    ordering_fields = ["created_at", "action", "resource_type"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        return UserActivity.objects.select_related("user").all()

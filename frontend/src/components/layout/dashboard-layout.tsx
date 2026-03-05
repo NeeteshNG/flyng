@@ -122,6 +122,7 @@ const navigation: NavItem[] = [
     icon: Settings,
     children: [
       { name: 'Users', path: '/dashboard/users', roles: ['ADMIN', 'MANAGER'] },
+      { name: 'Activity Log', path: '/dashboard/activity', roles: ['ADMIN', 'MANAGER'] },
       { name: 'Settings', path: '/dashboard/settings' },
     ],
   },

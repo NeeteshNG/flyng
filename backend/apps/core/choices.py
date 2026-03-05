@@ -646,3 +646,31 @@ class ImportStatus(models.TextChoices):
     FAILED = "FAILED", _("Failed")
     # Translators: Import job was cancelled
     CANCELLED = "CANCELLED", _("Cancelled")
+
+
+# =============================================================================
+# User Activity Choices
+# =============================================================================
+
+
+class ActivityAction(models.TextChoices):
+    """Types of user activities tracked in the audit log."""
+
+    # Translators: User logged in
+    LOGIN = "LOGIN", _("Login")
+    # Translators: User logged out
+    LOGOUT = "LOGOUT", _("Logout")
+    # Translators: User created a resource
+    CREATE = "CREATE", _("Create")
+    # Translators: User updated a resource
+    UPDATE = "UPDATE", _("Update")
+    # Translators: User deleted a resource
+    DELETE = "DELETE", _("Delete")
+    # Translators: User viewed a resource
+    VIEW = "VIEW", _("View")
+    # Translators: User exported data
+    EXPORT = "EXPORT", _("Export")
+    # Translators: User changed their password
+    PASSWORD_CHANGE = "PASSWORD_CHANGE", _("Password Change")
+    # Translators: User updated their profile
+    PROFILE_UPDATE = "PROFILE_UPDATE", _("Profile Update")

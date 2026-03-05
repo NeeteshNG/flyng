@@ -21,6 +21,7 @@ from apps.core.utils import get_client_ip
 from .models import (
     LoginAttempt,
     PasswordHistory,
+    UserActivity,
     UserSession,
 )
 
@@ -639,4 +640,31 @@ class PasswordHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PasswordHistory
         fields = ["id", "created_at"]
+        read_only_fields = fields
+
+
+class UserActivitySerializer(serializers.ModelSerializer):
+    """Serializer for user activity log entries."""
+
+    user_name = serializers.CharField(source="user.get_full_name", read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    action_display = serializers.CharField(source="get_action_display", read_only=True)
+
+    class Meta:
+        model = UserActivity
+        fields = [
+            "id",
+            "uuid",
+            "user",
+            "user_name",
+            "user_email",
+            "action",
+            "action_display",
+            "resource_type",
+            "resource_id",
+            "resource_name",
+            "description",
+            "ip_address",
+            "created_at",
+        ]
         read_only_fields = fields

@@ -62,4 +62,5 @@ urlpatterns = [
     # SECURITY AUDIT (Admin only)
     # ==========================================================================
     path("login-attempts/", views.LoginAttemptListView.as_view(), name="login_attempts"),
+    path("activity/", views.UserActivityListView.as_view(), name="user_activity"),
 ]

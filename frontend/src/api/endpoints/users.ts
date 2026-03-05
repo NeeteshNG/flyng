@@ -126,6 +126,42 @@ const usersApi = {
       { profile_picture: null }
     )
   },
+
+  // Activity log
+  getActivity: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    action?: string
+    resource_type?: string
+    user?: number
+    ordering?: string
+  }) => {
+    return apiClient.get<UserActivityListResponse>('/users/activity/', { params })
+  },
+}
+
+export interface UserActivity {
+  id: number
+  uuid: string
+  user: number
+  user_name: string
+  user_email: string
+  action: string
+  action_display: string
+  resource_type: string
+  resource_id: string
+  resource_name: string
+  description: string
+  ip_address: string | null
+  created_at: string
+}
+
+export interface UserActivityListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: UserActivity[]
 }
 
 export default usersApi

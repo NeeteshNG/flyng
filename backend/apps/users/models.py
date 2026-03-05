@@ -28,8 +28,8 @@ import qrcode
 from django_cryptography.fields import encrypt
 from phonenumber_field.modelfields import PhoneNumberField
 
-from apps.core.choices import OTPType, UserRole
-from apps.core.models import TimeStampedModel
+from apps.core.choices import ActivityAction, OTPType, UserRole
+from apps.core.models import ReadOnlyModel, TimeStampedModel
 from apps.core.utils import get_client_ip, parse_user_agent
 
 
@@ -904,3 +904,100 @@ class EmailChangeRequest(TimeStampedModel):
             new_email=new_email,
             expires_at=timezone.now() + timedelta(hours=validity_hours),
         )
+
+
+class UserActivity(ReadOnlyModel):
+    """
+    Append-only audit log of user activities.
+    Tracks business actions: login, CRUD on resources, etc.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="activities",
+        verbose_name=_("User"),
+    )
+    action = models.CharField(
+        max_length=20,
+        choices=ActivityAction.choices,
+        db_index=True,
+        verbose_name=_("Action"),
+    )
+    resource_type = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        verbose_name=_("Resource Type"),
+        help_text=_("Type of resource affected (e.g., Drone, Order, Item)"),
+    )
+    resource_id = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name=_("Resource ID"),
+        help_text=_("ID or UUID of the affected resource"),
+    )
+    resource_name = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_("Resource Name"),
+        help_text=_("Display name of the affected resource"),
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name=_("Description"),
+        help_text=_("Human-readable description of the activity"),
+    )
+    ip_address = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        verbose_name=_("IP Address"),
+    )
+    user_agent = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_("User Agent"),
+    )
+
+    class Meta:
+        verbose_name = _("User Activity")
+        verbose_name_plural = _("User Activities")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["action", "created_at"]),
+            models.Index(fields=["resource_type", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
+
+    def __str__(self):
+        if self.resource_type:
+            return f"{self.user.email} {self.action} {self.resource_type} {self.resource_name}"
+        return f"{self.user.email} {self.action}"
+
+    @classmethod
+    def log(cls, user, action, resource_type="", resource_id="", resource_name="",
+            description="", request=None):
+        """Create an activity log entry."""
+        ip_address = None
+        user_agent = ""
+        if request:
+            ip_address = get_client_ip(request)
+            user_agent = request.META.get("HTTP_USER_AGENT", "")[:500]
+
+        return cls.objects.create(
+            user=user,
+            action=action,
+            resource_type=resource_type,
+            resource_id=str(resource_id),
+            resource_name=str(resource_name)[:200],
+            description=description,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    @classmethod
+    def cleanup_old(cls, days=90):
+        """Delete activity logs older than N days."""
+        cutoff = timezone.now() - timedelta(days=days)
+        return cls.objects.filter(created_at__lt=cutoff).delete()
