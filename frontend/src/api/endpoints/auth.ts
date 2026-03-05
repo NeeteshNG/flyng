@@ -129,23 +129,26 @@ export const authApi = {
 
   // 2FA
   setup2FA: () =>
-    apiClient.post<{ secret: string; qr_code: string }>('/users/2fa/setup/'),
+    apiClient.post<{ success: boolean; data: { secret_key: string; provisioning_uri: string; qr_code: string } }>('/users/2fa/setup/'),
 
   enable2FA: (totp_code: string) =>
-    apiClient.post<{ backup_codes: string[] }>('/users/2fa/enable/', { totp_code }),
+    apiClient.post<{ success: boolean; data: { backup_codes: string[]; warning: string } }>('/users/2fa/enable/', { totp_code }),
 
-  disable2FA: (password: string, totp_code: string) =>
-    apiClient.post('/users/2fa/disable/', { password, totp_code }),
+  disable2FA: (password: string) =>
+    apiClient.post('/users/2fa/disable/', { password }),
 
-  regenerateBackupCodes: (password: string) =>
-    apiClient.post<{ backup_codes: string[] }>('/users/2fa/backup-codes/', { password }),
+  regenerateBackupCodes: () =>
+    apiClient.post<{ success: boolean; data: { codes: string[]; generated_at: string; remaining_count: number } }>('/users/2fa/backup-codes/'),
 
   // Sessions
   getSessions: () =>
     apiClient.get('/users/sessions/'),
 
-  terminateSession: (sessionId?: string) =>
-    apiClient.post('/users/sessions/terminate/', sessionId ? { session_id: sessionId } : {}),
+  terminateSession: (sessionKey: string) =>
+    apiClient.post('/users/sessions/terminate/', { session_key: sessionKey }),
+
+  terminateAllSessions: () =>
+    apiClient.post('/users/sessions/terminate/', { terminate_all: true, keep_current: true }),
 
   // Email change
   requestEmailChange: (new_email: string, password: string) =>

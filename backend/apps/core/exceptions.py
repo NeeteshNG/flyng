@@ -21,7 +21,11 @@ def custom_exception_handler(exc, context):
 
         if isinstance(response.data, dict):
             if "detail" in response.data:
-                custom_response_data["message"] = str(response.data["detail"])
+                detail = response.data["detail"]
+                if isinstance(detail, list):
+                    custom_response_data["message"] = str(detail[0]) if detail else "An error occurred"
+                else:
+                    custom_response_data["message"] = str(detail)
             else:
                 custom_response_data["errors"] = response.data
                 custom_response_data["message"] = "Validation error"

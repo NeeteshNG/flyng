@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth-store'
 import authApi, { LoginRequest, RegisterRequest } from '@/api/endpoints/auth'
+import { getErrorMessage } from '@/lib/api-error'
 import { toast } from 'sonner'
 
 export function useAuth() {
@@ -58,9 +59,8 @@ export function useAuth() {
         navigate('/dashboard')
         return { success: true }
       } catch (error: unknown) {
-        const err = error as { response?: { data?: { message?: string } } }
-        const message = err.response?.data?.message || 'Login failed'
-        toast.error(message)
+        const message = getErrorMessage(error, 'Login failed')
+        toast.error(message, { duration: 5000 })
         return { error: message }
       }
     },
@@ -75,12 +75,8 @@ export function useAuth() {
         navigate('/auth/login')
         return { success: true }
       } catch (error: unknown) {
-        const err = error as { response?: { data?: { detail?: string; email?: string[] } } }
-        const message =
-          err.response?.data?.detail ||
-          err.response?.data?.email?.[0] ||
-          'Registration failed'
-        toast.error(message)
+        const message = getErrorMessage(error, 'Registration failed')
+        toast.error(message, { duration: 5000 })
         return { error: message }
       }
     },
