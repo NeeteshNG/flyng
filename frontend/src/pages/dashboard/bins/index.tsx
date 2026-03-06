@@ -55,6 +55,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import inventoryApi, { StorageBin } from '@/api/endpoints/inventory'
 import { getErrorMessage } from '@/lib/api-error'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import BinFormSheet from './bin-form-sheet'
 import BinDetailSheet from './bin-detail-sheet'
 
@@ -182,10 +183,13 @@ export default function BinsPage() {
             Manage storage bins and containers within locations
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Bin
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="bins" />
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Bin
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}

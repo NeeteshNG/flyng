@@ -53,6 +53,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 
 import warehousesApi, { Warehouse } from '@/api/endpoints/warehouses'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import WarehouseFormSheet from './warehouse-form-sheet'
 import WarehouseDetailSheet from './warehouse-detail-sheet'
 
@@ -177,10 +178,13 @@ export default function WarehousesPage() {
             Manage your warehouse facilities and locations
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Warehouse
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="warehouses" />
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Warehouse
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}

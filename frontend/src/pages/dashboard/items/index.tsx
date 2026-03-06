@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, MoreHorizontal, Edit, Trash2, Eye,
   Package, CheckCircle, XCircle, Loader2,
-  ChevronLeft, ChevronRight, X, AlertTriangle,
+  ChevronLeft, ChevronRight, X, AlertTriangle, Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -27,6 +27,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import inventoryApi, { InventoryItem } from '@/api/endpoints/inventory'
 import { getErrorMessage } from '@/lib/api-error'
+import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import ItemFormSheet from './item-form-sheet'
 import ItemDetailSheet from './item-detail-sheet'
 
@@ -44,6 +46,7 @@ export default function ItemsPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const getFilterParams = () => {
     const params: Record<string, unknown> = {
@@ -119,10 +122,17 @@ export default function ItemsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Inventory Items</h1>
           <p className="text-muted-foreground">Manage your product catalog and SKUs</p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="items" />
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -342,6 +352,13 @@ export default function ItemsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="ITEMS"
+        onSuccess={() => queryClient.refetchQueries({ queryKey: ['inventory-items'] })}
+      />
     </div>
   )
 }

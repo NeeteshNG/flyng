@@ -15,6 +15,7 @@ import {
   ChevronRight,
   X,
   Layers,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,6 +56,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import inventoryApi, { ItemCategory } from '@/api/endpoints/inventory'
 import { getErrorMessage } from '@/lib/api-error'
+import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import CategoryFormSheet from './category-form-sheet'
 import CategoryDetailSheet from './category-detail-sheet'
 
@@ -71,6 +74,7 @@ export default function CategoriesPage() {
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [categoryToDelete, setCategoryToDelete] = useState<ItemCategory | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   const getFilterParams = () => {
     const params: Record<string, unknown> = {
@@ -174,10 +178,17 @@ export default function CategoriesPage() {
             Organize inventory items into hierarchical categories
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="categories" />
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -398,6 +409,13 @@ export default function CategoriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="CATEGORIES"
+        onSuccess={() => queryClient.refetchQueries({ queryKey: ['categories'] })}
+      />
     </div>
   )
 }

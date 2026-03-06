@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Search, MoreHorizontal, Eye, Trash2,
   ShoppingCart, Clock, CheckCircle, AlertTriangle,
   ChevronLeft, ChevronRight, X, Loader2,
-  Play, Package, Truck, Check, Pause,
+  Play, Package, Truck, Check, Pause, Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -27,6 +28,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import ordersApi, { PickOrder } from '@/api/endpoints/orders'
 import { getErrorMessage } from '@/lib/api-error'
+import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import { useListPage } from '@/hooks/use-list-page'
 import { useDeleteDialog } from '@/hooks/use-delete-dialog'
 import { useFormat } from '@/hooks/use-format'
@@ -90,6 +93,7 @@ export default function OrdersPage() {
   } = useListPage<PickOrder>({
     initialFilters: { status: 'all', priority: 'all' },
   })
+  const [importOpen, setImportOpen] = useState(false)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['orders', search, filters, page],
@@ -193,10 +197,17 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
           <p className="text-muted-foreground">Manage pick orders and fulfillment</p>
         </div>
-        <Button onClick={() => window.location.href = '/dashboard/orders/create'}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Order
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="orders" />
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={() => window.location.href = '/dashboard/orders/create'}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Order
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -414,6 +425,13 @@ export default function OrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="ORDERS"
+        onSuccess={() => queryClient.refetchQueries({ queryKey: ['orders'] })}
+      />
     </div>
   )
 }

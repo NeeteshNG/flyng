@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,6 +56,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 
 import inventoryApi, { StorageLocation } from '@/api/endpoints/inventory'
+import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import LocationFormSheet from './location-form-sheet'
 import LocationDetailSheet from './location-detail-sheet'
 
@@ -80,6 +83,7 @@ export default function LocationsPage() {
   const [selectedLocation, setSelectedLocation] = useState<StorageLocation | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [locationToDelete, setLocationToDelete] = useState<StorageLocation | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   // Build filter params
   const getFilterParams = () => {
@@ -203,10 +207,17 @@ export default function LocationsPage() {
             Manage warehouse storage locations and positions
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Location
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="locations" />
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Location
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -504,6 +515,14 @@ export default function LocationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="LOCATIONS"
+        requiresWarehouse
+        onSuccess={() => queryClient.refetchQueries({ queryKey: ['storage-locations'] })}
+      />
     </div>
   )
 }

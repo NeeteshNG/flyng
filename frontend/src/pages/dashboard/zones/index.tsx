@@ -55,6 +55,7 @@ import {
 import warehousesApi, { WarehouseZone } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import ZoneFormSheet from './zone-form-sheet'
 import ZoneDetailSheet from './zone-detail-sheet'
 
@@ -181,10 +182,13 @@ export default function ZonesPage() {
             Manage warehouse zones and operational areas
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Zone
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="zones" />
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Zone
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}

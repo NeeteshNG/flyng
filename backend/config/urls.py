@@ -13,6 +13,8 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.core.urls import api_urlpatterns as core_api_urls
+
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
@@ -30,6 +32,7 @@ urlpatterns = [
                 path("", include("apps.jobs.urls")),
                 path("", include("apps.logs.urls")),
                 path("", include("apps.organizations.urls")),
+                path("", include((core_api_urls, "core-api"))),
             ]
         ),
     ),

@@ -56,6 +56,7 @@ import {
 import warehousesApi, { DroneWorkArea } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
+import { CSVExportButton } from '@/components/shared/csv-export-button'
 import WorkAreaFormSheet from './work-area-form-sheet'
 import WorkAreaDetailSheet from './work-area-detail-sheet'
 
@@ -179,10 +180,13 @@ export default function WorkAreasPage() {
             Manage drone work areas and flight zones
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Work Area
-        </Button>
+        <div className="flex items-center gap-2">
+          <CSVExportButton exportType="work-areas" />
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Work Area
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}
