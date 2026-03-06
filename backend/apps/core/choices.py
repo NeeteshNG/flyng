@@ -751,3 +751,48 @@ class ActivityAction(models.TextChoices):
     PASSWORD_CHANGE = "PASSWORD_CHANGE", _("Password Change")
     # Translators: User updated their profile
     PROFILE_UPDATE = "PROFILE_UPDATE", _("Profile Update")
+
+
+# =============================================================================
+# Notification Choices
+# =============================================================================
+
+
+class NotificationType(models.TextChoices):
+    """Types of notifications."""
+
+    # Translators: Notification when an order's status changes
+    ORDER_STATUS_CHANGED = "ORDER_STATUS_CHANGED", _("Order Status Changed")
+    # Translators: Notification when an order is past its due date
+    ORDER_OVERDUE = "ORDER_OVERDUE", _("Order Overdue")
+    # Translators: Notification when a drone job completes successfully
+    JOB_COMPLETED = "JOB_COMPLETED", _("Job Completed")
+    # Translators: Notification when a drone job fails
+    JOB_FAILED = "JOB_FAILED", _("Job Failed")
+    # Translators: Notification when inventory stock falls below threshold
+    LOW_STOCK_ALERT = "LOW_STOCK_ALERT", _("Low Stock Alert")
+    # Translators: Notification when a bulk import finishes successfully
+    IMPORT_COMPLETED = "IMPORT_COMPLETED", _("Import Completed")
+    # Translators: Notification when a bulk import fails
+    IMPORT_FAILED = "IMPORT_FAILED", _("Import Failed")
+    # Translators: Notification when a drone is due for maintenance
+    DRONE_MAINTENANCE_DUE = "DRONE_MAINTENANCE_DUE", _("Drone Maintenance Due")
+    # Translators: Notification when a battery health is degraded
+    BATTERY_LOW_HEALTH = "BATTERY_LOW_HEALTH", _("Battery Low Health")
+    # Translators: Notification when a new member joins the organization
+    NEW_MEMBER_JOINED = "NEW_MEMBER_JOINED", _("New Member Joined")
+    # Translators: General system notification
+    SYSTEM = "SYSTEM", _("System Notification")
+
+
+class NotificationPriority(models.TextChoices):
+    """Priority levels for notifications."""
+
+    # Translators: Low priority notification
+    LOW = "LOW", _("Low")
+    # Translators: Normal priority notification
+    NORMAL = "NORMAL", _("Normal")
+    # Translators: High priority notification
+    HIGH = "HIGH", _("High")
+    # Translators: Urgent/critical priority notification
+    URGENT = "URGENT", _("Urgent")

@@ -16,7 +16,6 @@ import {
   X,
   LogOut,
   User,
-  Bell,
   Moon,
   Sun,
   CreditCard,
@@ -27,6 +26,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { GlobalSearch } from '@/components/shared/global-search'
+import { NotificationCenter } from '@/components/shared/notification-center'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,6 +124,7 @@ const navigation: NavItem[] = [
       { name: 'Users', path: '/dashboard/users', roles: ['ADMIN', 'MANAGER'] },
       { name: 'Activity Log', path: '/dashboard/activity', roles: ['ADMIN', 'MANAGER'] },
       { name: 'Organization', path: '/dashboard/organization', roles: ['ADMIN', 'MANAGER'] },
+      { name: 'Notifications', path: '/dashboard/notifications' },
       { name: 'Preferences', path: '/dashboard/settings' },
     ],
   },
@@ -376,10 +377,7 @@ export function DashboardLayout() {
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative rounded-full">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
-            </Button>
+            <NotificationCenter />
 
             {/* User menu */}
             <div className="pl-2 border-l">

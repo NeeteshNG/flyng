@@ -837,10 +837,6 @@ msgid "Current subscription plan"
 msgstr "वर्तमान सदस्यता योजना"
 
 #: apps/organizations/models.py
-msgid "Owner"
-msgstr "मालिक"
-
-#: apps/organizations/models.py
 msgid "Organization owner/creator"
 msgstr "संगठन मालिक/निर्माता"
 
@@ -1533,10 +1529,6 @@ msgid "When the subscription started"
 msgstr "सदस्यता कब शुरू हुई"
 
 #: apps/organizations/models.py
-msgid "When the trial period ends"
-msgstr "परीक्षण अवधि कब समाप्त होती है"
-
-#: apps/organizations/models.py
 msgid "Current Period Start"
 msgstr "वर्तमान अवधि शुरू"
 
@@ -1651,10 +1643,6 @@ msgstr "स्कोप"
 #: apps/organizations/models.py
 msgid "List of allowed permission scopes"
 msgstr "अनुमत अनुमति स्कोप की सूची"
-
-#: apps/organizations/models.py
-msgid "API requests allowed per minute"
-msgstr "प्रति मिनट अनुमत API अनुरोध"
 
 #: apps/organizations/models.py
 msgid "Last Used At"
@@ -1983,3 +1971,55 @@ msgstr "क्या यह संपर्क वर्तमान में �
 #: apps/warehouses/models.py
 msgid "Additional notes about this contact"
 msgstr "इस संपर्क के बारे में अतिरिक्त नोट्स"
+
+# =============================================================================
+# Notification Templates
+# =============================================================================
+
+#: apps/notifications/templates.py
+msgid "Order {order_number} status changed"
+msgstr "ऑर्डर {order_number} की स्थिति बदली"
+
+#: apps/notifications/templates.py
+msgid "Order {order_number} changed from {old_status} to {new_status}."
+msgstr "ऑर्डर {order_number} की स्थिति {old_status} से {new_status} में बदल गई।"
+
+#: apps/notifications/templates.py
+msgid "Job {job_number} completed"
+msgstr "जॉब {job_number} पूर्ण"
+
+#: apps/notifications/templates.py
+msgid "Drone job {job_number} completed successfully."
+msgstr "ड्रोन जॉब {job_number} सफलतापूर्वक पूर्ण हुई।"
+
+#: apps/notifications/templates.py
+msgid "Job {job_number} failed"
+msgstr "जॉब {job_number} विफल"
+
+#: apps/notifications/templates.py
+msgid "Drone job {job_number} has failed.{error_detail}"
+msgstr "ड्रोन जॉब {job_number} विफल हो गई।{error_detail}"
+
+#: apps/notifications/templates.py
+msgid "Import completed{suffix}"
+msgstr "आयात पूर्ण{suffix}"
+
+#: apps/notifications/templates.py
+msgid "{import_type} import '{filename}' finished. {success_count} rows imported{suffix}."
+msgstr "{import_type} आयात '{filename}' पूर्ण। {success_count} पंक्तियाँ आयातित{suffix}।"
+
+#: apps/notifications/templates.py
+msgid "Import failed"
+msgstr "आयात विफल"
+
+#: apps/notifications/templates.py
+msgid "{import_type} import '{filename}' failed. {error_message}."
+msgstr "{import_type} आयात '{filename}' विफल। {error_message}।"
+
+#: apps/notifications/templates.py
+msgid "New member joined"
+msgstr "नया सदस्य जुड़ा"
+
+#: apps/notifications/templates.py
+msgid "{user_name} has joined the organization."
+msgstr "{user_name} संगठन में शामिल हुए।"

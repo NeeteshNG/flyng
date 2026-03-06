@@ -32,6 +32,7 @@ urlpatterns = [
                 path("", include("apps.jobs.urls")),
                 path("", include("apps.logs.urls")),
                 path("", include("apps.organizations.urls")),
+                path("", include("apps.notifications.urls")),
                 path("", include((core_api_urls, "core-api"))),
             ]
         ),
