@@ -778,3 +778,61 @@ class InventoryStockCreateUpdateSerializer(serializers.ModelSerializer):
             )
 
         return data
+
+
+class LowStockItemSerializer(serializers.ModelSerializer):
+    """Serializer for the low-stock alerts endpoint with enriched fields."""
+
+    category_name = serializers.CharField(
+        source="category.name", read_only=True, default=None
+    )
+    uom_display = serializers.CharField(
+        source="get_unit_of_measure_display", read_only=True
+    )
+    total_stock = serializers.IntegerField(read_only=True)
+    deficit = serializers.IntegerField(read_only=True)
+    stock_locations = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InventoryItem
+        fields = [
+            "id",
+            "uuid",
+            "category",
+            "category_name",
+            "sku",
+            "name",
+            "barcode",
+            "unit_of_measure",
+            "uom_display",
+            "unit_price",
+            "min_stock_level",
+            "reorder_point",
+            "reorder_quantity",
+            "total_stock",
+            "deficit",
+            "stock_locations",
+            "created_at",
+        ]
+
+    def get_stock_locations(self, obj):
+        """Return top 3 bins where this item has stock, ordered by quantity desc."""
+        stocks = (
+            InventoryStock.objects.filter(item=obj, quantity__gt=0)
+            .select_related(
+                "bin",
+                "bin__location",
+                "bin__location__zone",
+                "bin__location__zone__warehouse",
+            )
+            .order_by("-quantity")[:3]
+        )
+        return [
+            {
+                "bin_code": s.bin.code,
+                "location_code": s.bin.location.code,
+                "warehouse_name": s.bin.location.zone.warehouse.name,
+                "quantity": s.quantity,
+            }
+            for s in stocks
+        ]

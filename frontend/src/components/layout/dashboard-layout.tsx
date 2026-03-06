@@ -84,6 +84,7 @@ const navigation: NavItem[] = [
       { name: 'Categories', path: '/dashboard/categories' },
       { name: 'Items', path: '/dashboard/items' },
       { name: 'Stock', path: '/dashboard/inventory' },
+      { name: 'Low Stock', path: '/dashboard/low-stock' },
     ],
   },
   {

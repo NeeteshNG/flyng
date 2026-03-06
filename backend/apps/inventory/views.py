@@ -4,7 +4,8 @@ Inventory Views
 API views for storage locations, bins, items, and stock.
 """
 
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, IntegerField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -15,8 +16,6 @@ from rest_framework.response import Response
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import IsAdminOrManagerOrReadOnly
-
-from django.db.models import Sum
 
 from .models import (
     BinLabelType,
@@ -34,6 +33,7 @@ from .serializers import (
     InventoryItemCreateUpdateSerializer,
     InventoryItemDetailSerializer,
     InventoryItemListSerializer,
+    LowStockItemSerializer,
     InventoryStockCreateUpdateSerializer,
     InventoryStockDetailSerializer,
     InventoryStockListSerializer,
@@ -504,6 +504,87 @@ class InventoryItemViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
             "active": active,
             "low_stock": low_stock,
             "total_stock_qty": total_stock_qty,
+        })
+
+    def _low_stock_queryset(self):
+        """Build the annotated queryset for low stock items."""
+        return (
+            InventoryItem.objects.select_related("organization", "category")
+            .filter(is_active=True, min_stock_level__gt=0)
+            .annotate(
+                total_stock=Coalesce(
+                    Sum("stocks__quantity"), Value(0), output_field=IntegerField()
+                ),
+            )
+            .filter(total_stock__lt=F("min_stock_level"))
+            .annotate(deficit=F("min_stock_level") - F("total_stock"))
+        )
+
+    @action(detail=False, methods=["get"], url_path="low-stock")
+    def low_stock_alerts(self, request):
+        """Return items below their minimum stock level with enriched data."""
+        qs = self._low_stock_queryset()
+
+        # Search
+        search = request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(Q(sku__icontains=search) | Q(name__icontains=search))
+
+        # Category filter
+        category = request.query_params.get("category")
+        if category:
+            qs = qs.filter(category_id=category)
+
+        # Ordering
+        ordering = request.query_params.get("ordering", "-deficit")
+        allowed = {
+            "deficit", "-deficit", "total_stock", "-total_stock",
+            "name", "-name", "sku", "-sku",
+        }
+        if ordering in allowed:
+            qs = qs.order_by(ordering)
+        else:
+            qs = qs.order_by("-deficit")
+
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = LowStockItemSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = LowStockItemSerializer(qs, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="low-stock/stats")
+    def low_stock_stats(self, request):
+        """Return aggregate stats for low stock alerts."""
+        low_stock_qs = self._low_stock_queryset()
+
+        total_low_stock = low_stock_qs.count()
+        critical = low_stock_qs.filter(total_stock=0).count()
+
+        # Items below reorder_point (separate threshold)
+        below_reorder_point = (
+            InventoryItem.objects.filter(
+                is_active=True, reorder_point__gt=0
+            )
+            .annotate(
+                total_stock=Coalesce(
+                    Sum("stocks__quantity"), Value(0), output_field=IntegerField()
+                ),
+            )
+            .filter(total_stock__lt=F("reorder_point"))
+            .count()
+        )
+
+        total_deficit = (
+            low_stock_qs.aggregate(total=Sum("deficit"))["total"] or 0
+        )
+
+        return Response({
+            "total_low_stock": total_low_stock,
+            "critical": critical,
+            "below_reorder_point": below_reorder_point,
+            "total_deficit": total_deficit,
         })
 
 

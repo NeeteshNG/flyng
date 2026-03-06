@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   Plus, Search, MoreHorizontal, Edit, Trash2, Eye,
   Package, CheckCircle, XCircle, Loader2,
@@ -39,7 +40,6 @@ export default function ItemsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
-  const [lowStockFilter, setLowStockFilter] = useState(false)
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -58,12 +58,11 @@ export default function ItemsPage() {
     if (statusFilter === 'active') params.is_active = true
     else if (statusFilter === 'inactive') params.is_active = false
     if (categoryFilter !== 'all') params.category = parseInt(categoryFilter)
-    if (lowStockFilter) params.low_stock = true
     return params
   }
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['inventory-items', search, statusFilter, categoryFilter, lowStockFilter, page],
+    queryKey: ['inventory-items', search, statusFilter, categoryFilter, page],
     queryFn: () => inventoryApi.getInventoryItems(getFilterParams()),
   })
 
@@ -108,8 +107,8 @@ export default function ItemsPage() {
   const handleDelete = (item: InventoryItem) => { setItemToDelete(item); setDeleteDialogOpen(true) }
   const confirmDelete = () => { if (itemToDelete) deleteMutation.mutate(itemToDelete.uuid) }
 
-  const clearFilters = () => { setSearch(''); setStatusFilter('all'); setCategoryFilter('all'); setLowStockFilter(false); setPage(1) }
-  const hasActiveFilters = search || statusFilter !== 'all' || categoryFilter !== 'all' || lowStockFilter
+  const clearFilters = () => { setSearch(''); setStatusFilter('all'); setCategoryFilter('all'); setPage(1) }
+  const hasActiveFilters = search || statusFilter !== 'all' || categoryFilter !== 'all'
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -150,24 +149,18 @@ export default function ItemsPage() {
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{activeCount}</div></CardContent>
         </Card>
-        <Card
-          className={`cursor-pointer transition-colors hover:bg-muted/50 ${lowStockFilter ? 'ring-2 ring-yellow-500 bg-yellow-500/5' : ''}`}
-          onClick={() => { setLowStockFilter((v) => !v); setPage(1) }}
-        >
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Low Stock
-              {lowStockFilter && <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0">Filtered</Badge>}
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${lowStockCount > 0 ? 'text-yellow-500' : ''}`}>{lowStockCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {lowStockFilter ? 'Click to show all' : 'Click to filter'}
-            </p>
-          </CardContent>
-        </Card>
+        <Link to="/dashboard/low-stock" className="block">
+          <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${lowStockCount > 0 ? 'text-yellow-500' : ''}`}>{lowStockCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">View low stock alerts</p>
+            </CardContent>
+          </Card>
+        </Link>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Stock</CardTitle>
@@ -179,20 +172,8 @@ export default function ItemsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Item List
-            {lowStockFilter && (
-              <Badge variant="outline" className="text-yellow-500 border-yellow-500">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Low Stock Only
-              </Badge>
-            )}
-          </CardTitle>
-          <CardDescription>
-            {lowStockFilter
-              ? 'Showing items below their minimum stock level'
-              : 'View and manage all inventory items'}
-          </CardDescription>
+          <CardTitle>Item List</CardTitle>
+          <CardDescription>View and manage all inventory items</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center mb-4">

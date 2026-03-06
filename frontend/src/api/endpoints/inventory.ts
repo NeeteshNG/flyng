@@ -210,6 +210,47 @@ export interface InventoryStockListResponse {
   results: InventoryStock[]
 }
 
+export interface LowStockLocation {
+  bin_code: string
+  location_code: string
+  warehouse_name: string
+  quantity: number
+}
+
+export interface LowStockItem {
+  id: number
+  uuid: string
+  category: number | null
+  category_name: string | null
+  sku: string
+  name: string
+  barcode: string
+  unit_of_measure: string
+  uom_display: string
+  unit_price: string | null
+  min_stock_level: number
+  reorder_point: number
+  reorder_quantity: number
+  total_stock: number
+  deficit: number
+  stock_locations: LowStockLocation[]
+  created_at: string
+}
+
+export interface LowStockItemListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: LowStockItem[]
+}
+
+export interface LowStockStats {
+  total_low_stock: number
+  critical: number
+  below_reorder_point: number
+  total_deficit: number
+}
+
 // API functions
 const inventoryApi = {
   // Storage Locations
@@ -516,6 +557,21 @@ const inventoryApi = {
 
   getItemStats: () => {
     return apiClient.get<{ total: number; active: number; low_stock: number; total_stock_qty: number }>('/items/stats/')
+  },
+
+  // Low Stock Alerts
+  getLowStockItems: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    category?: number
+    ordering?: string
+  }) => {
+    return apiClient.get<LowStockItemListResponse>('/items/low-stock/', { params })
+  },
+
+  getLowStockStats: () => {
+    return apiClient.get<LowStockStats>('/items/low-stock/stats/')
   },
 
   getInventoryItem: (uuid: string) => {

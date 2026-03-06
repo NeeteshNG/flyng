@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip,
 } from 'recharts'
+import { Link } from 'react-router-dom'
 import {
   Plane, Package, ShoppingCart, AlertTriangle,
   TrendingUp, Activity, Battery, Warehouse,
@@ -132,24 +133,26 @@ export default function DashboardHome() {
           </Card>
 
           {/* Low Stock Alerts */}
-          <Card className="relative overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Low Stock Alerts
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${stats.items.low_stock_count > 0 ? 'text-amber-500' : ''}`}>
-                {stats.items.low_stock_count}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {stats.items.low_stock_count > 0 ? 'Needs attention' : 'All items well stocked'}
-              </p>
-            </CardContent>
-          </Card>
+          <Link to="/dashboard/low-stock" className="block">
+            <Card className="relative overflow-hidden transition-colors hover:bg-muted/50 cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Low Stock Alerts
+                </CardTitle>
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${stats.items.low_stock_count > 0 ? 'text-amber-500' : ''}`}>
+                  {stats.items.low_stock_count}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {stats.items.low_stock_count > 0 ? 'Needs attention' : 'All items well stocked'}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       ) : null}
 

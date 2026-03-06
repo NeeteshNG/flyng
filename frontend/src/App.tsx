@@ -41,6 +41,7 @@ import BillingPage from '@/pages/dashboard/billing'
 import APIKeysPage from '@/pages/dashboard/api-keys'
 import AnalyticsPage from '@/pages/dashboard/analytics'
 import ActivityPage from '@/pages/dashboard/activity'
+import LowStockPage from '@/pages/dashboard/low-stock'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -88,6 +89,7 @@ function App() {
             <Route path="bin-templates" element={<BinTemplatesPage />} />
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="items" element={<ItemsPage />} />
+            <Route path="low-stock" element={<LowStockPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="orders/create" element={<CreateOrderPage />} />

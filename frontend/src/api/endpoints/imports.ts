@@ -38,7 +38,7 @@ export type ImportType = 'ITEMS' | 'LOCATIONS' | 'INVENTORY' | 'ORDERS' | 'CATEG
 export type ExportType =
   | 'items' | 'locations' | 'stock' | 'orders' | 'categories'
   | 'warehouses' | 'zones' | 'ground-stations' | 'work-areas'
-  | 'drones' | 'batteries' | 'bins' | 'jobs'
+  | 'drones' | 'batteries' | 'bins' | 'jobs' | 'low-stock'
 
 // API functions
 const importsApi = {

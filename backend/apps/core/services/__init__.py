@@ -8,6 +8,7 @@ from .csv_export import (
     export_items_csv,
     export_jobs_csv,
     export_locations_csv,
+    export_low_stock_csv,
     export_orders_csv,
     export_stock_csv,
     export_warehouses_csv,
@@ -44,4 +45,5 @@ __all__ = [
     "export_batteries_csv",
     "export_bins_csv",
     "export_jobs_csv",
+    "export_low_stock_csv",
 ]

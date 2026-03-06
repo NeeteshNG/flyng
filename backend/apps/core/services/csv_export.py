@@ -6,6 +6,7 @@ Each function accepts a queryset and returns an HttpResponse with CSV data.
 
 import csv
 
+from django.db import models
 from django.http import HttpResponse
 
 
@@ -409,6 +410,45 @@ def export_jobs_csv(queryset):
     return response
 
 
+def export_low_stock_csv(queryset):
+    """Export low stock items to CSV with deficit info."""
+    from django.db.models import IntegerField, Sum, Value
+    from django.db.models.functions import Coalesce
+
+    response = _csv_response("low_stock.csv")
+    writer = csv.writer(response)
+    writer.writerow([
+        "sku", "name", "category", "current_stock",
+        "min_stock_level", "deficit", "reorder_point", "reorder_quantity",
+    ])
+
+    queryset = (
+        queryset.filter(is_active=True, min_stock_level__gt=0)
+        .select_related("category")
+        .annotate(
+            total_stock=Coalesce(
+                Sum("stocks__quantity"), Value(0), output_field=IntegerField()
+            ),
+        )
+        .filter(total_stock__lt=models.F("min_stock_level"))
+        .annotate(deficit=models.F("min_stock_level") - models.F("total_stock"))
+        .order_by("-deficit")
+    )
+
+    for item in queryset.iterator():
+        writer.writerow([
+            item.sku,
+            item.name,
+            item.category.name if item.category else "",
+            item.total_stock,
+            item.min_stock_level,
+            item.deficit,
+            item.reorder_point,
+            item.reorder_quantity,
+        ])
+    return response
+
+
 # Registry mapping export type slugs to model paths, export functions, and org filter fields
 EXPORT_REGISTRY = {
     "categories": {
@@ -474,6 +514,11 @@ EXPORT_REGISTRY = {
     "jobs": {
         "model_path": "apps.jobs.models.DroneJob",
         "export_fn": export_jobs_csv,
+        "org_field": "organization",
+    },
+    "low-stock": {
+        "model_path": "apps.inventory.models.InventoryItem",
+        "export_fn": export_low_stock_csv,
         "org_field": "organization",
     },
 }
