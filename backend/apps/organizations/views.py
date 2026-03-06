@@ -4,9 +4,10 @@ Organization API Views
 
 import hashlib
 import secrets
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Avg, Count, ExpressionWrapper, F, Q, Sum
+from django.db.models.fields import DurationField
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from rest_framework import generics, status
@@ -256,9 +257,10 @@ class AnalyticsView(APIView):
     """
     Get analytics data for the current user's organization.
 
-    GET /api/v1/dashboard/analytics/
-    Returns time-series data for orders, jobs, and drones over the last 30 days,
+    GET /api/v1/dashboard/analytics/?range=30d
+    Returns time-series data for orders, jobs, and drones,
     plus status distribution breakdowns for pie/donut charts.
+    Supports date range filtering via ?range= or ?date_from=&date_to=.
     """
 
     permission_classes = [IsAuthenticated]
@@ -278,35 +280,33 @@ class AnalyticsView(APIView):
             )
 
         org_id = organization.id
-        now = timezone.now()
-        thirty_days_ago = (now - timedelta(days=29)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        date_from, date_to, prev_from, prev_to = parse_date_range(request)
 
-        # --- Order activity (last 30 days) ---
+        # --- Order activity ---
         orders_qs = PickOrder.objects.filter(organization=org_id)
         daily_orders = dict(
-            orders_qs.filter(created_at__gte=thirty_days_ago)
+            orders_qs.filter(created_at__range=(date_from, date_to))
             .annotate(day=TruncDate("created_at"))
             .values("day")
             .annotate(count=Count("id"))
             .values_list("day", "count")
         )
 
-        # --- Job activity (last 30 days) ---
+        # --- Job activity ---
         jobs_qs = DroneJob.objects.filter(organization=org_id)
         daily_jobs = dict(
-            jobs_qs.filter(created_at__gte=thirty_days_ago)
+            jobs_qs.filter(created_at__range=(date_from, date_to))
             .annotate(day=TruncDate("created_at"))
             .values("day")
             .annotate(count=Count("id"))
             .values_list("day", "count")
         )
 
-        # Fill in all 30 days
+        # Fill in all days
+        period_days = (date_to.date() - date_from.date()).days + 1
         activity_data = []
-        for i in range(30):
-            day = (thirty_days_ago + timedelta(days=i)).date()
+        for i in range(period_days):
+            day = date_from.date() + timedelta(days=i)
             activity_data.append({
                 "date": day.isoformat(),
                 "orders": daily_orders.get(day, 0),
@@ -361,6 +361,10 @@ class AnalyticsView(APIView):
         return Response({
             "success": True,
             "data": {
+                "meta": {
+                    "date_from": date_from.date().isoformat(),
+                    "date_to": date_to.date().isoformat(),
+                },
                 "activity": activity_data,
                 "distributions": {
                     "drones": [{"name": d["status"], "value": d["count"]} for d in drone_by_status],
@@ -387,6 +391,517 @@ def get_user_organization(user):
         .first()
     )
     return membership.organization if membership else None
+
+
+def parse_date_range(request):
+    """
+    Parse date range from query params.
+
+    Supports:
+      ?range=7d|30d|90d|6m|1y
+      ?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+
+    Returns (date_from, date_to, previous_from, previous_to) as datetime objects.
+    The previous period is the same length, immediately preceding the current period.
+    """
+    now = timezone.now()
+    today = now.date()
+
+    range_param = request.query_params.get("range")
+    date_from_param = request.query_params.get("date_from")
+    date_to_param = request.query_params.get("date_to")
+
+    if date_from_param and date_to_param:
+        try:
+            date_from = datetime.strptime(date_from_param, "%Y-%m-%d").date()
+            date_to = datetime.strptime(date_to_param, "%Y-%m-%d").date()
+        except ValueError:
+            date_from = today - timedelta(days=29)
+            date_to = today
+    elif range_param:
+        range_days = {
+            "7d": 6,
+            "30d": 29,
+            "90d": 89,
+            "6m": 179,
+            "1y": 364,
+        }
+        days = range_days.get(range_param, 29)
+        date_from = today - timedelta(days=days)
+        date_to = today
+    else:
+        date_from = today - timedelta(days=29)
+        date_to = today
+
+    period_length = (date_to - date_from).days + 1
+    previous_to = date_from - timedelta(days=1)
+    previous_from = previous_to - timedelta(days=period_length - 1)
+
+    # Convert to timezone-aware datetimes
+    date_from_dt = timezone.make_aware(datetime.combine(date_from, datetime.min.time()))
+    date_to_dt = timezone.make_aware(datetime.combine(date_to, datetime.max.time()))
+    prev_from_dt = timezone.make_aware(datetime.combine(previous_from, datetime.min.time()))
+    prev_to_dt = timezone.make_aware(datetime.combine(previous_to, datetime.max.time()))
+
+    return date_from_dt, date_to_dt, prev_from_dt, prev_to_dt
+
+
+def _kpi(value, previous_value):
+    """Build a KPI dict with change_percent and trend."""
+    if previous_value and previous_value != 0:
+        change = round(((value - previous_value) / previous_value) * 100, 1)
+    else:
+        change = 0.0
+    trend = "up" if change > 0 else ("down" if change < 0 else "stable")
+    return {"value": value, "change_percent": change, "trend": trend}
+
+
+def _fill_time_series(daily_data, date_from, date_to, keys):
+    """Fill gaps in time-series data to ensure every day has an entry."""
+    result = []
+    d = date_from.date() if hasattr(date_from, "date") else date_from
+    end = date_to.date() if hasattr(date_to, "date") else date_to
+    while d <= end:
+        entry = {"period": d.isoformat()}
+        row = daily_data.get(d, {})
+        for key in keys:
+            entry[key] = row.get(key, 0)
+        result.append(entry)
+        d += timedelta(days=1)
+    return result
+
+
+class OrderAnalyticsView(APIView):
+    """
+    Order fulfillment analytics.
+
+    GET /api/v1/dashboard/analytics/orders/?range=30d
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.inventory.models import InventoryItem
+        from apps.orders.models import PickOrder, PickOrderLine
+
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org_id = organization.id
+        date_from, date_to, prev_from, prev_to = parse_date_range(request)
+
+        # --- KPIs for current period ---
+        orders_qs = PickOrder.objects.filter(organization=org_id)
+        current_orders = orders_qs.filter(created_at__range=(date_from, date_to))
+        prev_orders = orders_qs.filter(created_at__range=(prev_from, prev_to))
+
+        total_current = current_orders.count()
+        total_prev = prev_orders.count()
+
+        # Fulfillment rate: DELIVERED orders / total * 100
+        delivered_current = current_orders.filter(status="DELIVERED").count()
+        delivered_prev = prev_orders.filter(status="DELIVERED").count()
+        fulfillment_current = round((delivered_current / total_current * 100), 1) if total_current else 0
+        fulfillment_prev = round((delivered_prev / total_prev * 100), 1) if total_prev else 0
+
+        # Avg cycle time (confirmed_at → delivered_at) in hours
+        cycle_agg = current_orders.filter(
+            delivered_at__isnull=False, confirmed_at__isnull=False
+        ).aggregate(
+            avg_cycle=Avg(
+                ExpressionWrapper(
+                    F("delivered_at") - F("confirmed_at"),
+                    output_field=DurationField(),
+                )
+            )
+        )
+        avg_cycle_current = round(cycle_agg["avg_cycle"].total_seconds() / 3600, 1) if cycle_agg["avg_cycle"] else 0
+
+        cycle_agg_prev = prev_orders.filter(
+            delivered_at__isnull=False, confirmed_at__isnull=False
+        ).aggregate(
+            avg_cycle=Avg(
+                ExpressionWrapper(
+                    F("delivered_at") - F("confirmed_at"),
+                    output_field=DurationField(),
+                )
+            )
+        )
+        avg_cycle_prev = round(cycle_agg_prev["avg_cycle"].total_seconds() / 3600, 1) if cycle_agg_prev["avg_cycle"] else 0
+
+        # Overdue count (active orders past due_date)
+        active_statuses = ["PENDING", "CONFIRMED", "PICKING", "PICKED", "PACKING", "PACKED"]
+        overdue_count = orders_qs.filter(
+            status__in=active_statuses,
+            due_date__lt=timezone.now().date(),
+        ).count()
+
+        # Picking accuracy: sum(picked_quantity) / sum(quantity) * 100
+        lines_current = PickOrderLine.objects.filter(order__organization=org_id, order__created_at__range=(date_from, date_to))
+        lines_agg = lines_current.aggregate(
+            total_qty=Sum("quantity"),
+            picked_qty=Sum("picked_quantity"),
+        )
+        total_qty = lines_agg["total_qty"] or 0
+        picked_qty = lines_agg["picked_qty"] or 0
+        picking_accuracy = round((picked_qty / total_qty * 100), 1) if total_qty else 100.0
+
+        # --- Charts ---
+        # Orders over time
+        daily_qs = (
+            current_orders.annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(
+                total=Count("id"),
+                completed=Count("id", filter=Q(status="DELIVERED")),
+                cancelled=Count("id", filter=Q(status="CANCELLED")),
+            )
+            .order_by("day")
+        )
+        daily_data = {}
+        for row in daily_qs:
+            daily_data[row["day"]] = {
+                "total": row["total"],
+                "completed": row["completed"],
+                "cancelled": row["cancelled"],
+            }
+        orders_over_time = _fill_time_series(daily_data, date_from, date_to, ["total", "completed", "cancelled"])
+
+        # Orders by priority
+        priority_dist = list(
+            current_orders.values("priority")
+            .annotate(count=Count("id"))
+            .order_by("priority")
+        )
+        orders_by_priority = [{"name": d["priority"], "value": d["count"]} for d in priority_dist]
+
+        # Orders by status
+        status_dist = list(
+            current_orders.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        orders_by_status = [{"name": d["status"], "value": d["count"]} for d in status_dist]
+
+        # Top 10 picked items
+        top_items_qs = (
+            lines_current.filter(picked_quantity__gt=0)
+            .values("item__name", "item__sku")
+            .annotate(quantity=Sum("picked_quantity"))
+            .order_by("-quantity")[:10]
+        )
+        top_picked_items = [
+            {"name": row["item__name"], "sku": row["item__sku"], "quantity": row["quantity"]}
+            for row in top_items_qs
+        ]
+
+        return Response({
+            "success": True,
+            "data": {
+                "meta": {
+                    "date_from": date_from.date().isoformat(),
+                    "date_to": date_to.date().isoformat(),
+                },
+                "kpis": {
+                    "total_orders": _kpi(total_current, total_prev),
+                    "fulfillment_rate": _kpi(fulfillment_current, fulfillment_prev),
+                    "avg_cycle_time_hours": _kpi(avg_cycle_current, avg_cycle_prev),
+                    "overdue_count": {"value": overdue_count, "change_percent": 0, "trend": "stable"},
+                    "picking_accuracy": {"value": picking_accuracy, "change_percent": 0, "trend": "stable"},
+                },
+                "orders_over_time": orders_over_time,
+                "orders_by_priority": orders_by_priority,
+                "orders_by_status": orders_by_status,
+                "top_picked_items": top_picked_items,
+            },
+        })
+
+
+class FleetAnalyticsView(APIView):
+    """
+    Drone fleet and battery analytics.
+
+    GET /api/v1/dashboard/analytics/fleet/?range=30d
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.batteries.models import DroneBattery
+        from apps.drones.models import Drone
+        from apps.jobs.models import DroneJob
+
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org_id = organization.id
+        date_from, date_to, prev_from, prev_to = parse_date_range(request)
+
+        # --- Drone KPIs ---
+        drones_qs = Drone.objects.filter(
+            work_area__ground_control_station__zone__warehouse__organization=org_id,
+            is_active=True,
+        )
+        total_drones = drones_qs.count()
+        in_flight = drones_qs.filter(status="IN_FLIGHT").count()
+        fleet_utilization = round((in_flight / total_drones * 100), 1) if total_drones else 0
+
+        # Total flight hours
+        flight_hours_agg = drones_qs.aggregate(total=Sum("total_flight_hours"))
+        total_flight_hours = round(float(flight_hours_agg["total"] or 0), 1)
+
+        # --- Job KPIs ---
+        jobs_qs = DroneJob.objects.filter(organization=org_id)
+        current_jobs = jobs_qs.filter(created_at__range=(date_from, date_to))
+        prev_jobs = jobs_qs.filter(created_at__range=(prev_from, prev_to))
+
+        completed_current = current_jobs.filter(status="COMPLETED").count()
+        failed_current = current_jobs.filter(status="FAILED").count()
+        completed_prev = prev_jobs.filter(status="COMPLETED").count()
+        failed_prev = prev_jobs.filter(status="FAILED").count()
+
+        success_denom_current = completed_current + failed_current
+        success_denom_prev = completed_prev + failed_prev
+        job_success_current = round((completed_current / success_denom_current * 100), 1) if success_denom_current else 100.0
+        job_success_prev = round((completed_prev / success_denom_prev * 100), 1) if success_denom_prev else 100.0
+
+        # Avg job duration (started_at → completed_at) in minutes
+        duration_agg = current_jobs.filter(
+            completed_at__isnull=False, started_at__isnull=False
+        ).aggregate(
+            avg_duration=Avg(
+                ExpressionWrapper(
+                    F("completed_at") - F("started_at"),
+                    output_field=DurationField(),
+                )
+            )
+        )
+        avg_duration_current = round(duration_agg["avg_duration"].total_seconds() / 60, 1) if duration_agg["avg_duration"] else 0
+
+        duration_agg_prev = prev_jobs.filter(
+            completed_at__isnull=False, started_at__isnull=False
+        ).aggregate(
+            avg_duration=Avg(
+                ExpressionWrapper(
+                    F("completed_at") - F("started_at"),
+                    output_field=DurationField(),
+                )
+            )
+        )
+        avg_duration_prev = round(duration_agg_prev["avg_duration"].total_seconds() / 60, 1) if duration_agg_prev["avg_duration"] else 0
+
+        # --- Battery KPIs ---
+        batteries_qs = DroneBattery.objects.filter(
+            warehouse__organization=org_id, is_active=True
+        )
+        battery_agg = batteries_qs.aggregate(avg_charge=Avg("current_charge_percent"))
+        battery_avg_charge = round(float(battery_agg["avg_charge"] or 0), 1)
+
+        batteries_needing_replacement = batteries_qs.filter(
+            health_status__in=["POOR", "REPLACE"]
+        ).count()
+
+        # --- Charts ---
+        # Jobs over time
+        daily_jobs_qs = (
+            current_jobs.annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(
+                completed=Count("id", filter=Q(status="COMPLETED")),
+                failed=Count("id", filter=Q(status="FAILED")),
+                cancelled=Count("id", filter=Q(status="CANCELLED")),
+            )
+            .order_by("day")
+        )
+        daily_data = {}
+        for row in daily_jobs_qs:
+            daily_data[row["day"]] = {
+                "completed": row["completed"],
+                "failed": row["failed"],
+                "cancelled": row["cancelled"],
+            }
+        jobs_over_time = _fill_time_series(daily_data, date_from, date_to, ["completed", "failed", "cancelled"])
+
+        # Jobs by type
+        type_dist = list(
+            current_jobs.values("job_type")
+            .annotate(count=Count("id"))
+            .order_by("job_type")
+        )
+        jobs_by_type = [{"name": d["job_type"], "value": d["count"]} for d in type_dist]
+
+        # Drone status distribution (current snapshot)
+        all_drones = Drone.objects.filter(
+            work_area__ground_control_station__zone__warehouse__organization=org_id
+        )
+        drone_status_dist = list(
+            all_drones.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        drone_status = [{"name": d["status"], "value": d["count"]} for d in drone_status_dist]
+
+        # Battery distributions (current snapshot)
+        all_batteries = DroneBattery.objects.filter(warehouse__organization=org_id)
+        battery_health_dist = list(
+            all_batteries.values("health_status")
+            .annotate(count=Count("id"))
+            .order_by("health_status")
+        )
+        battery_health = [{"name": d["health_status"], "value": d["count"]} for d in battery_health_dist]
+
+        battery_status_dist = list(
+            all_batteries.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        battery_status = [{"name": d["status"], "value": d["count"]} for d in battery_status_dist]
+
+        return Response({
+            "success": True,
+            "data": {
+                "meta": {
+                    "date_from": date_from.date().isoformat(),
+                    "date_to": date_to.date().isoformat(),
+                },
+                "kpis": {
+                    "fleet_utilization": {"value": fleet_utilization, "change_percent": 0, "trend": "stable"},
+                    "job_success_rate": _kpi(job_success_current, job_success_prev),
+                    "avg_job_duration_minutes": _kpi(avg_duration_current, avg_duration_prev),
+                    "battery_avg_charge": {"value": battery_avg_charge, "change_percent": 0, "trend": "stable"},
+                    "batteries_needing_replacement": {"value": batteries_needing_replacement, "change_percent": 0, "trend": "stable"},
+                    "total_flight_hours": {"value": total_flight_hours, "change_percent": 0, "trend": "stable"},
+                },
+                "jobs_over_time": jobs_over_time,
+                "jobs_by_type": jobs_by_type,
+                "drone_status": drone_status,
+                "battery_health": battery_health,
+                "battery_status": battery_status,
+            },
+        })
+
+
+class InventoryAnalyticsView(APIView):
+    """
+    Inventory analytics.
+
+    GET /api/v1/dashboard/analytics/inventory/?range=30d
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.inventory.models import (
+            InventoryItem,
+            InventoryStock,
+            StorageBin,
+        )
+
+        organization = get_user_organization(request.user)
+        if not organization:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org_id = organization.id
+
+        # --- KPIs ---
+        items_qs = InventoryItem.objects.filter(organization=org_id, is_active=True)
+        total_skus = items_qs.count()
+
+        # Low stock: items where total stock < min_stock_level
+        items_with_min = items_qs.filter(min_stock_level__gt=0).annotate(
+            total_stock=Sum("stocks__quantity")
+        )
+        low_stock_count = items_with_min.filter(
+            Q(total_stock__lt=F("min_stock_level")) | Q(total_stock__isnull=True)
+        ).count()
+
+        # Below reorder point
+        items_with_reorder = items_qs.filter(reorder_point__gt=0).annotate(
+            total_stock=Sum("stocks__quantity")
+        )
+        below_reorder_count = items_with_reorder.filter(
+            Q(total_stock__lt=F("reorder_point")) | Q(total_stock__isnull=True)
+        ).count()
+
+        # Expiring soon (next 30 days)
+        thirty_days = timezone.now().date() + timedelta(days=30)
+        expiring_soon_count = (
+            InventoryStock.objects.filter(
+                item__organization=org_id,
+                expiry_date__isnull=False,
+                expiry_date__lte=thirty_days,
+                expiry_date__gte=timezone.now().date(),
+                quantity__gt=0,
+            )
+            .values("item")
+            .distinct()
+            .count()
+        )
+
+        # Storage utilization: full bins / total bins
+        bins_qs = StorageBin.objects.filter(
+            location__zone__warehouse__organization=org_id,
+            is_active=True,
+        )
+        total_bins = bins_qs.count()
+        full_bins = bins_qs.filter(is_full=True).count()
+        storage_utilization = round((full_bins / total_bins * 100), 1) if total_bins else 0
+
+        # --- Charts ---
+        # Stock by category
+        stock_by_category_qs = (
+            items_qs.filter(category__isnull=False)
+            .values("category__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:10]
+        )
+        stock_by_category = [
+            {"name": row["category__name"], "value": row["count"]}
+            for row in stock_by_category_qs
+        ]
+
+        # Inventory summary
+        items_with_stock = (
+            items_qs.annotate(total_stock=Sum("stocks__quantity"))
+            .filter(total_stock__gt=0)
+            .count()
+        )
+        out_of_stock = (
+            items_qs.annotate(total_stock=Sum("stocks__quantity"))
+            .filter(Q(total_stock__isnull=True) | Q(total_stock=0))
+            .count()
+        )
+
+        return Response({
+            "success": True,
+            "data": {
+                "kpis": {
+                    "total_skus": {"value": total_skus, "change_percent": 0, "trend": "stable"},
+                    "low_stock_count": {"value": low_stock_count, "change_percent": 0, "trend": "stable"},
+                    "below_reorder_count": {"value": below_reorder_count, "change_percent": 0, "trend": "stable"},
+                    "expiring_soon_count": {"value": expiring_soon_count, "change_percent": 0, "trend": "stable"},
+                    "storage_utilization": {"value": storage_utilization, "change_percent": 0, "trend": "stable"},
+                },
+                "stock_by_category": stock_by_category,
+                "inventory_summary": {
+                    "total_items": total_skus,
+                    "in_stock": items_with_stock,
+                    "low_stock": low_stock_count,
+                    "out_of_stock": out_of_stock,
+                },
+            },
+        })
 
 
 class OrganizationSettingsView(APIView):
