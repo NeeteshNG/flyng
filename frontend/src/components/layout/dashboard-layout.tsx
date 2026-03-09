@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { GlobalSearch } from '@/components/shared/global-search'
+import { CartBadge } from '@/components/shared/cart-badge'
 import { NotificationCenter } from '@/components/shared/notification-center'
 import { WebSocketProvider } from '@/components/shared/websocket-provider'
 import {
@@ -92,7 +93,7 @@ const navigation: NavItem[] = [
     name: 'Orders',
     icon: ShoppingCart,
     children: [
-      { name: 'Create Order', path: '/dashboard/orders/create' },
+      { name: 'New Order', path: '/dashboard/orders/create' },
       { name: 'Order History', path: '/dashboard/orders' },
     ],
   },
@@ -379,6 +380,9 @@ export function DashboardLayout() {
             <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="rounded-full">
               {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
+
+            {/* Cart */}
+            <CartBadge />
 
             {/* Notifications */}
             <NotificationCenter />
