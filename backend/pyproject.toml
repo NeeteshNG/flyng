@@ -79,6 +79,9 @@ dependencies = [
 
     # PDF Export
     "weasyprint>=62.0",
+
+    # ULog Flight Log Parsing
+    "pyulog>=0.9.0",
 ]
 
 [project.optional-dependencies]

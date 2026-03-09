@@ -156,6 +156,10 @@ const logsApi = {
     return apiClient.delete(`/flight-logs/${uuid}/`)
   },
 
+  processFlightLog: (uuid: string) => {
+    return apiClient.post<{ success: boolean; data: DroneFlightLog }>(`/flight-logs/${uuid}/process/`)
+  },
+
   getFlightLogGraphs: (uuid: string) => {
     return apiClient.get<FlightLogGraph[]>(`/flight-logs/${uuid}/graphs/`)
   },

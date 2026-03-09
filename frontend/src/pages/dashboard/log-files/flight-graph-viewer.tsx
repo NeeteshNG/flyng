@@ -1,6 +1,7 @@
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Cell, Rectangle, ReferenceArea,
 } from 'recharts'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,20 +41,49 @@ function getChartConfig(graph: FlightLogGraph, colorIndex: number): ChartConfig 
 }
 
 function getSeriesData(graph: FlightLogGraph): Record<string, unknown>[] {
-  const graphData = graph.graph_data as { series?: Record<string, unknown>[] }
-  return graphData?.series || []
+  const graphData = graph.graph_data as {
+    series?: Record<string, unknown>[]
+    x?: unknown[]
+    y?: unknown[]
+  }
+  // New format: {series: [{x: val, y: val}, ...]}
+  if (graphData?.series) return graphData.series
+
+  // Old seed format: {x: [...], y: [...]}
+  if (graphData?.x && graphData?.y && Array.isArray(graphData.x) && Array.isArray(graphData.y)) {
+    const len = Math.min(graphData.x.length, graphData.y.length)
+    const series: Record<string, unknown>[] = []
+    for (let i = 0; i < len; i++) {
+      series.push({ x: graphData.x[i], y: graphData.y[i] })
+    }
+    return series
+  }
+
+  return []
 }
 
-function getAxisKeys(graph: FlightLogGraph): { xKey: string; yKey: string } {
+function getAxisKeys(graph: FlightLogGraph): { xKey: string; yKey: string; zKey: string | null } {
   const data = getSeriesData(graph)
-  if (data.length === 0) return { xKey: 'x', yKey: 'y' }
+  if (data.length === 0) return { xKey: 'x', yKey: 'y', zKey: null }
   const keys = Object.keys(data[0])
-  return { xKey: keys[0] || 'x', yKey: keys[1] || 'y' }
+  return { xKey: keys[0] || 'x', yKey: keys[1] || 'y', zKey: keys[2] || null }
+}
+
+/**
+ * Interpolate a value between blue (cold) → yellow → red (hot).
+ */
+function heatmapColor(value: number, min: number, max: number): string {
+  const t = max === min ? 0.5 : (value - min) / (max - min)
+  // Blue → Yellow → Red
+  const r = Math.round(t < 0.5 ? t * 2 * 255 : 255)
+  const g = Math.round(t < 0.5 ? t * 2 * 255 : (1 - (t - 0.5) * 2) * 255)
+  const b = Math.round(t < 0.5 ? (1 - t * 2) * 255 : 0)
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 function GraphCard({ graph, index }: { graph: FlightLogGraph; index: number }) {
   const data = getSeriesData(graph)
-  const { xKey, yKey } = getAxisKeys(graph)
+  const { xKey, yKey, zKey } = getAxisKeys(graph)
   const chartConfig = getChartConfig(graph, index)
   const graphData = graph.graph_data as { chart_type?: string; x_label?: string; y_label?: string }
   const chartType = graphData?.chart_type || graph.template_graph_type
@@ -202,6 +232,145 @@ function GraphCard({ graph, index }: { graph: FlightLogGraph; index: number }) {
             />
           </ScatterChart>
         )
+
+      case 'HEATMAP': {
+        // Color-coded scatter where z-value determines dot color
+        const colorKey = zKey || yKey
+        const zValues = data.map((d) => Number(d[colorKey]) || 0)
+        const zMin = Math.min(...zValues)
+        const zMax = Math.max(...zValues)
+
+        return (
+          <ScatterChart accessibilityLayer>
+            <CartesianGrid />
+            <XAxis
+              dataKey={xKey}
+              type="number"
+              name={graphData?.x_label || xKey}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              dataKey={yKey}
+              type="number"
+              name={graphData?.y_label || yKey}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip
+              cursor={{ strokeDasharray: '3 3' }}
+              content={<ChartTooltipContent indicator="dot" />}
+            />
+            <Scatter data={data}>
+              {data.map((entry, i) => (
+                <Cell
+                  key={i}
+                  fill={heatmapColor(Number(entry[colorKey]) || 0, zMin, zMax)}
+                />
+              ))}
+            </Scatter>
+          </ScatterChart>
+        )
+      }
+
+      case 'BOX': {
+        // Box plot using ComposedChart with bar for IQR and reference areas for whiskers
+        // Expects data with: label, min, q1, median, q3, max
+        return (
+          <ComposedChart data={data} accessibilityLayer>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0].payload as Record<string, unknown>
+                return (
+                  <div className="rounded-lg border bg-popover p-2 text-xs shadow-md">
+                    <p className="font-medium mb-1">{String(d.label)}</p>
+                    <p>Max: {String(d.max)}</p>
+                    <p>Q3: {String(d.q3)}</p>
+                    <p>Median: {String(d.median)}</p>
+                    <p>Q1: {String(d.q1)}</p>
+                    <p>Min: {String(d.min)}</p>
+                  </div>
+                )
+              }}
+            />
+            {/* IQR bar (q1 to q3) */}
+            <Bar
+              dataKey="q3"
+              fill={color}
+              opacity={0.3}
+              radius={[4, 4, 0, 0]}
+              shape={(props: Record<string, unknown>) => {
+                const { x, y, width, payload } = props as {
+                  x: number; y: number; width: number; payload: Record<string, number>
+                }
+                const yScale = (props as { background?: { height: number } }).background?.height || 250
+                const q1 = payload.q1
+                const q3 = payload.q3
+                const med = payload.median
+                if (q1 == null || q3 == null) return <Rectangle {...(props as object)} />
+                // Approximate pixel positions - the bar already represents q3
+                const barHeight = Math.max(1, ((q3 - q1) / (q3 || 1)) * (yScale * 0.3))
+                return (
+                  <g>
+                    <Rectangle
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={barHeight}
+                      fill={color}
+                      opacity={0.3}
+                      radius={[4, 4, 4, 4] as unknown as number}
+                    />
+                    {/* Median line */}
+                    {med != null && (
+                      <line
+                        x1={x}
+                        x2={x + width}
+                        y1={y + barHeight * ((q3 - med) / (q3 - q1))}
+                        y2={y + barHeight * ((q3 - med) / (q3 - q1))}
+                        stroke={color}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </g>
+                )
+              }}
+            />
+            {/* Whisker lines */}
+            <Line
+              dataKey="max"
+              type="monotone"
+              stroke={color}
+              strokeDasharray="4 4"
+              dot={{ fill: color, r: 3 }}
+              strokeWidth={1}
+            />
+            <Line
+              dataKey="min"
+              type="monotone"
+              stroke={color}
+              strokeDasharray="4 4"
+              dot={{ fill: color, r: 3 }}
+              strokeWidth={1}
+            />
+          </ComposedChart>
+        )
+      }
 
       default:
         return (

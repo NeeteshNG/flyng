@@ -186,6 +186,27 @@ ALL_PERMISSIONS = [
     "jobs.dronejob.resume",
     "jobs.dronejob.retry",
 
+    # ── Logs ──
+    "logs.droneflightlog.list",
+    "logs.droneflightlog.retrieve",
+    "logs.droneflightlog.create",
+    "logs.droneflightlog.update",
+    "logs.droneflightlog.partial_update",
+    "logs.droneflightlog.destroy",
+    "logs.droneflightlog.graphs",
+    "logs.droneflightlog.process",
+
+    "logs.flightgraphtemplate.list",
+    "logs.flightgraphtemplate.retrieve",
+    "logs.flightgraphtemplate.create",
+    "logs.flightgraphtemplate.update",
+    "logs.flightgraphtemplate.partial_update",
+    "logs.flightgraphtemplate.destroy",
+
+    "logs.flightloggraph.list",
+    "logs.flightloggraph.retrieve",
+    "logs.flightloggraph.create",
+
     # ── Core ──
     "core.importjob.list",
     "core.importjob.retrieve",
@@ -231,6 +252,10 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "batteries.dronebattery.*",
         # Jobs — full CRUD + transitions
         "jobs.dronejob.*",
+        # Logs — full CRUD
+        "logs.droneflightlog.*",
+        "logs.flightgraphtemplate.*",
+        "logs.flightloggraph.*",
         # Core — imports + exports
         "core.importjob.list",
         "core.importjob.retrieve",
@@ -294,6 +319,13 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "warehouses.warehousezone.work_areas",
         # Jobs events read
         "jobs.dronejob.events",
+        # Logs — upload, process, view graphs
+        "logs.droneflightlog.create",
+        "logs.droneflightlog.update",
+        "logs.droneflightlog.partial_update",
+        "logs.droneflightlog.graphs",
+        "logs.droneflightlog.process",
+        "logs.flightloggraph.create",
         # Core — imports + exports
         "core.importjob.create",
         "core.export.list",
@@ -316,6 +348,8 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "warehouses.warehousezone.ground_control_stations",
         "warehouses.warehousezone.work_areas",
         "jobs.dronejob.events",
+        # Logs — read-only + view graphs
+        "logs.droneflightlog.graphs",
         # Exports
         "core.export.list",
     },

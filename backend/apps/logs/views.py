@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 
 from .models import DroneFlightLog, FlightGraphTemplate, FlightLogGraph
 from .serializers import (
@@ -71,7 +71,7 @@ class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Delete a flight log
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -120,6 +120,13 @@ class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
             return DroneFlightLogCreateUpdateSerializer
         return DroneFlightLogDetailSerializer
 
+    def perform_create(self, serializer):
+        """Save and process the uploaded flight log."""
+        instance = serializer.save()
+        from .processors import process_flight_log
+
+        process_flight_log(instance.id)
+
     @action(detail=True, methods=["get"])
     def graphs(self, request, uuid=None):
         """Get generated graphs for a specific flight log."""
@@ -129,6 +136,17 @@ class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
         ).order_by("template__display_order")
         serializer = FlightLogGraphListSerializer(graphs, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def process(self, request, uuid=None):
+        """Manually trigger (re)processing of a flight log."""
+        log = self.get_object()
+        from .processors import process_flight_log
+
+        process_flight_log(log.id)
+        log.refresh_from_db()
+        serializer = DroneFlightLogDetailSerializer(log)
+        return Response({"success": True, "data": serializer.data})
 
 
 # =============================================================================
@@ -172,7 +190,7 @@ class FlightGraphTemplateViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Deactivate a template (soft delete)
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -278,3 +296,10 @@ class FlightLogGraphViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
         elif self.action == "create":
             return FlightLogGraphCreateSerializer
         return FlightLogGraphDetailSerializer
+
+    def perform_create(self, serializer):
+        """Save and generate graph data."""
+        instance = serializer.save()
+        from .processors import generate_graph_data
+
+        generate_graph_data(instance.id)

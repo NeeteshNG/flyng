@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   FileText, MapPin, Activity, Battery, Clock,
-  CheckCircle, XCircle, Download,
+  CheckCircle, XCircle, Download, Loader2, RefreshCw,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +24,7 @@ interface LogDetailSheetProps {
 
 export default function LogDetailSheet({ open, onOpenChange, log }: LogDetailSheetProps) {
   const { formatDate, formatDateTime } = useFormat()
+  const queryClient = useQueryClient()
 
   const { data: detailData } = useQuery({
     queryKey: ['flight-log-detail', log?.uuid],
@@ -34,6 +36,19 @@ export default function LogDetailSheet({ open, onOpenChange, log }: LogDetailShe
     queryKey: ['flight-log-graphs', log?.uuid],
     queryFn: () => logsApi.getFlightLogGraphs(log!.uuid),
     enabled: !!log?.uuid && open,
+  })
+
+  const processLog = useMutation({
+    mutationFn: () => logsApi.processFlightLog(log!.uuid),
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['flight-log-detail', log?.uuid] })
+      queryClient.refetchQueries({ queryKey: ['flight-log-graphs', log?.uuid] })
+      queryClient.refetchQueries({ queryKey: ['flight-logs'] })
+      toast.success('Flight log reprocessed successfully', { duration: 4000 })
+    },
+    onError: () => {
+      toast.error('Failed to reprocess flight log', { duration: 5000 })
+    },
   })
 
   const detail = detailData?.data || log
@@ -287,6 +302,20 @@ export default function LogDetailSheet({ open, onOpenChange, log }: LogDetailShe
                 {detail.processing_error}
               </div>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              disabled={processLog.isPending}
+              onClick={() => processLog.mutate()}
+            >
+              {processLog.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {processLog.isPending ? 'Processing...' : 'Reprocess'}
+            </Button>
           </div>
 
           {/* Description & Notes */}
