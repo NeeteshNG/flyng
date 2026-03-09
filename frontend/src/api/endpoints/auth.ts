@@ -48,6 +48,8 @@ export interface User {
   profile_picture: string | null
   last_login: string | null
   password_changed_at: string | null
+  permissions: string[]
+  membership_role: string | null
   created_at: string
   updated_at: string
 }

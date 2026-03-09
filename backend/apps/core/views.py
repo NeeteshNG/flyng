@@ -19,7 +19,7 @@ from apps.organizations.views import get_user_organization
 
 from .mixins import ActivityLoggingMixin
 from .models import ImportJob
-from .permissions import IsAdminOrManager
+from .permissions import HasPermission
 from .serializers import (
     ImportJobDetailSerializer,
     ImportJobListSerializer,
@@ -54,7 +54,7 @@ class ImportJobViewSet(ActivityLoggingMixin, GenericViewSet):
     template: GET /api/v1/imports/template/{import_type}/
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManager]
+    permission_classes = [IsAuthenticated, HasPermission]
     lookup_field = "uuid"
 
     def get_queryset(self):
@@ -197,7 +197,9 @@ class ExportView(APIView):
     GET /api/v1/exports/{export_type}/?export_format=csv|json|xml|pdf
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPermission]
+    permission_resource = "export"
+    permission_app = "core"
 
     SUPPORTED_FORMATS = ("csv", "json", "xml", "pdf")
 

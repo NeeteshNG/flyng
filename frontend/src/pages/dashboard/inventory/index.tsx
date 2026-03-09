@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   Plus, Search, MoreHorizontal, Edit, Trash2, Eye,
   Warehouse, CheckCircle, Loader2,
@@ -36,6 +37,7 @@ const PAGE_SIZE = 20
 
 export default function InventoryPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
@@ -113,14 +115,18 @@ export default function InventoryPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="stock" />
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Stock
-          </Button>
+          {canCreate('inventory', 'inventorystock') && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          )}
+          {canCreate('inventory', 'inventorystock') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Stock
+            </Button>
+          )}
         </div>
       </div>
 
@@ -233,12 +239,16 @@ export default function InventoryPage() {
                             <DropdownMenuItem onClick={() => handleView(stock)}>
                               <Eye className="h-4 w-4 mr-2" /> View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(stock)}>
-                              <Edit className="h-4 w-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(stock)} className="text-destructive focus:text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
+                            {canUpdate('inventory', 'inventorystock') && (
+                              <DropdownMenuItem onClick={() => handleEdit(stock)}>
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('inventory', 'inventorystock') && (
+                              <DropdownMenuItem onClick={() => handleDelete(stock)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

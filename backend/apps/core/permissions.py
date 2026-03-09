@@ -122,3 +122,74 @@ class IsAdminOrManagerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return request.user and request.user.is_authenticated and request.user.is_manager()
+
+
+class HasPermission(permissions.BasePermission):
+    """
+    Per-action permission check based on OrganizationMembership.user_role.
+
+    Builds a permission code as: {app_label}.{resource}.{action}
+    and checks it against the role's permission matrix.
+
+    ViewSets can override detection with:
+      - permission_resource: str  (e.g., "export")
+      - permission_app: str       (e.g., "core")
+    """
+
+    message = "You do not have permission to perform this action."
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        from apps.organizations.models import OrganizationMembership
+
+        membership = OrganizationMembership.objects.filter(
+            user=request.user, is_active=True
+        ).first()
+
+        # Use membership role if available, otherwise fall back to global User.role
+        role = membership.user_role if membership else request.user.role
+
+        permission_code = self._get_permission_code(request, view)
+        if not permission_code:
+            return True  # Can't determine code — allow as fallback
+
+        from apps.core.permission_matrix import has_permission as check_perm
+
+        return check_perm(role, permission_code)
+
+    def _get_permission_code(self, request, view):
+        # Determine action
+        action = getattr(view, "action", None)
+        if not action:
+            method_map = {
+                "GET": "list",
+                "POST": "create",
+                "PUT": "update",
+                "PATCH": "partial_update",
+                "DELETE": "destroy",
+            }
+            action = method_map.get(request.method, "list")
+
+        # Determine resource name
+        resource = getattr(view, "permission_resource", None)
+        if not resource:
+            queryset = getattr(view, "queryset", None)
+            model = getattr(queryset, "model", None) if queryset is not None else None
+            if model:
+                resource = model.__name__.lower()
+            else:
+                return None
+
+        # Determine app label
+        app_label = getattr(view, "permission_app", None)
+        if not app_label:
+            queryset = getattr(view, "queryset", None)
+            model = getattr(queryset, "model", None) if queryset is not None else None
+            if model:
+                app_label = model._meta.app_label
+            else:
+                return None
+
+        return f"{app_label}.{resource}.{action}"

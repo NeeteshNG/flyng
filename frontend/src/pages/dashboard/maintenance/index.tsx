@@ -28,6 +28,7 @@ import { Separator } from '@/components/ui/separator'
 
 import dronesApi, { Drone, DroneMaintenanceRecord } from '@/api/endpoints/drones'
 import { useFormat } from '@/hooks/use-format'
+import { usePermissions } from '@/hooks/use-permissions'
 import { getErrorMessage } from '@/lib/api-error'
 import MaintenanceFormSheet from './maintenance-form-sheet'
 
@@ -60,6 +61,7 @@ const PAGE_SIZE = 20
 export default function MaintenancePage() {
   const queryClient = useQueryClient()
   const { formatDate, formatDateTime, formatCurrency } = useFormat()
+  const { canCreate, canUpdate } = usePermissions()
   const [search, setSearch] = useState('')
   const [droneFilter, setDroneFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -144,10 +146,12 @@ export default function MaintenancePage() {
           <h1 className="text-3xl font-bold tracking-tight">Maintenance</h1>
           <p className="text-muted-foreground">Track drone maintenance and repair history</p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Record
-        </Button>
+        {canCreate('drones', 'dronemaintenancerecord') && (
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Record
+          </Button>
+        )}
       </div>
 
       {/* Stats cards */}
@@ -316,7 +320,7 @@ export default function MaintenancePage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {!record.is_completed && (
+                            {!record.is_completed && canUpdate('drones', 'dronemaintenancerecord') && (
                               <DropdownMenuItem
                                 onClick={() => completeMutation.mutate(record.uuid)}
                                 disabled={completeMutation.isPending}

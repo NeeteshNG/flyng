@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 
 from .models import DroneJob, DroneJobEvent
 from .serializers import (
@@ -83,7 +83,7 @@ class DroneJobViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Cancel a job (soft cancel)
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

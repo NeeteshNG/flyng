@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import dronesApi, { Drone } from '@/api/endpoints/drones'
 import { useFormat } from '@/hooks/use-format'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import DroneFormSheet from './drone-form-sheet'
 import DroneDetailSheet from './drone-detail-sheet'
@@ -59,6 +60,7 @@ const PAGE_SIZE = 20
 export default function DronesPage() {
   const queryClient = useQueryClient()
   const { formatDate, formatRelative } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -142,10 +144,12 @@ export default function DronesPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="drones" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Register Drone
-          </Button>
+          {canCreate('drones', 'drone') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Register Drone
+            </Button>
+          )}
         </div>
       </div>
 
@@ -320,17 +324,21 @@ export default function DronesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(drone)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(drone)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Deactivate
-                            </DropdownMenuItem>
+                            {canUpdate('drones', 'drone') && (
+                              <DropdownMenuItem onClick={() => handleEdit(drone)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('drones', 'drone') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(drone)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

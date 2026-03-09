@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManager, IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 from apps.warehouses.models import (
     DroneWorkArea,
     GroundControlStation,
@@ -48,7 +48,7 @@ class WarehouseViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a warehouse (Admin/Manager only)
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["organization", "is_active", "city", "state", "country"]
     search_fields = ["name", "code", "city", "state"]
@@ -129,7 +129,7 @@ class WarehouseViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
 class WarehouseContactViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     """ViewSet for WarehouseContact CRUD operations."""
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ["warehouse", "is_primary", "is_emergency", "is_active"]
     search_fields = ["name", "email", "designation"]
@@ -158,7 +158,7 @@ class WarehouseZoneViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     ViewSet for WarehouseZone CRUD operations.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["warehouse", "zone_type", "floor_level", "is_active", "is_no_fly_zone"]
     search_fields = ["name", "code"]
@@ -219,7 +219,7 @@ class GroundControlStationViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     ViewSet for GroundControlStation CRUD operations.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["zone", "status", "is_active"]
     search_fields = ["name", "code", "hardware_id", "ip_address"]
@@ -277,7 +277,7 @@ class DroneWorkAreaViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     ViewSet for DroneWorkArea CRUD operations.
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["ground_control_station", "area_type", "is_active"]
     search_fields = ["name", "code"]

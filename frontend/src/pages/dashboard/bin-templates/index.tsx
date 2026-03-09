@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   Plus,
   Search,
@@ -62,6 +63,7 @@ const PAGE_SIZE = 20
 
 export default function BinTemplatesPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -177,10 +179,12 @@ export default function BinTemplatesPage() {
             Manage bin size and weight templates
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Template
-        </Button>
+        {canCreate('inventory', 'storagebintemplate') && (
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Template
+          </Button>
+        )}
       </div>
 
       {/* Stats cards */}
@@ -350,17 +354,21 @@ export default function BinTemplatesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(template)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(template)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canUpdate('inventory', 'storagebintemplate') && (
+                              <DropdownMenuItem onClick={() => handleEdit(template)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('inventory', 'storagebintemplate') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(template)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

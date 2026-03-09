@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import batteriesApi, { DroneBattery } from '@/api/endpoints/batteries'
 import { useFormat } from '@/hooks/use-format'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import BatteryFormSheet from './battery-form-sheet'
 import BatteryDetailSheet from './battery-detail-sheet'
@@ -76,6 +77,7 @@ const PAGE_SIZE = 20
 export default function BatteriesPage() {
   const queryClient = useQueryClient()
   const { formatDate } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [healthFilter, setHealthFilter] = useState<string>('all')
@@ -166,10 +168,12 @@ export default function BatteriesPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="batteries" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Battery
-          </Button>
+          {canCreate('batteries', 'dronebattery') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Battery
+            </Button>
+          )}
         </div>
       </div>
 
@@ -361,17 +365,21 @@ export default function BatteriesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(battery)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(battery)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Deactivate
-                            </DropdownMenuItem>
+                            {canUpdate('batteries', 'dronebattery') && (
+                              <DropdownMenuItem onClick={() => handleEdit(battery)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('batteries', 'dronebattery') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(battery)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

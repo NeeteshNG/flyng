@@ -55,6 +55,7 @@ import {
 import warehousesApi, { WarehouseZone } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import ZoneFormSheet from './zone-form-sheet'
 import ZoneDetailSheet from './zone-detail-sheet'
@@ -73,6 +74,7 @@ const ZONE_TYPES = [
 export default function ZonesPage() {
   const queryClient = useQueryClient()
   const { formatDate } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -184,10 +186,12 @@ export default function ZonesPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="zones" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Zone
-          </Button>
+          {canCreate('warehouses', 'warehousezone') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Zone
+            </Button>
+          )}
         </div>
       </div>
 
@@ -394,17 +398,21 @@ export default function ZonesPage() {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(zone)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDelete(zone)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
+                                {canUpdate('warehouses', 'warehousezone') && (
+                                  <DropdownMenuItem onClick={() => handleEdit(zone)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {canDelete('warehouses', 'warehousezone') && (
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDelete(zone)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

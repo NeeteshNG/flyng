@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   Plus,
   Search,
@@ -74,6 +75,7 @@ const PAGE_SIZE = 20
 
 export default function LocationsPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -209,14 +211,18 @@ export default function LocationsPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="locations" />
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Location
-          </Button>
+          {canCreate('inventory', 'storagelocation') && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          )}
+          {canCreate('inventory', 'storagelocation') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Location
+            </Button>
+          )}
         </div>
       </div>
 
@@ -418,17 +424,21 @@ export default function LocationsPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(location)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(location)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canUpdate('inventory', 'storagelocation') && (
+                              <DropdownMenuItem onClick={() => handleEdit(location)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('inventory', 'storagelocation') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(location)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

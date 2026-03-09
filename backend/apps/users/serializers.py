@@ -42,6 +42,8 @@ class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     phone = PhoneNumberField(required=False, allow_blank=True)
     has_2fa = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+    membership_role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -61,6 +63,8 @@ class UserSerializer(serializers.ModelSerializer):
             "has_2fa",
             "last_login",
             "password_changed_at",
+            "permissions",
+            "membership_role",
             "created_at",
             "updated_at",
         ]
@@ -78,6 +82,26 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_has_2fa(self, obj):
         return obj.two_factor_enabled
+
+    def get_permissions(self, obj):
+        from apps.core.permission_matrix import get_permissions_for_role
+        from apps.organizations.models import OrganizationMembership
+
+        membership = OrganizationMembership.objects.filter(
+            user=obj, is_active=True
+        ).first()
+        # Use membership role if available, otherwise fall back to global User.role
+        role = membership.user_role if membership else obj.role
+        return get_permissions_for_role(role)
+
+    def get_membership_role(self, obj):
+        from apps.organizations.models import OrganizationMembership
+
+        membership = OrganizationMembership.objects.filter(
+            user=obj, is_active=True
+        ).first()
+        # Use membership role if available, otherwise fall back to global User.role
+        return membership.user_role if membership else obj.role
 
 
 class UserListSerializer(serializers.ModelSerializer):

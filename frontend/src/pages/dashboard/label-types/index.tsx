@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePermissions } from '@/hooks/use-permissions'
 import {
   Plus,
   Search,
@@ -61,6 +62,7 @@ const PAGE_SIZE = 20
 
 export default function LabelTypesPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -183,10 +185,12 @@ export default function LabelTypesPage() {
             Manage bin label configurations for drone recognition
           </p>
         </div>
-        <Button onClick={handleAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Label Type
-        </Button>
+        {canCreate('inventory', 'binlabeltype') && (
+          <Button onClick={handleAdd}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Label Type
+          </Button>
+        )}
       </div>
 
       {/* Stats cards */}
@@ -365,17 +369,21 @@ export default function LabelTypesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(labelType)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(labelType)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canUpdate('inventory', 'binlabeltype') && (
+                              <DropdownMenuItem onClick={() => handleEdit(labelType)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('inventory', 'binlabeltype') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(labelType)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

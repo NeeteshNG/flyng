@@ -56,6 +56,7 @@ import {
 import warehousesApi, { DroneWorkArea } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import WorkAreaFormSheet from './work-area-form-sheet'
 import WorkAreaDetailSheet from './work-area-detail-sheet'
@@ -70,6 +71,7 @@ const AREA_TYPES = [
 export default function WorkAreasPage() {
   const queryClient = useQueryClient()
   const { formatDate } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -182,10 +184,12 @@ export default function WorkAreasPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="work-areas" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Work Area
-          </Button>
+          {canCreate('warehouses', 'droneworkarea') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Work Area
+            </Button>
+          )}
         </div>
       </div>
 
@@ -385,17 +389,21 @@ export default function WorkAreasPage() {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(workArea)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDelete(workArea)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
+                                {canUpdate('warehouses', 'droneworkarea') && (
+                                  <DropdownMenuItem onClick={() => handleEdit(workArea)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {canDelete('warehouses', 'droneworkarea') && (
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDelete(workArea)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import jobsApi, { DroneJob } from '@/api/endpoints/jobs'
 import { useFormat } from '@/hooks/use-format'
+import { usePermissions } from '@/hooks/use-permissions'
 import { getErrorMessage } from '@/lib/api-error'
 import { ExportButton } from '@/components/shared/export-button'
 import JobFormSheet from './job-form-sheet'
@@ -87,6 +88,7 @@ const PAGE_SIZE = 20
 export default function JobsPage() {
   const queryClient = useQueryClient()
   const { formatDate, formatRelative } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
@@ -208,10 +210,12 @@ export default function JobsPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="jobs" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Job
-          </Button>
+          {canCreate('jobs', 'dronejob') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Job
+            </Button>
+          )}
         </div>
       </div>
 
@@ -411,7 +415,7 @@ export default function JobsPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            {job.is_active && (
+                            {job.is_active && canUpdate('jobs', 'dronejob') && (
                               <DropdownMenuItem onClick={() => handleEdit(job)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
@@ -455,7 +459,7 @@ export default function JobsPage() {
                                 Retry
                               </DropdownMenuItem>
                             )}
-                            {job.is_active && (
+                            {job.is_active && canDelete('jobs', 'dronejob') && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

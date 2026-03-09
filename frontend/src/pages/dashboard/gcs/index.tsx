@@ -57,6 +57,7 @@ import {
 import warehousesApi, { GroundControlStation } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import GCSFormSheet from './gcs-form-sheet'
 import GCSDetailSheet from './gcs-detail-sheet'
@@ -73,6 +74,7 @@ const GCS_STATUSES = [
 export default function GCSPage() {
   const queryClient = useQueryClient()
   const { formatDateTime } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -185,10 +187,12 @@ export default function GCSPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="ground-stations" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add GCS
-          </Button>
+          {canCreate('warehouses', 'groundcontrolstation') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add GCS
+            </Button>
+          )}
         </div>
       </div>
 
@@ -393,17 +397,21 @@ export default function GCSPage() {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleEdit(gcs)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDelete(gcs)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
+                                {canUpdate('warehouses', 'groundcontrolstation') && (
+                                  <DropdownMenuItem onClick={() => handleEdit(gcs)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                )}
+                                {canDelete('warehouses', 'groundcontrolstation') && (
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDelete(gcs)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

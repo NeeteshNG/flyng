@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 
 from .models import PickOrder, PickOrderBatch, PickOrderLine
 from .serializers import (
@@ -72,7 +72,7 @@ class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Cancel a pick order
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PickOrderFilter
     search_fields = [
@@ -282,7 +282,7 @@ class PickOrderLineViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Delete an order line
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PickOrderLineFilter
     search_fields = ["item__sku", "item__name", "source_bin__code", "lot_number"]
@@ -352,7 +352,7 @@ class PickOrderBatchViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Delete a batch
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PickOrderBatchFilter
     search_fields = ["batch_number", "name", "description"]

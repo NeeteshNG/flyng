@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 
 from .models import Drone, DroneMaintenanceRecord, DroneTelemetryLog
 from .serializers import (
@@ -77,7 +77,7 @@ class DroneViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Deactivate a drone
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -242,7 +242,7 @@ class DroneMaintenanceRecordViewSet(ActivityLoggingMixin, viewsets.ModelViewSet)
     destroy: Not allowed (records are immutable)
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

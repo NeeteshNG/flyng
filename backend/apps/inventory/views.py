@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import IsAdminOrManagerOrReadOnly
+from apps.core.permissions import HasPermission
 
 from .models import (
     BinLabelType,
@@ -88,7 +88,7 @@ class StorageLocationViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a storage location
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = StorageLocationFilter
     search_fields = ["code", "aisle", "rack", "level", "notes"]
@@ -160,7 +160,7 @@ class StorageBinViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a storage bin
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = StorageBinFilter
     search_fields = ["code", "label_value", "notes"]
@@ -229,7 +229,7 @@ class StorageBinTemplateViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a bin template
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = StorageBinTemplateFilter
     search_fields = ["name", "description"]
@@ -295,7 +295,7 @@ class BinLabelTypeViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a bin label type
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = BinLabelTypeFilter
     search_fields = ["name"]
@@ -366,7 +366,7 @@ class ItemCategoryViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete an item category
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ItemCategoryFilter
     search_fields = ["name", "code", "description"]
@@ -450,7 +450,7 @@ class InventoryItemViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete an inventory item
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InventoryItemFilter
     search_fields = ["sku", "name", "barcode", "description"]
@@ -625,7 +625,7 @@ class InventoryStockViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Delete a stock record
     """
 
-    permission_classes = [IsAuthenticated, IsAdminOrManagerOrReadOnly]
+    permission_classes = [IsAuthenticated, HasPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = InventoryStockFilter
     search_fields = ["item__sku", "item__name", "bin__code", "lot_number"]

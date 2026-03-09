@@ -53,6 +53,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 
 import warehousesApi, { Warehouse } from '@/api/endpoints/warehouses'
+import { usePermissions } from '@/hooks/use-permissions'
 import { ExportButton } from '@/components/shared/export-button'
 import WarehouseFormSheet from './warehouse-form-sheet'
 import WarehouseDetailSheet from './warehouse-detail-sheet'
@@ -61,6 +62,7 @@ const PAGE_SIZE = 20
 
 export default function WarehousesPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -180,10 +182,12 @@ export default function WarehousesPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="warehouses" />
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Warehouse
-          </Button>
+          {canCreate('warehouses', 'warehouse') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Warehouse
+            </Button>
+          )}
         </div>
       </div>
 
@@ -349,17 +353,21 @@ export default function WarehousesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEdit(warehouse)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(warehouse)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
+                            {canUpdate('warehouses', 'warehouse') && (
+                              <DropdownMenuItem onClick={() => handleEdit(warehouse)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {canDelete('warehouses', 'warehouse') && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(warehouse)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { usePermissions } from '@/hooks/use-permissions'
 import { Link } from 'react-router-dom'
 import {
   Plus, Search, MoreHorizontal, Edit, Trash2, Eye,
@@ -37,6 +38,7 @@ const PAGE_SIZE = 20
 
 export default function ItemsPage() {
   const queryClient = useQueryClient()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -123,14 +125,18 @@ export default function ItemsPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButton exportType="items" />
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Import CSV
-          </Button>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          {canCreate('inventory', 'inventoryitem') && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          )}
+          {canCreate('inventory', 'inventoryitem') && (
+            <Button onClick={handleAdd}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -278,12 +284,16 @@ export default function ItemsPage() {
                               <DropdownMenuItem onClick={() => handleView(item)}>
                                 <Eye className="h-4 w-4 mr-2" /> View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEdit(item)}>
-                                <Edit className="h-4 w-4 mr-2" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(item)} className="text-destructive focus:text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete
-                              </DropdownMenuItem>
+                              {canUpdate('inventory', 'inventoryitem') && (
+                                <DropdownMenuItem onClick={() => handleEdit(item)}>
+                                  <Edit className="h-4 w-4 mr-2" /> Edit
+                                </DropdownMenuItem>
+                              )}
+                              {canDelete('inventory', 'inventoryitem') && (
+                                <DropdownMenuItem onClick={() => handleDelete(item)} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

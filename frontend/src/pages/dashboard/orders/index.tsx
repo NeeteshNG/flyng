@@ -33,6 +33,7 @@ import { ExportButton } from '@/components/shared/export-button'
 import { useListPage } from '@/hooks/use-list-page'
 import { useDeleteDialog } from '@/hooks/use-delete-dialog'
 import { useFormat } from '@/hooks/use-format'
+import { usePermissions } from '@/hooks/use-permissions'
 import OrderDetailSheet from './order-detail-sheet'
 
 const STATUS_OPTIONS = [
@@ -84,6 +85,7 @@ const priorityBadgeVariant = (priority: string): 'default' | 'secondary' | 'dest
 export default function OrdersPage() {
   const queryClient = useQueryClient()
   const { formatDate } = useFormat()
+  const { canCreate, canUpdate, canDelete } = usePermissions()
 
   const {
     search, setSearch, page, setPage, pageSize,
@@ -203,10 +205,12 @@ export default function OrdersPage() {
             <Upload className="h-4 w-4 mr-2" />
             Import CSV
           </Button>
-          <Button onClick={() => window.location.href = '/dashboard/orders/create'}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Order
-          </Button>
+          {canCreate('orders', 'pickorder') && (
+            <Button onClick={() => window.location.href = '/dashboard/orders/create'}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Order
+            </Button>
+          )}
         </div>
       </div>
 
@@ -367,7 +371,7 @@ export default function OrdersPage() {
                                 <Icon className="h-4 w-4 mr-2" /> {label}
                               </DropdownMenuItem>
                             ))}
-                            {!['DELIVERED', 'CANCELLED'].includes(order.status) && (
+                            {canDelete('orders', 'pickorder') && !['DELIVERED', 'CANCELLED'].includes(order.status) && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

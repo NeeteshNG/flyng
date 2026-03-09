@@ -40,11 +40,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuthStore } from '@/stores/auth-store'
+import { usePermissions } from '@/hooks/use-permissions'
 
 interface NavChild {
   name: string
   path: string
-  roles?: string[] // If specified, only show to these roles
+  permission?: string // Permission code required to see this item
 }
 
 interface NavItem {
@@ -52,7 +53,7 @@ interface NavItem {
   path?: string
   icon: React.ElementType
   children?: NavChild[]
-  roles?: string[] // If specified, only show to these roles
+  permission?: string // Permission code required to see this item
 }
 
 const navigation: NavItem[] = [
@@ -123,21 +124,14 @@ const navigation: NavItem[] = [
     name: 'Settings',
     icon: Settings,
     children: [
-      { name: 'Users', path: '/dashboard/users', roles: ['ADMIN', 'MANAGER'] },
-      { name: 'Activity Log', path: '/dashboard/activity', roles: ['ADMIN', 'MANAGER'] },
-      { name: 'Organization', path: '/dashboard/organization', roles: ['ADMIN', 'MANAGER'] },
+      { name: 'Users', path: '/dashboard/users', permission: 'users.user.list' },
+      { name: 'Activity Log', path: '/dashboard/activity', permission: 'users.useractivity.list' },
+      { name: 'Organization', path: '/dashboard/organization', permission: 'organizations.organization.update' },
       { name: 'Notifications', path: '/dashboard/notifications' },
       { name: 'Preferences', path: '/dashboard/settings' },
     ],
   },
 ]
-
-// Helper to check if user has required role
-const hasRole = (userRole: string | undefined, allowedRoles?: string[]): boolean => {
-  if (!allowedRoles || allowedRoles.length === 0) return true
-  if (!userRole) return false
-  return allowedRoles.includes(userRole)
-}
 
 export function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -153,6 +147,7 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const { logout } = useAuth()
   const { user } = useAuthStore()
+  const { has: hasPermission } = usePermissions()
 
   useEffect(() => {
     // Check for system preference on mount
@@ -202,7 +197,7 @@ export function DashboardLayout() {
     <nav className="flex-1 space-y-1 px-2 py-4">
       {navigation.map((item) => {
         // Check if user has permission to see this nav item
-        if (!hasRole(user?.role, item.roles)) return null
+        if (item.permission && !hasPermission(item.permission)) return null
 
         const isExpanded = expandedItems.includes(item.name)
         const isActive = item.path
@@ -210,9 +205,9 @@ export function DashboardLayout() {
           : item.children?.some((child) => location.pathname === child.path)
 
         if (item.children) {
-          // Filter children based on role
+          // Filter children based on permission
           const visibleChildren = item.children.filter((child) =>
-            hasRole(user?.role, child.roles)
+            !child.permission || hasPermission(child.permission)
           )
 
           // Don't render parent if no visible children
