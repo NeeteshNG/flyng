@@ -57,7 +57,7 @@ import {
 import warehousesApi, { GroundControlStation } from '@/api/endpoints/warehouses'
 import { getErrorMessage } from '@/lib/api-error'
 import { useFormat } from '@/hooks'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import GCSFormSheet from './gcs-form-sheet'
 import GCSDetailSheet from './gcs-detail-sheet'
 
@@ -184,7 +184,7 @@ export default function GCSPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="ground-stations" />
+          <ExportButton exportType="ground-stations" />
           <Button onClick={handleAdd}>
             <Plus className="h-4 w-4 mr-2" />
             Add GCS

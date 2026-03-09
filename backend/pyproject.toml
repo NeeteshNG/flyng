@@ -76,6 +76,9 @@ dependencies = [
     "channels>=4.2.0",
     "channels-redis>=4.2.0",
     "daphne>=4.1.0",
+
+    # PDF Export
+    "weasyprint>=62.0",
 ]
 
 [project.optional-dependencies]

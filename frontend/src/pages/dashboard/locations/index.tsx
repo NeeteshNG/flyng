@@ -57,7 +57,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import inventoryApi, { StorageLocation } from '@/api/endpoints/inventory'
 import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import LocationFormSheet from './location-form-sheet'
 import LocationDetailSheet from './location-detail-sheet'
 
@@ -208,7 +208,7 @@ export default function LocationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="locations" />
+          <ExportButton exportType="locations" />
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Import CSV

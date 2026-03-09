@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import batteriesApi, { DroneBattery } from '@/api/endpoints/batteries'
 import { useFormat } from '@/hooks/use-format'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import BatteryFormSheet from './battery-form-sheet'
 import BatteryDetailSheet from './battery-detail-sheet'
 
@@ -165,7 +165,7 @@ export default function BatteriesPage() {
           <p className="text-muted-foreground">Manage drone battery inventory</p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="batteries" />
+          <ExportButton exportType="batteries" />
           <Button onClick={handleAdd}>
             <Plus className="h-4 w-4 mr-2" />
             Add Battery

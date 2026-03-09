@@ -192,18 +192,27 @@ class ImportJobViewSet(ActivityLoggingMixin, GenericViewSet):
 
 class ExportView(APIView):
     """
-    Export data as CSV.
+    Export data in multiple formats.
 
-    GET /api/v1/exports/{export_type}/
+    GET /api/v1/exports/{export_type}/?export_format=csv|json|xml|pdf
     """
 
     permission_classes = [IsAuthenticated]
+
+    SUPPORTED_FORMATS = ("csv", "json", "xml", "pdf")
 
     def get(self, request, export_type=None):
         config = EXPORT_REGISTRY.get(export_type)
         if not config:
             return Response(
                 {"success": False, "message": f"Unknown export type: {export_type}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        export_format = request.query_params.get("export_format", "csv")
+        if export_format not in self.SUPPORTED_FORMATS:
+            return Response(
+                {"success": False, "message": f"Unsupported format: {export_format}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -224,11 +233,31 @@ class ExportView(APIView):
 
         # Apply query params as filters
         for key, value in request.query_params.items():
-            if key in ("format",):
+            if key in ("format", "export_format"):
                 continue
             try:
                 queryset = queryset.filter(**{key: value})
             except (FieldError, ValueError, TypeError):
                 pass  # Ignore invalid filter params
 
-        return config["export_fn"](queryset)
+        # CSV: use existing export functions for backward compatibility
+        if export_format == "csv":
+            return config["export_fn"](queryset)
+
+        # JSON/XML/PDF: use data-driven field definitions + renderers
+        from apps.core.services.export_fields import EXPORT_FIELDS
+        from apps.core.services.export_renderers import render_json, render_pdf, render_xml
+
+        field_config = EXPORT_FIELDS.get(export_type)
+        if not field_config:
+            return Response(
+                {"success": False, "message": f"Format not available for: {export_type}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if export_format == "json":
+            return render_json(field_config, queryset)
+        elif export_format == "xml":
+            return render_xml(field_config, queryset)
+        elif export_format == "pdf":
+            return render_pdf(field_config, queryset, request)

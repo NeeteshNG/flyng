@@ -29,7 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import ordersApi, { PickOrder } from '@/api/endpoints/orders'
 import { getErrorMessage } from '@/lib/api-error'
 import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import { useListPage } from '@/hooks/use-list-page'
 import { useDeleteDialog } from '@/hooks/use-delete-dialog'
 import { useFormat } from '@/hooks/use-format'
@@ -198,7 +198,7 @@ export default function OrdersPage() {
           <p className="text-muted-foreground">Manage pick orders and fulfillment</p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="orders" />
+          <ExportButton exportType="orders" />
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Import CSV

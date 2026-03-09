@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import dronesApi, { Drone } from '@/api/endpoints/drones'
 import { useFormat } from '@/hooks/use-format'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import DroneFormSheet from './drone-form-sheet'
 import DroneDetailSheet from './drone-detail-sheet'
 
@@ -141,7 +141,7 @@ export default function DronesPage() {
           <p className="text-muted-foreground">Manage your drone fleet</p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="drones" />
+          <ExportButton exportType="drones" />
           <Button onClick={handleAdd}>
             <Plus className="h-4 w-4 mr-2" />
             Register Drone

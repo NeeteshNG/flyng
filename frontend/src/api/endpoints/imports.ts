@@ -40,6 +40,8 @@ export type ExportType =
   | 'warehouses' | 'zones' | 'ground-stations' | 'work-areas'
   | 'drones' | 'batteries' | 'bins' | 'jobs' | 'low-stock'
 
+export type ExportFormat = 'csv' | 'json' | 'xml' | 'pdf'
+
 // API functions
 const importsApi = {
   /** Upload a CSV file for import */
@@ -74,6 +76,13 @@ const importsApi = {
   /** Export data as CSV */
   exportCSV: (exportType: ExportType, params?: Record<string, string>) =>
     apiClient.get(`/exports/${exportType}/`, { params, responseType: 'blob' }),
+
+  /** Export data in any supported format (csv, json, xml, pdf) */
+  exportData: (exportType: ExportType, format: ExportFormat = 'csv', params?: Record<string, string>) =>
+    apiClient.get(`/exports/${exportType}/`, {
+      params: { ...params, export_format: format },
+      responseType: 'blob',
+    }),
 }
 
 export default importsApi

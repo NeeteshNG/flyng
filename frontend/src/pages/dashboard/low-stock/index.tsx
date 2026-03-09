@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/tooltip'
 
 import inventoryApi, { type LowStockItem } from '@/api/endpoints/inventory'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import { useFormat } from '@/hooks/use-format'
 
 const PAGE_SIZE = 20
@@ -97,7 +97,7 @@ export default function LowStockPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="low-stock" label="Export Low Stock" />
+          <ExportButton exportType="low-stock" />
           <Button variant="outline" asChild>
             <Link to="/dashboard/items">View All Items</Link>
           </Button>

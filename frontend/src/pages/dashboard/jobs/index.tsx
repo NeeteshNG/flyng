@@ -28,7 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import jobsApi, { DroneJob } from '@/api/endpoints/jobs'
 import { useFormat } from '@/hooks/use-format'
 import { getErrorMessage } from '@/lib/api-error'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import JobFormSheet from './job-form-sheet'
 import JobDetailSheet from './job-detail-sheet'
 
@@ -207,7 +207,7 @@ export default function JobsPage() {
           <p className="text-muted-foreground">Manage drone pick, scan, count, and move operations</p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="jobs" />
+          <ExportButton exportType="jobs" />
           <Button onClick={handleAdd}>
             <Plus className="h-4 w-4 mr-2" />
             Create Job

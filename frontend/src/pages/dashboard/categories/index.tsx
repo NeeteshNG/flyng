@@ -57,7 +57,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import inventoryApi, { ItemCategory } from '@/api/endpoints/inventory'
 import { getErrorMessage } from '@/lib/api-error'
 import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
-import { CSVExportButton } from '@/components/shared/csv-export-button'
+import { ExportButton } from '@/components/shared/export-button'
 import CategoryFormSheet from './category-form-sheet'
 import CategoryDetailSheet from './category-detail-sheet'
 
@@ -179,7 +179,7 @@ export default function CategoriesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <CSVExportButton exportType="categories" />
+          <ExportButton exportType="categories" />
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />
             Import CSV
