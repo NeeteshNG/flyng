@@ -65,7 +65,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: python manage.py runserver 0.0.0.0:8000
+    command: daphne -b 0.0.0.0 -p 8000 config.asgi:application
 
   # One-off migration service (use: docker-compose run --rm migrate)
   migrate:

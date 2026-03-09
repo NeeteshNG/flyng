@@ -71,6 +71,11 @@ dependencies = [
 
     # Model Translation (multi-language content)
     "django-modeltranslation>=0.19.0",
+
+    # Real-time / WebSockets
+    "channels>=4.2.0",
+    "channels-redis>=4.2.0",
+    "daphne>=4.1.0",
 ]
 
 [project.optional-dependencies]

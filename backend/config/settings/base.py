@@ -21,6 +21,7 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","
 
 # Application definition
 DJANGO_APPS = [
+    "daphne",  # ASGI server — must be before django.contrib.staticfiles
     "unfold",  # Must be before django.contrib.admin
     "unfold.contrib.filters",  # Optional: Enhanced filters
     "unfold.contrib.forms",  # Optional: Enhanced form widgets
@@ -46,6 +47,8 @@ THIRD_PARTY_APPS = [
     # Model utilities
     "safedelete",
     "simple_history",
+    # Real-time / WebSockets
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -60,6 +63,7 @@ LOCAL_APPS = [
     "apps.jobs",
     "apps.logs",
     "apps.notifications",
+    "apps.realtime",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -96,6 +100,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 # Database
 DATABASES = {
@@ -360,6 +365,16 @@ CACHES = {
 # Session Configuration
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+# Django Channels (WebSocket)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379/0")],
+        },
+    },
+}
 
 # Celery Configuration
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

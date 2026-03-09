@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { GlobalSearch } from '@/components/shared/global-search'
 import { NotificationCenter } from '@/components/shared/notification-center'
+import { WebSocketProvider } from '@/components/shared/websocket-provider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -285,6 +286,9 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Real-time WebSocket connections (telemetry, jobs, notifications) */}
+      <WebSocketProvider />
+
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div

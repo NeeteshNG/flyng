@@ -53,14 +53,14 @@ export function NotificationCenter() {
   const { data: unreadData } = useQuery({
     queryKey: ['notifications-unread-count'],
     queryFn: () => notificationsApi.getUnreadCount().then((r) => r.data),
-    refetchInterval: 30000,
+    // No polling — WebSocketProvider pushes updates via query invalidation
   })
 
   const { data: listData } = useQuery({
     queryKey: ['notifications-popover'],
     queryFn: () =>
       notificationsApi.getNotifications({ page_size: 10 }).then((r) => r.data),
-    refetchInterval: 30000,
+    // No polling — WebSocketProvider pushes updates via query invalidation
   })
 
   const markReadMutation = useMutation({
