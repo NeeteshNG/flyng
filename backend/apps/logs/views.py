@@ -137,6 +137,45 @@ class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
         serializer = FlightLogGraphListSerializer(graphs, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="explorer-data")
+    def explorer_data(self, request, uuid=None):
+        """Return full extracted data for interactive exploration."""
+        log = self.get_object()
+        if not log.is_processed or not log.extracted_data:
+            return Response(
+                {"error": "Log not processed yet. Process the log first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        extracted = log.extracted_data
+        topics = extracted.get("topics", {})
+
+        # Seed data stores topics as a list of names — not explorable
+        if not isinstance(topics, dict):
+            return Response(
+                {"error": "Log data is in legacy format. Reprocess the log to enable exploration."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build topic metadata (topic name → column names + point count)
+        topic_metadata = {}
+        for name, points in topics.items():
+            if points and isinstance(points[0], dict):
+                topic_metadata[name] = {
+                    "columns": list(points[0].keys()),
+                    "count": len(points),
+                }
+
+        return Response({
+            "log_uuid": str(log.uuid),
+            "filename": log.filename,
+            "is_processed": log.is_processed,
+            "topic_metadata": topic_metadata,
+            "topics": topics,
+            "columns": extracted.get("columns", []),
+            "summary": extracted.get("summary", {}),
+        })
+
     @action(detail=True, methods=["post"])
     def process(self, request, uuid=None):
         """Manually trigger (re)processing of a flight log."""
@@ -146,6 +185,11 @@ class DroneFlightLogViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
         process_flight_log(log.id)
         log.refresh_from_db()
         serializer = DroneFlightLogDetailSerializer(log)
+        if not log.is_processed:
+            return Response(
+                {"success": False, "error": log.processing_error or "Processing failed.", "data": serializer.data},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response({"success": True, "data": serializer.data})
 
 

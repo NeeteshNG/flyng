@@ -36,6 +36,7 @@ import MaintenancePage from '@/pages/dashboard/maintenance'
 import BatteriesPage from '@/pages/dashboard/batteries'
 import JobsPage from '@/pages/dashboard/jobs'
 import LogFilesPage from '@/pages/dashboard/log-files'
+import FlightExplorerPage from '@/pages/dashboard/log-files/flight-explorer'
 import GraphTemplatesPage from '@/pages/dashboard/graph-templates'
 import BillingPage from '@/pages/dashboard/billing'
 import APIKeysPage from '@/pages/dashboard/api-keys'
@@ -99,6 +100,7 @@ function App() {
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="batteries" element={<BatteriesPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="log-files/:uuid/explore" element={<FlightExplorerPage />} />
             <Route path="log-files" element={<LogFilesPage />} />
             <Route path="graph-templates" element={<GraphTemplatesPage />} />
             <Route path="billing" element={<BillingPage />} />

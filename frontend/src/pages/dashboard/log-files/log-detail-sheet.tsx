@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   FileText, MapPin, Activity, Battery, Clock,
-  CheckCircle, XCircle, Download, Loader2, RefreshCw,
+  CheckCircle, XCircle, Download, Loader2, RefreshCw, BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -302,20 +303,29 @@ export default function LogDetailSheet({ open, onOpenChange, log }: LogDetailShe
                 {detail.processing_error}
               </div>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              disabled={processLog.isPending}
-              onClick={() => processLog.mutate()}
-            >
-              {processLog.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={processLog.isPending}
+                onClick={() => processLog.mutate()}
+              >
+                {processLog.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                {processLog.isPending ? 'Processing...' : 'Reprocess'}
+              </Button>
+              {detail.is_processed && (
+                <Button variant="outline" size="sm" asChild onClick={() => onOpenChange(false)}>
+                  <Link to={`/dashboard/log-files/${detail.uuid}/explore`}>
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Explore Data
+                  </Link>
+                </Button>
               )}
-              {processLog.isPending ? 'Processing...' : 'Reprocess'}
-            </Button>
+            </div>
           </div>
 
           {/* Description & Notes */}

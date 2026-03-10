@@ -88,6 +88,16 @@ export interface FlightLogGraph {
   updated_at: string
 }
 
+export interface ExplorerData {
+  log_uuid: string
+  filename: string
+  is_processed: boolean
+  topic_metadata: Record<string, { columns: string[]; count: number }>
+  topics: Record<string, Record<string, unknown>[]>
+  columns: string[]
+  summary: { total_points: number; topics_found: string[] }
+}
+
 // List response types
 interface PaginatedResponse<T> {
   count: number
@@ -162,6 +172,10 @@ const logsApi = {
 
   getFlightLogGraphs: (uuid: string) => {
     return apiClient.get<FlightLogGraph[]>(`/flight-logs/${uuid}/graphs/`)
+  },
+
+  getExplorerData: (uuid: string) => {
+    return apiClient.get<ExplorerData>(`/flight-logs/${uuid}/explorer-data/`)
   },
 
   // === Graph Templates ===

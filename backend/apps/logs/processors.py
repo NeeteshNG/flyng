@@ -161,6 +161,34 @@ def _parse_ulog(file_field) -> dict:
                 total_points += len(pos_data)
             break
 
+    # Extract all remaining ULog topics for interactive explorer
+    _extracted_names = {"vehicle_gps_position", "battery_status", "vehicle_local_position"}
+    for d in ulog.data_list:
+        if d.name in _extracted_names:
+            continue
+        topic_key = d.name.replace(".", "_")
+        if topic_key in topics:
+            continue
+        ts = d.data.get("timestamp", [])
+        if not ts:
+            continue
+        t0 = ts[0]
+        topic_data = []
+        for i in range(len(ts)):
+            point = {"t": round((ts[i] - t0) / 1e6, 2)}
+            for field_name, values in d.data.items():
+                if field_name == "timestamp":
+                    continue
+                if i < len(values):
+                    val = values[i]
+                    if isinstance(val, (int, float)):
+                        point[field_name] = round(float(val), 4)
+            topic_data.append(point)
+        if topic_data:
+            topics[topic_key] = _downsample(topic_data)
+            columns.update(topic_data[0].keys())
+            total_points += len(topic_data)
+
     return {
         "topics": topics,
         "columns": sorted(columns),

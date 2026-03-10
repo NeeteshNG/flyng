@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import {
   Plus, Search, MoreHorizontal, Edit, Trash2, Eye,
   FileText, CheckCircle, XCircle, Clock,
-  Loader2, ChevronLeft, ChevronRight, X, Upload,
+  Loader2, ChevronLeft, ChevronRight, X, Upload, BarChart3,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -35,6 +36,7 @@ const PAGE_SIZE = 20
 
 export default function LogFilesPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { formatDate } = useFormat()
   const [search, setSearch] = useState('')
   const [processedFilter, setProcessedFilter] = useState<string>('all')
@@ -280,6 +282,12 @@ export default function LogFilesPage() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
+                            {log.is_processed && (
+                              <DropdownMenuItem onClick={() => navigate(`/dashboard/log-files/${log.uuid}/explore`)}>
+                                <BarChart3 className="h-4 w-4 mr-2" />
+                                Explore Data
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => handleEdit(log)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
