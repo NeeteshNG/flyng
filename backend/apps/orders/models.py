@@ -6,6 +6,8 @@ Models for managing pick orders, order lines, and order batches.
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import F, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -382,9 +384,14 @@ class PickOrder(AuditedModel):
 
     @transaction.atomic
     def confirm(self, user=None):
-        """Confirm the order for picking."""
+        """Confirm the order for picking and reserve stock."""
         if self.status != OrderStatus.PENDING:
             return False
+        # Reserve stock for each line that has a stock record
+        for line in self.lines.select_related("stock").all():
+            if line.stock:
+                line.stock.reserved_quantity = F("reserved_quantity") + line.quantity
+                line.stock.save(update_fields=["reserved_quantity", "updated_at"])
         self.status = OrderStatus.CONFIRMED
         self.confirmed_at = timezone.now()
         self.save(update_fields=["status", "confirmed_at", "updated_at"])
@@ -447,9 +454,25 @@ class PickOrder(AuditedModel):
 
     @transaction.atomic
     def cancel(self, reason=""):
-        """Cancel the order."""
+        """Cancel the order and release/restore stock."""
         if self.status in [OrderStatus.DELIVERED, OrderStatus.CANCELLED]:
             return False
+        for line in self.lines.select_related("stock").all():
+            if line.stock:
+                if self.status in [OrderStatus.CONFIRMED, OrderStatus.PICKING]:
+                    # Release reservation for unpicked lines
+                    line.stock.reserved_quantity = Greatest(
+                        F("reserved_quantity") - line.quantity, Value(0)
+                    )
+                    line.stock.save(update_fields=["reserved_quantity", "updated_at"])
+                elif self.status in [
+                    OrderStatus.PICKED, OrderStatus.PACKING,
+                    OrderStatus.PACKED, OrderStatus.SHIPPED,
+                ]:
+                    # Restore deducted stock for picked lines
+                    if line.is_picked:
+                        line.stock.quantity = F("quantity") + line.picked_quantity
+                        line.stock.save(update_fields=["quantity", "updated_at"])
         self.status = OrderStatus.CANCELLED
         self.cancelled_at = timezone.now()
         self.cancellation_reason = reason
@@ -463,6 +486,74 @@ class PickOrder(AuditedModel):
             return False
         self.status = OrderStatus.ON_HOLD
         self.save(update_fields=["status", "updated_at"])
+        return True
+
+    # State revert map: current → previous
+    REVERT_MAP = {
+        OrderStatus.CONFIRMED: OrderStatus.PENDING,
+        OrderStatus.PICKING: OrderStatus.CONFIRMED,
+        OrderStatus.PICKED: OrderStatus.PICKING,
+        OrderStatus.PACKING: OrderStatus.PICKED,
+        OrderStatus.PACKED: OrderStatus.PICKED,
+        OrderStatus.SHIPPED: OrderStatus.PACKED,
+    }
+
+    # Timestamp fields to clear when reverting from a state
+    REVERT_TIMESTAMP_FIELDS = {
+        OrderStatus.CONFIRMED: "confirmed_at",
+        OrderStatus.PICKING: "picking_started_at",
+        OrderStatus.PICKED: "picking_completed_at",
+        OrderStatus.PACKED: "packed_at",
+        OrderStatus.SHIPPED: "shipped_at",
+    }
+
+    @transaction.atomic
+    def revert(self, reason=""):
+        """Revert the order to its previous state, undoing stock changes."""
+        prev = self.REVERT_MAP.get(self.status)
+        if not prev:
+            return False
+
+        if self.status == OrderStatus.CONFIRMED:
+            # Release reservations made during confirm
+            for line in self.lines.select_related("stock").all():
+                if line.stock:
+                    line.stock.reserved_quantity = Greatest(
+                        F("reserved_quantity") - line.quantity, Value(0)
+                    )
+                    line.stock.save(update_fields=["reserved_quantity", "updated_at"])
+
+        elif self.status == OrderStatus.PICKED:
+            # Un-pick lines: restore stock quantity and re-reserve
+            for line in self.lines.select_related("stock").filter(is_picked=True):
+                if line.stock:
+                    line.stock.quantity = F("quantity") + line.picked_quantity
+                    line.stock.reserved_quantity = F("reserved_quantity") + line.quantity
+                    line.stock.save(update_fields=["quantity", "reserved_quantity", "updated_at"])
+                line.is_picked = False
+                line.picked_quantity = 0
+                line.picked_at = None
+                line.picked_by = None
+                line.save(update_fields=[
+                    "is_picked", "picked_quantity", "picked_at", "picked_by", "updated_at",
+                ])
+
+        elif self.status == OrderStatus.SHIPPED:
+            # Shipped → Packed: restore deducted stock
+            for line in self.lines.select_related("stock").filter(is_picked=True):
+                if line.stock:
+                    line.stock.quantity = F("quantity") + line.picked_quantity
+                    line.stock.save(update_fields=["quantity", "updated_at"])
+
+        # Clear the timestamp for the state being reverted
+        ts_field = self.REVERT_TIMESTAMP_FIELDS.get(self.status)
+        update_fields = ["status", "updated_at"]
+        if ts_field:
+            setattr(self, ts_field, None)
+            update_fields.append(ts_field)
+
+        self.status = prev
+        self.save(update_fields=update_fields)
         return True
 
 
@@ -637,7 +728,7 @@ class PickOrderLine(TimeStampedModel):
 
     @transaction.atomic
     def pick(self, quantity, user=None, notes=""):
-        """Mark line as picked with quantity."""
+        """Mark line as picked with quantity and deduct from stock."""
         self.picked_quantity = quantity
         self.is_picked = True
         self.picked_at = timezone.now()
@@ -645,6 +736,13 @@ class PickOrderLine(TimeStampedModel):
             self.picked_by = user
         if notes:
             self.pick_notes = notes
+        # Deduct from stock: reduce quantity and release reservation
+        if self.stock:
+            self.stock.quantity = F("quantity") - quantity
+            self.stock.reserved_quantity = Greatest(
+                F("reserved_quantity") - self.quantity, Value(0)
+            )
+            self.stock.save(update_fields=["quantity", "reserved_quantity", "updated_at"])
         self.save(
             update_fields=[
                 "picked_quantity",

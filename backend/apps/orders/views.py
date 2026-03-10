@@ -248,6 +248,43 @@ class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, uuid=None):
+        """Cancel the order and release/restore stock."""
+        order = self.get_object()
+        reason = request.data.get("reason", "")
+        success = order.cancel(reason=reason)
+        if success:
+            self.log_activity(ActivityAction.UPDATE, order, f"Cancelled order: {reason}")
+            return Response(
+                {"success": True, "message": "Order cancelled successfully"},
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"success": False, "message": "Cannot cancel order in current state"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    @action(detail=True, methods=["post"])
+    def revert(self, request, uuid=None):
+        """Revert the order to its previous state."""
+        order = self.get_object()
+        reason = request.data.get("reason", "")
+        success = order.revert(reason=reason)
+        if success:
+            self.log_activity(
+                ActivityAction.UPDATE, order,
+                f"Reverted order to {order.get_status_display()}: {reason}",
+            )
+            return Response(
+                {"success": True, "message": f"Order reverted to {order.get_status_display()}"},
+                status=status.HTTP_200_OK,
+            )
+        return Response(
+            {"success": False, "message": "Cannot revert order in current state"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
 
 # --- Pick Order Line Views ---
 

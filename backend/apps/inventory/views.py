@@ -660,3 +660,30 @@ class InventoryStockViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
             {"success": True, "message": "Stock record deleted successfully"},
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["post"], url_path="adjust")
+    def adjust_stock(self, request, uuid=None):
+        """Manually adjust stock quantity for corrections."""
+        stock = self.get_object()
+        adjustment = request.data.get("adjustment", 0)
+        reason = request.data.get("reason", "")
+        try:
+            adjustment = int(adjustment)
+        except (TypeError, ValueError):
+            return Response(
+                {"success": False, "error": "Adjustment must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_qty = stock.quantity + adjustment
+        if new_qty < 0:
+            return Response(
+                {"success": False, "error": "Quantity cannot go below 0"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        stock.quantity = new_qty
+        stock.save(update_fields=["quantity", "updated_at"])
+        self.log_activity(
+            ActivityAction.UPDATE, stock,
+            f"Adjusted stock by {adjustment:+d}: {reason}",
+        )
+        return Response({"success": True, "quantity": new_qty})

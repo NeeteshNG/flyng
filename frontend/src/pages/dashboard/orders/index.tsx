@@ -4,13 +4,15 @@ import {
   Plus, Search, MoreHorizontal, Eye, Trash2,
   ShoppingCart, Clock, CheckCircle, AlertTriangle,
   ChevronLeft, ChevronRight, X, Loader2,
-  Play, Package, Truck, Check, Pause, Upload,
+  Play, Package, Truck, Check, Pause, Upload, Undo2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -31,7 +33,6 @@ import { getErrorMessage } from '@/lib/api-error'
 import { CSVImportDialog } from '@/components/shared/csv-import-dialog'
 import { ExportButton } from '@/components/shared/export-button'
 import { useListPage } from '@/hooks/use-list-page'
-import { useDeleteDialog } from '@/hooks/use-delete-dialog'
 import { useFormat } from '@/hooks/use-format'
 import { usePermissions } from '@/hooks/use-permissions'
 import OrderDetailSheet from './order-detail-sheet'
@@ -82,6 +83,9 @@ const priorityBadgeVariant = (priority: string): 'default' | 'secondary' | 'dest
   }
 }
 
+// States that can be reverted (have a previous state)
+const REVERTABLE_STATUSES = ['CONFIRMED', 'PICKING', 'PICKED', 'PACKING', 'PACKED', 'SHIPPED']
+
 export default function OrdersPage() {
   const queryClient = useQueryClient()
   const { formatDate } = useFormat()
@@ -96,6 +100,12 @@ export default function OrdersPage() {
     initialFilters: { status: 'all', priority: 'all' },
   })
   const [importOpen, setImportOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [orderToCancel, setOrderToCancel] = useState<PickOrder | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false)
+  const [orderToRevert, setOrderToRevert] = useState<PickOrder | null>(null)
+  const [revertReason, setRevertReason] = useState('')
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['orders', search, filters, page],
@@ -116,20 +126,6 @@ export default function OrdersPage() {
   const inProgressCount = allOrders.filter((o) => ['CONFIRMED', 'PICKING', 'PACKING'].includes(o.status)).length
   const completedCount = allOrders.filter((o) => ['PACKED', 'SHIPPED', 'DELIVERED'].includes(o.status)).length
   const overdueCount = allOrders.filter((o) => o.is_overdue).length
-
-  const {
-    isOpen: deleteOpen,
-    itemToDelete: orderToDelete,
-    isDeleting,
-    openDialog: openDeleteDialog,
-    closeDialog: closeDeleteDialog,
-    confirmDelete,
-  } = useDeleteDialog<PickOrder>({
-    deleteFn: (order) => ordersApi.deleteOrder(order.uuid),
-    queryKeys: [['orders'], ['orders-stats']],
-    successMessage: 'Order cancelled successfully',
-    errorMessage: 'Failed to cancel order',
-  })
 
   // State transition mutations
   const transitionMutation = useMutation({
@@ -163,6 +159,50 @@ export default function OrdersPage() {
       toast.error(getErrorMessage(error) || 'Failed to update order', { duration: 5000 })
     },
   })
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ uuid, reason }: { uuid: string; reason: string }) =>
+      ordersApi.cancelOrder(uuid, reason),
+    onSuccess: () => {
+      setCancelDialogOpen(false)
+      setOrderToCancel(null)
+      setCancelReason('')
+      toast.success('Order cancelled successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['orders'], type: 'all' })
+      queryClient.refetchQueries({ queryKey: ['orders-stats'], type: 'all' })
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to cancel order'), { duration: 5000 })
+    },
+  })
+
+  const revertMutation = useMutation({
+    mutationFn: ({ uuid, reason }: { uuid: string; reason: string }) =>
+      ordersApi.revertOrder(uuid, reason),
+    onSuccess: (res) => {
+      setRevertDialogOpen(false)
+      setOrderToRevert(null)
+      setRevertReason('')
+      toast.success(res.data?.message || 'Order reverted successfully', { duration: 4000 })
+      queryClient.refetchQueries({ queryKey: ['orders'], type: 'all' })
+      queryClient.refetchQueries({ queryKey: ['orders-stats'], type: 'all' })
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to revert order'), { duration: 5000 })
+    },
+  })
+
+  const openCancelDialog = (order: PickOrder) => {
+    setOrderToCancel(order)
+    setCancelReason('')
+    setCancelDialogOpen(true)
+  }
+
+  const openRevertDialog = (order: PickOrder) => {
+    setOrderToRevert(order)
+    setRevertReason('')
+    setRevertDialogOpen(true)
+  }
 
   const getNextActions = (order: PickOrder) => {
     const actions: { label: string; action: string; icon: React.ElementType }[] = []
@@ -371,11 +411,16 @@ export default function OrdersPage() {
                                 <Icon className="h-4 w-4 mr-2" /> {label}
                               </DropdownMenuItem>
                             ))}
+                            {REVERTABLE_STATUSES.includes(order.status) && (
+                              <DropdownMenuItem onClick={() => openRevertDialog(order)}>
+                                <Undo2 className="h-4 w-4 mr-2" /> Revert
+                              </DropdownMenuItem>
+                            )}
                             {canDelete('orders', 'pickorder') && !['DELIVERED', 'CANCELLED'].includes(order.status) && (
                               <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
-                                  onClick={() => openDeleteDialog(order)}
+                                  onClick={() => openCancelDialog(order)}
                                   className="text-destructive focus:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" /> Cancel Order
@@ -410,21 +455,69 @@ export default function OrdersPage() {
 
       <OrderDetailSheet open={detailOpen} onOpenChange={setDetailOpen} order={selectedItem} />
 
-      <Dialog open={deleteOpen} onOpenChange={closeDeleteDialog}>
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel Order</DialogTitle>
             <DialogDescription>
               Are you sure you want to cancel order{' '}
-              <span className="font-medium">{orderToDelete?.order_number}</span>?
-              This action cannot be undone.
+              <span className="font-medium">{orderToCancel?.order_number}</span>?
+              Stock reservations will be released and deducted stock will be restored.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="cancel-reason">Reason</Label>
+            <Textarea
+              id="cancel-reason"
+              placeholder="Why is this order being cancelled?"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+            />
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDeleteDialog}>Keep Order</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Order</Button>
+            <Button
+              variant="destructive"
+              onClick={() => orderToCancel && cancelMutation.mutate({ uuid: orderToCancel.uuid, reason: cancelReason })}
+              disabled={cancelMutation.isPending}
+            >
+              {cancelMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revert Order</DialogTitle>
+            <DialogDescription>
+              Revert order{' '}
+              <span className="font-medium">{orderToRevert?.order_number}</span>{' '}
+              from <span className="font-medium">{orderToRevert?.status_display}</span> to the previous state.
+              Stock changes for this transition will be reversed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="revert-reason">Reason</Label>
+            <Textarea
+              id="revert-reason"
+              placeholder="Why is this order being reverted?"
+              value={revertReason}
+              onChange={(e) => setRevertReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevertDialogOpen(false)}>Keep Current State</Button>
+            <Button
+              onClick={() => orderToRevert && revertMutation.mutate({ uuid: orderToRevert.uuid, reason: revertReason })}
+              disabled={revertMutation.isPending}
+            >
+              {revertMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Revert Order
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -248,6 +248,20 @@ const ordersApi = {
     )
   },
 
+  cancelOrder: (uuid: string, reason?: string) => {
+    return apiClient.post<{ success: boolean; message: string }>(
+      `/orders/${uuid}/cancel/`,
+      { reason: reason || '' }
+    )
+  },
+
+  revertOrder: (uuid: string, reason?: string) => {
+    return apiClient.post<{ success: boolean; message: string }>(
+      `/orders/${uuid}/revert/`,
+      { reason: reason || '' }
+    )
+  },
+
   // Order Lines
   getOrderLines: (params?: {
     page?: number

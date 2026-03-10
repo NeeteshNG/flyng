@@ -681,6 +681,13 @@ const inventoryApi = {
       `/stock/${uuid}/`
     )
   },
+
+  adjustStock: (uuid: string, data: { adjustment: number; reason?: string }) => {
+    return apiClient.post<{ success: boolean; quantity: number }>(
+      `/stock/${uuid}/adjust/`,
+      data
+    )
+  },
 }
 
 export default inventoryApi
