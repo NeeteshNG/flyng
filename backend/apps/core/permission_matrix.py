@@ -216,6 +216,21 @@ ALL_PERMISSIONS = [
     "core.importjob.destroy",
 
     "core.export.list",  # ExportView uses GET
+
+    # ── Organizations (Members & Invitations) ──
+    "organizations.organizationmembership.list",
+    "organizations.organizationmembership.retrieve",
+    "organizations.organizationmembership.update",
+    "organizations.organizationmembership.partial_update",
+    "organizations.organizationmembership.deactivate",
+    "organizations.organizationmembership.activate",
+    "organizations.organizationmembership.transfer_ownership",
+    "organizations.organizationmembership.stats",
+
+    "organizations.organizationinvitation.list",
+    "organizations.organizationinvitation.create",
+    "organizations.organizationinvitation.resend",
+    "organizations.organizationinvitation.revoke",
 ]
 
 
@@ -261,6 +276,11 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "core.importjob.retrieve",
         "core.importjob.create",
         "core.export.list",
+        # Organizations — read-only members + invitations
+        "organizations.organizationmembership.list",
+        "organizations.organizationmembership.retrieve",
+        "organizations.organizationmembership.stats",
+        "organizations.organizationinvitation.list",
     },
 
     # Operator: read all, write orders/stock, pick lines, run jobs
@@ -329,6 +349,8 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         # Core — imports + exports
         "core.importjob.create",
         "core.export.list",
+        # Organizations — read-only members
+        "organizations.organizationmembership.stats",
     },
 
     # Viewer: read-only access + exports
@@ -352,6 +374,8 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "logs.droneflightlog.graphs",
         # Exports
         "core.export.list",
+        # Organizations — read-only members
+        "organizations.organizationmembership.stats",
     },
 }
 

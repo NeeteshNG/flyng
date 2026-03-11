@@ -6,6 +6,7 @@ import hashlib
 import secrets
 from datetime import date, datetime, timedelta
 
+from django.db import transaction
 from django.db.models import Avg, Count, ExpressionWrapper, F, Q, Sum
 from django.db.models.fields import DurationField
 from django.db.models.functions import TruncDate
@@ -15,10 +16,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.choices import InvitationStatus
+from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsAdminOrManager
 from apps.organizations.models import (
     Organization,
     OrganizationAPIKey,
+    OrganizationInvitation,
     OrganizationMembership,
     OrganizationSettings,
     Plan,
@@ -28,10 +32,16 @@ from apps.organizations.serializers import (
     APIKeyCreateResponseSerializer,
     APIKeyCreateSerializer,
     APIKeyListSerializer,
+    InvitationCreateSerializer,
+    InvitationListSerializer,
+    MembershipDetailSerializer,
+    MembershipListSerializer,
+    MembershipUpdateSerializer,
     OrganizationBillingSerializer,
     OrganizationSettingsSerializer,
     PlanSerializer,
     SubscriptionSerializer,
+    TransferOwnershipSerializer,
 )
 
 
@@ -1116,3 +1126,479 @@ class ReferenceDataView(APIView):
                 },
             }
         )
+
+
+# =============================================================================
+# Membership Views
+# =============================================================================
+
+
+def get_user_membership(user):
+    """Get the user's active membership with admin check info."""
+    return (
+        OrganizationMembership.objects.filter(user=user, is_active=True)
+        .select_related("organization")
+        .first()
+    )
+
+
+class MembershipListView(APIView):
+    """
+    List organization members.
+
+    GET /api/v1/members/
+    Supports search, is_active, membership_role, user_role filters.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        qs = (
+            OrganizationMembership.objects.filter(
+                organization=membership.organization
+            )
+            .select_related("user", "invited_by")
+            .order_by("-joined_at")
+        )
+
+        # Filters
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+                | Q(user__email__icontains=search)
+            )
+
+        is_active = request.query_params.get("is_active")
+        if is_active is not None:
+            qs = qs.filter(is_active=is_active.lower() == "true")
+
+        membership_role = request.query_params.get("membership_role")
+        if membership_role:
+            qs = qs.filter(membership_role=membership_role)
+
+        user_role = request.query_params.get("user_role")
+        if user_role:
+            qs = qs.filter(user_role=user_role)
+
+        paginator = StandardPagination()
+        page = paginator.paginate_queryset(qs, request)
+        serializer = MembershipListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class MembershipStatsView(APIView):
+    """
+    Get membership statistics.
+
+    GET /api/v1/members/stats/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org = membership.organization
+        members_qs = OrganizationMembership.objects.filter(organization=org)
+
+        total = members_qs.count()
+        active = members_qs.filter(is_active=True).count()
+        admin_count = members_qs.filter(
+            is_active=True, membership_role__in=["OWNER", "ADMIN"]
+        ).count()
+        pending_invitations = OrganizationInvitation.objects.filter(
+            organization=org,
+            status=InvitationStatus.PENDING,
+            expires_at__gt=timezone.now(),
+        ).count()
+
+        return Response({
+            "success": True,
+            "data": {
+                "total_members": total,
+                "active_count": active,
+                "admin_count": admin_count,
+                "pending_invitations": pending_invitations,
+            },
+        })
+
+
+class MembershipDetailView(APIView):
+    """
+    Get or update a member.
+
+    GET /api/v1/members/<pk>/
+    PATCH /api/v1/members/<pk>/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_target(self, request, pk):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return None, None, Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            target = (
+                OrganizationMembership.objects.select_related("user", "invited_by")
+                .get(pk=pk, organization=membership.organization)
+            )
+        except OrganizationMembership.DoesNotExist:
+            return membership, None, Response(
+                {"success": False, "message": "Member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return membership, target, None
+
+    def get(self, request, pk):
+        membership, target, error = self._get_target(request, pk)
+        if error:
+            return error
+
+        serializer = MembershipDetailSerializer(target)
+        return Response({"success": True, "data": serializer.data})
+
+    def patch(self, request, pk):
+        membership, target, error = self._get_target(request, pk)
+        if error:
+            return error
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if target.is_owner:
+            return Response(
+                {"success": False, "message": "Cannot modify the owner's roles"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = MembershipUpdateSerializer(target, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        detail = MembershipDetailSerializer(target)
+        return Response({"success": True, "data": detail.data})
+
+
+class MembershipDeactivateView(APIView):
+    """
+    Deactivate a member.
+
+    POST /api/v1/members/<pk>/deactivate/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            target = OrganizationMembership.objects.get(
+                pk=pk, organization=membership.organization
+            )
+        except OrganizationMembership.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if target.pk == membership.pk:
+            return Response(
+                {"success": False, "message": "Cannot deactivate yourself"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if target.is_owner:
+            return Response(
+                {"success": False, "message": "Cannot deactivate the owner"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target.deactivate()
+        return Response({"success": True, "message": "Member deactivated successfully"})
+
+
+class MembershipActivateView(APIView):
+    """
+    Activate a member.
+
+    POST /api/v1/members/<pk>/activate/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            target = OrganizationMembership.objects.get(
+                pk=pk, organization=membership.organization
+            )
+        except OrganizationMembership.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        target.activate()
+        return Response({"success": True, "message": "Member activated successfully"})
+
+
+class TransferOwnershipView(APIView):
+    """
+    Transfer organization ownership.
+
+    POST /api/v1/members/transfer-ownership/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_owner:
+            return Response(
+                {"success": False, "message": "Only the owner can transfer ownership"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = TransferOwnershipSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            new_owner = OrganizationMembership.objects.get(
+                pk=serializer.validated_data["new_owner_membership_id"],
+                organization=membership.organization,
+                is_active=True,
+            )
+        except OrganizationMembership.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Target member not found or inactive"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        with transaction.atomic():
+            membership.transfer_ownership(new_owner)
+
+        return Response({
+            "success": True,
+            "message": f"Ownership transferred to {new_owner.user.get_full_name()}",
+        })
+
+
+# =============================================================================
+# Invitation Views
+# =============================================================================
+
+
+class InvitationListCreateView(APIView):
+    """
+    List or create invitations.
+
+    GET /api/v1/invitations/
+    POST /api/v1/invitations/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        qs = (
+            OrganizationInvitation.objects.filter(
+                organization=membership.organization
+            )
+            .select_related("invited_by")
+            .order_by("-created_at")
+        )
+
+        inv_status = request.query_params.get("status")
+        if inv_status:
+            qs = qs.filter(status=inv_status)
+
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        paginator = StandardPagination()
+        page = paginator.paginate_queryset(qs, request)
+        serializer = InvitationListSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = InvitationCreateSerializer(
+            data=request.data,
+            context={"organization": membership.organization},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        invitation = OrganizationInvitation(
+            organization=membership.organization,
+            invited_by=request.user,
+            **serializer.validated_data,
+        )
+        invitation.save()
+
+        result = InvitationListSerializer(invitation)
+        return Response(
+            {"success": True, "data": result.data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class InvitationResendView(APIView):
+    """
+    Resend an invitation.
+
+    POST /api/v1/invitations/<pk>/resend/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            invitation = OrganizationInvitation.objects.get(
+                pk=pk, organization=membership.organization
+            )
+        except OrganizationInvitation.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Invitation not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            invitation.resend()
+        except ValueError as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"success": True, "message": "Invitation resent successfully"})
+
+
+class InvitationRevokeView(APIView):
+    """
+    Revoke an invitation.
+
+    POST /api/v1/invitations/<pk>/revoke/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        membership = get_user_membership(request.user)
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not membership.is_admin:
+            return Response(
+                {"success": False, "message": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            invitation = OrganizationInvitation.objects.get(
+                pk=pk, organization=membership.organization
+            )
+        except OrganizationInvitation.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Invitation not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            invitation.revoke()
+        except ValueError as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response({"success": True, "message": "Invitation revoked successfully"})

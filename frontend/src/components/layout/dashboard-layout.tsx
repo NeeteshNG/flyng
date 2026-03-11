@@ -125,6 +125,7 @@ const navigation: NavItem[] = [
     name: 'Settings',
     icon: Settings,
     children: [
+      { name: 'Team Members', path: '/dashboard/members', permission: 'organizations.organizationmembership.list' },
       { name: 'Users', path: '/dashboard/users', permission: 'users.user.list' },
       { name: 'Activity Log', path: '/dashboard/activity', permission: 'users.useractivity.list' },
       { name: 'Organization', path: '/dashboard/organization', permission: 'organizations.organization.update' },

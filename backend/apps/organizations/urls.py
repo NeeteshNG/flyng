@@ -12,11 +12,20 @@ from apps.organizations.views import (
     DashboardStatsView,
     FleetAnalyticsView,
     InventoryAnalyticsView,
+    InvitationListCreateView,
+    InvitationResendView,
+    InvitationRevokeView,
+    MembershipActivateView,
+    MembershipDeactivateView,
+    MembershipDetailView,
+    MembershipListView,
+    MembershipStatsView,
     OrderAnalyticsView,
     OrganizationSettingsRegenerateWebhookView,
     OrganizationSettingsView,
     PlanListView,
     ReferenceDataView,
+    TransferOwnershipView,
 )
 
 urlpatterns = [
@@ -32,4 +41,15 @@ urlpatterns = [
     path("api-keys/", APIKeyListCreateView.as_view(), name="api-key-list-create"),
     path("api-keys/<int:pk>/revoke/", APIKeyRevokeView.as_view(), name="api-key-revoke"),
     path("reference-data/", ReferenceDataView.as_view(), name="reference-data"),
+    # Members
+    path("members/", MembershipListView.as_view(), name="member-list"),
+    path("members/stats/", MembershipStatsView.as_view(), name="member-stats"),
+    path("members/transfer-ownership/", TransferOwnershipView.as_view(), name="transfer-ownership"),
+    path("members/<int:pk>/", MembershipDetailView.as_view(), name="member-detail"),
+    path("members/<int:pk>/deactivate/", MembershipDeactivateView.as_view(), name="member-deactivate"),
+    path("members/<int:pk>/activate/", MembershipActivateView.as_view(), name="member-activate"),
+    # Invitations
+    path("invitations/", InvitationListCreateView.as_view(), name="invitation-list-create"),
+    path("invitations/<int:pk>/resend/", InvitationResendView.as_view(), name="invitation-resend"),
+    path("invitations/<int:pk>/revoke/", InvitationRevokeView.as_view(), name="invitation-revoke"),
 ]

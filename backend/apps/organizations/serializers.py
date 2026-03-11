@@ -2,11 +2,14 @@
 Organization API Serializers
 """
 
+from django.utils import timezone
 from rest_framework import serializers
 
+from apps.core.choices import InvitationStatus, MembershipRole, UserRole
 from apps.organizations.models import (
     Organization,
     OrganizationAPIKey,
+    OrganizationInvitation,
     OrganizationMembership,
     OrganizationSettings,
     Plan,
@@ -285,3 +288,181 @@ class APIKeyCreateResponseSerializer(serializers.ModelSerializer):
             "raw_key",
         ]
         read_only_fields = fields
+
+
+# =============================================================================
+# Membership Serializers
+# =============================================================================
+
+
+class MembershipListSerializer(serializers.ModelSerializer):
+    """Serializer for listing organization members."""
+
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_first_name = serializers.CharField(source="user.first_name", read_only=True)
+    user_last_name = serializers.CharField(source="user.last_name", read_only=True)
+    user_full_name = serializers.CharField(source="user.get_full_name", read_only=True)
+    user_profile_picture = serializers.ImageField(source="user.profile_picture", read_only=True)
+    user_last_login = serializers.DateTimeField(source="user.last_login", read_only=True)
+    invited_by_name = serializers.CharField(
+        source="invited_by.get_full_name", read_only=True, default=None
+    )
+    membership_role_display = serializers.CharField(
+        source="get_membership_role_display", read_only=True
+    )
+    user_role_display = serializers.CharField(
+        source="get_user_role_display", read_only=True
+    )
+
+    class Meta:
+        model = OrganizationMembership
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "user_first_name",
+            "user_last_name",
+            "user_full_name",
+            "user_profile_picture",
+            "user_last_login",
+            "membership_role",
+            "membership_role_display",
+            "user_role",
+            "user_role_display",
+            "is_active",
+            "joined_at",
+            "deactivated_at",
+            "invited_by",
+            "invited_by_name",
+            "notes",
+        ]
+        read_only_fields = fields
+
+
+class MembershipDetailSerializer(MembershipListSerializer):
+    """Serializer for member detail view."""
+
+    user_uuid = serializers.UUIDField(source="user.uuid", read_only=True)
+    user_is_verified = serializers.BooleanField(source="user.is_verified", read_only=True)
+    user_two_factor_enabled = serializers.BooleanField(
+        source="user.two_factor_enabled", read_only=True
+    )
+
+    class Meta(MembershipListSerializer.Meta):
+        fields = MembershipListSerializer.Meta.fields + [
+            "user_uuid",
+            "user_is_verified",
+            "user_two_factor_enabled",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class MembershipUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating member roles."""
+
+    class Meta:
+        model = OrganizationMembership
+        fields = ["membership_role", "user_role", "notes"]
+
+    def validate_membership_role(self, value):
+        if value == MembershipRole.OWNER:
+            raise serializers.ValidationError(
+                "Use the transfer-ownership endpoint to assign ownership."
+            )
+        return value
+
+
+# =============================================================================
+# Invitation Serializers
+# =============================================================================
+
+
+class InvitationListSerializer(serializers.ModelSerializer):
+    """Serializer for listing organization invitations."""
+
+    invited_by_name = serializers.CharField(
+        source="invited_by.get_full_name", read_only=True
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True
+    )
+    membership_role_display = serializers.CharField(
+        source="get_membership_role_display", read_only=True
+    )
+    user_role_display = serializers.CharField(
+        source="get_user_role_display", read_only=True
+    )
+    is_expired = serializers.BooleanField(read_only=True)
+    is_valid = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = OrganizationInvitation
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "membership_role",
+            "membership_role_display",
+            "user_role",
+            "user_role_display",
+            "status",
+            "status_display",
+            "is_expired",
+            "is_valid",
+            "expires_at",
+            "sent_at",
+            "responded_at",
+            "invited_by",
+            "invited_by_name",
+            "personal_message",
+            "resend_count",
+            "last_resent_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class InvitationCreateSerializer(serializers.Serializer):
+    """Serializer for creating a new invitation."""
+
+    email = serializers.EmailField()
+    first_name = serializers.CharField(max_length=150, required=False, default="")
+    last_name = serializers.CharField(max_length=150, required=False, default="")
+    membership_role = serializers.ChoiceField(
+        choices=[c for c in MembershipRole.choices if c[0] != MembershipRole.OWNER],
+        default=MembershipRole.MEMBER,
+    )
+    user_role = serializers.ChoiceField(
+        choices=UserRole.choices, default=UserRole.VIEWER
+    )
+    personal_message = serializers.CharField(
+        required=False, default="", allow_blank=True
+    )
+
+    def validate_email(self, value):
+        organization = self.context.get("organization")
+        if OrganizationMembership.objects.filter(
+            organization=organization, user__email=value, is_active=True
+        ).exists():
+            raise serializers.ValidationError(
+                "This user is already an active member."
+            )
+        if OrganizationInvitation.objects.filter(
+            organization=organization,
+            email=value,
+            status=InvitationStatus.PENDING,
+            expires_at__gt=timezone.now(),
+        ).exists():
+            raise serializers.ValidationError(
+                "A pending invitation already exists for this email."
+            )
+        return value
+
+
+class TransferOwnershipSerializer(serializers.Serializer):
+    """Serializer for ownership transfer."""
+
+    new_owner_membership_id = serializers.IntegerField()
