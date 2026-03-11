@@ -6,7 +6,88 @@ Serializers for pick orders, order lines, and order batches.
 
 from rest_framework import serializers
 
-from .models import PickOrder, PickOrderBatch, PickOrderLine
+from .models import Customer, PickOrder, PickOrderBatch, PickOrderLine
+
+
+# --- Customer Serializers ---
+
+
+class CustomerListSerializer(serializers.ModelSerializer):
+    """Serializer for listing customers."""
+
+    order_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Customer
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "name",
+            "code",
+            "email",
+            "phone",
+            "contact_person",
+            "is_active",
+            "order_count",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    """Serializer for customer details."""
+
+    order_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Customer
+        fields = [
+            "id",
+            "uuid",
+            "organization",
+            "name",
+            "code",
+            "email",
+            "phone",
+            "contact_person",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+            "gst_number",
+            "is_active",
+            "notes",
+            "order_count",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CustomerCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating customers."""
+
+    class Meta:
+        model = Customer
+        fields = [
+            "organization",
+            "name",
+            "code",
+            "email",
+            "phone",
+            "contact_person",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+            "gst_number",
+            "is_active",
+            "notes",
+        ]
 
 
 # --- Pick Order Line Serializers ---
@@ -224,6 +305,7 @@ class PickOrderListSerializer(serializers.ModelSerializer):
             "status_display",
             "priority",
             "priority_display",
+            "customer",
             "customer_name",
             "customer_code",
             "order_date",
@@ -288,6 +370,7 @@ class PickOrderDetailSerializer(serializers.ModelSerializer):
             "status_display",
             "priority",
             "priority_display",
+            "customer",
             "customer_name",
             "customer_code",
             "shipping_address_line1",
@@ -350,6 +433,7 @@ class PickOrderCreateUpdateSerializer(serializers.ModelSerializer):
             "order_number",
             "external_reference",
             "priority",
+            "customer",
             "customer_name",
             "customer_code",
             "shipping_address_line1",

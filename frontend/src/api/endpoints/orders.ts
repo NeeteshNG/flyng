@@ -1,6 +1,36 @@
 import apiClient from '../client'
 
 // Types
+export interface Customer {
+  id: number
+  uuid: string
+  organization: number
+  name: string
+  code: string
+  email: string
+  phone: string
+  contact_person: string
+  address_line1: string
+  address_line2: string
+  city: string
+  state: string
+  postal_code: string
+  country: string
+  gst_number: string
+  is_active: boolean
+  notes: string
+  order_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerListResponse {
+  count: number
+  next: string | null
+  previous: string | null
+  results: Customer[]
+}
+
 export interface PickOrderLine {
   id: number
   order: number
@@ -37,6 +67,7 @@ export interface PickOrder {
   status_display: string
   priority: string
   priority_display: string
+  customer: number | null
   customer_name: string
   customer_code: string
   shipping_address_line1?: string
@@ -118,6 +149,67 @@ export interface PickOrderBatchListResponse {
 
 // API functions
 const ordersApi = {
+  // Customers
+  getCustomers: (params?: {
+    page?: number
+    page_size?: number
+    search?: string
+    organization?: number
+    is_active?: boolean
+    ordering?: string
+  }) => {
+    return apiClient.get<CustomerListResponse>('/customers/', { params })
+  },
+
+  getCustomer: (uuid: string) => {
+    return apiClient.get<Customer>(`/customers/${uuid}/`)
+  },
+
+  createCustomer: (data: {
+    organization: number
+    name: string
+    code: string
+    email?: string
+    phone?: string
+    contact_person?: string
+    address_line1?: string
+    address_line2?: string
+    city?: string
+    state?: string
+    postal_code?: string
+    country?: string
+    gst_number?: string
+    is_active?: boolean
+    notes?: string
+  }) => {
+    return apiClient.post<Customer>('/customers/', data)
+  },
+
+  updateCustomer: (uuid: string, data: Partial<{
+    name: string
+    code: string
+    email: string
+    phone: string
+    contact_person: string
+    address_line1: string
+    address_line2: string
+    city: string
+    state: string
+    postal_code: string
+    country: string
+    gst_number: string
+    is_active: boolean
+    notes: string
+  }>) => {
+    return apiClient.patch<Customer>(`/customers/${uuid}/`, data)
+  },
+
+  deleteCustomer: (uuid: string) => {
+    return apiClient.delete<{ success: boolean; message: string }>(
+      `/customers/${uuid}/`
+    )
+  },
+
   // Pick Orders
   getOrders: (params?: {
     page?: number
@@ -150,6 +242,7 @@ const ordersApi = {
     order_number?: string
     external_reference?: string
     priority?: string
+    customer?: number | null
     customer_name?: string
     customer_code?: string
     shipping_address_line1?: string
@@ -181,6 +274,7 @@ const ordersApi = {
     batch: number | null
     external_reference: string
     priority: string
+    customer: number | null
     customer_name: string
     customer_code: string
     shipping_address_line1: string

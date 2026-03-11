@@ -44,7 +44,7 @@ export default function CreateOrderPage() {
   // Cart store
   const {
     items: cartItems,
-    warehouse, priority, customerName, customerCode,
+    warehouse, priority, customerId, customerName, customerCode,
     externalReference, dueDate, addressLine1, addressLine2,
     city, state: shippingState, postalCode, country, notes,
     addItem, updateItem, removeItem, clearCart, setOrderMeta,
@@ -92,6 +92,13 @@ export default function CreateOrderPage() {
     queryFn: () => inventoryApi.getStorageBins({ page_size: 500, is_active: true }),
   })
   const bins = binsData?.data?.results || []
+
+  // Fetch customers for checkout
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-list-active'],
+    queryFn: () => ordersApi.getCustomers({ is_active: true, page_size: 1000, ordering: 'name' }),
+  })
+  const customers = customersData?.data?.results || []
 
   // Create order mutation
   const createMutation = useMutation({
@@ -157,6 +164,7 @@ export default function CreateOrderPage() {
       organization: 1, // TODO: get from user context
       warehouse: warehouse,
       priority,
+      customer: customerId || undefined,
       customer_name: customerName,
       customer_code: customerCode,
       external_reference: externalReference || undefined,
@@ -540,26 +548,67 @@ export default function CreateOrderPage() {
                   <CardTitle>Customer Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="customer_name">Customer Name</Label>
-                      <Input
-                        id="customer_name"
-                        value={customerName}
-                        onChange={(e) => setOrderMeta({ customerName: e.target.value })}
-                        placeholder="Customer name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="customer_code">Customer Code</Label>
-                      <Input
-                        id="customer_code"
-                        value={customerCode}
-                        onChange={(e) => setOrderMeta({ customerCode: e.target.value })}
-                        placeholder="e.g., CUST-001"
-                      />
-                    </div>
+                  <div>
+                    <Label htmlFor="customer_select">Customer</Label>
+                    <Select
+                      value={customerId ? String(customerId) : 'manual'}
+                      onValueChange={(v) => {
+                        if (v === 'manual') {
+                          setOrderMeta({ customerId: null, customerName: '', customerCode: '' })
+                        } else {
+                          const cust = customers.find((c) => c.id === Number(v))
+                          if (cust) {
+                            setOrderMeta({
+                              customerId: cust.id,
+                              customerName: cust.name,
+                              customerCode: cust.code,
+                              addressLine1: cust.address_line1 || addressLine1,
+                              addressLine2: cust.address_line2 || addressLine2,
+                              city: cust.city || city,
+                              state: cust.state || shippingState,
+                              postalCode: cust.postal_code || postalCode,
+                              country: cust.country || country,
+                            })
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="customer_select">
+                        <SelectValue placeholder="Select a customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual Entry</SelectItem>
+                        {customers.map((cust) => (
+                          <SelectItem key={cust.id} value={String(cust.id)}>
+                            {cust.name} ({cust.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {!customerId && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="customer_name">Customer Name</Label>
+                        <Input
+                          id="customer_name"
+                          value={customerName}
+                          onChange={(e) => setOrderMeta({ customerName: e.target.value })}
+                          placeholder="Customer name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="customer_code">Customer Code</Label>
+                        <Input
+                          id="customer_code"
+                          value={customerCode}
+                          onChange={(e) => setOrderMeta({ customerCode: e.target.value })}
+                          placeholder="e.g., CUST-001"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <Separator />
 

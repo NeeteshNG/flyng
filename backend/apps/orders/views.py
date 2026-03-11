@@ -16,8 +16,11 @@ from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import HasPermission
 
-from .models import PickOrder, PickOrderBatch, PickOrderLine
+from .models import Customer, PickOrder, PickOrderBatch, PickOrderLine
 from .serializers import (
+    CustomerCreateUpdateSerializer,
+    CustomerDetailSerializer,
+    CustomerListSerializer,
     PickOrderBatchCreateUpdateSerializer,
     PickOrderBatchDetailSerializer,
     PickOrderBatchListSerializer,
@@ -29,6 +32,68 @@ from .serializers import (
 )
 
 
+# --- Customer Views ---
+
+
+class CustomerFilter(django_filters.FilterSet):
+    """Filter for customers."""
+
+    organization = django_filters.NumberFilter(field_name="organization")
+    is_active = django_filters.BooleanFilter(field_name="is_active")
+
+    class Meta:
+        model = Customer
+        fields = ["organization", "is_active"]
+
+
+class CustomerViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
+    """
+    ViewSet for customers.
+
+    list: Get all customers
+    create: Create a new customer
+    retrieve: Get a customer by UUID
+    update: Update a customer
+    partial_update: Partially update a customer
+    destroy: Soft delete (deactivate) a customer
+    """
+
+    permission_classes = [IsAuthenticated, HasPermission]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = CustomerFilter
+    search_fields = ["name", "code", "email", "contact_person"]
+    ordering_fields = ["name", "code", "created_at"]
+    ordering = ["name"]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        """Return customers with annotated order counts."""
+        return (
+            Customer.objects.select_related("organization")
+            .annotate(order_count=Count("orders"))
+            .order_by("name")
+        )
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "list":
+            return CustomerListSerializer
+        elif self.action in ["create", "update", "partial_update"]:
+            return CustomerCreateUpdateSerializer
+        return CustomerDetailSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete: deactivate the customer."""
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active", "updated_at"])
+        self.log_activity(ActivityAction.DELETE, instance, "Deactivated customer")
+        return Response(
+            {"success": True, "message": "Customer deactivated successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
 # --- Pick Order Views ---
 
 
@@ -38,6 +103,7 @@ class PickOrderFilter(django_filters.FilterSet):
     organization = django_filters.NumberFilter(field_name="organization")
     warehouse = django_filters.NumberFilter(field_name="warehouse")
     batch = django_filters.NumberFilter(field_name="batch")
+    customer = django_filters.NumberFilter(field_name="customer")
     status = django_filters.CharFilter(field_name="status")
     priority = django_filters.CharFilter(field_name="priority")
     assigned_to = django_filters.NumberFilter(field_name="assigned_to")
@@ -53,6 +119,7 @@ class PickOrderFilter(django_filters.FilterSet):
             "organization",
             "warehouse",
             "batch",
+            "customer",
             "status",
             "priority",
             "assigned_to",
@@ -99,6 +166,7 @@ class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
                 "organization",
                 "warehouse",
                 "batch",
+                "customer",
                 "assigned_to",
                 "created_by",
             )

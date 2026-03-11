@@ -10,7 +10,110 @@ from unfold.admin import ModelAdmin, TabularInline
 
 from apps.core.choices import OrderPriority, OrderStatus
 
-from .models import PickOrder, PickOrderBatch, PickOrderLine
+from .models import Customer, PickOrder, PickOrderBatch, PickOrderLine
+
+
+@admin.register(Customer)
+class CustomerAdmin(ModelAdmin):
+    """Admin for Customer model."""
+
+    list_display = [
+        "name",
+        "code",
+        "organization",
+        "contact_person",
+        "phone",
+        "email",
+        "city",
+        "active_badge",
+    ]
+    list_filter = [
+        "is_active",
+        "organization",
+        "state",
+        "country",
+    ]
+    search_fields = [
+        "name",
+        "code",
+        "email",
+        "contact_person",
+        "gst_number",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["organization"]
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "organization",
+                    "name",
+                    "code",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            _("Contact"),
+            {
+                "fields": (
+                    "email",
+                    "phone",
+                    "contact_person",
+                )
+            },
+        ),
+        (
+            _("Address"),
+            {
+                "fields": (
+                    "address_line1",
+                    "address_line2",
+                    "city",
+                    "state",
+                    "postal_code",
+                    "country",
+                )
+            },
+        ),
+        (
+            _("Business"),
+            {
+                "fields": ("gst_number",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("Notes"),
+            {
+                "fields": ("notes",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            _("Timestamps"),
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def active_badge(self, obj):
+        """Display active status badge."""
+        if obj.is_active:
+            return format_html(
+                '<span style="background-color: #28a745; color: white; padding: 3px 8px; '
+                'border-radius: 3px; font-size: 11px;">Active</span>'
+            )
+        return format_html(
+            '<span style="background-color: #dc3545; color: white; padding: 3px 8px; '
+            'border-radius: 3px; font-size: 11px;">Inactive</span>'
+        )
+
+    active_badge.short_description = _("Status")
 
 
 class PickOrderLineInline(TabularInline):
@@ -94,6 +197,7 @@ class PickOrderAdmin(ModelAdmin):
         "organization",
         "warehouse",
         "batch",
+        "customer",
         "assigned_to",
         "created_by",
     ]
@@ -127,6 +231,7 @@ class PickOrderAdmin(ModelAdmin):
             _("Customer"),
             {
                 "fields": (
+                    "customer",
                     "customer_name",
                     "customer_code",
                 )

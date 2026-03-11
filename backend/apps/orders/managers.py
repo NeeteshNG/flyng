@@ -11,6 +11,51 @@ from django.utils import timezone
 from apps.core.choices import OrderPriority, OrderStatus
 
 
+class CustomerQuerySet(models.QuerySet):
+    """QuerySet for Customer with common filters."""
+
+    def for_organization(self, organization):
+        """Filter customers by organization."""
+        return self.filter(organization=organization)
+
+    def active(self):
+        """Get active customers."""
+        return self.filter(is_active=True)
+
+    def inactive(self):
+        """Get inactive customers."""
+        return self.filter(is_active=False)
+
+    def with_order_counts(self):
+        """Annotate with order counts."""
+        return self.annotate(order_count=Count("orders"))
+
+    def search(self, query):
+        """Search customers by name, code, email, or contact person."""
+        return self.filter(
+            Q(name__icontains=query)
+            | Q(code__icontains=query)
+            | Q(email__icontains=query)
+            | Q(contact_person__icontains=query)
+        )
+
+
+class CustomerManager(models.Manager):
+    """Manager for Customer model."""
+
+    def get_queryset(self):
+        """Return custom queryset."""
+        return CustomerQuerySet(self.model, using=self._db)
+
+    def for_organization(self, organization):
+        """Filter customers by organization."""
+        return self.get_queryset().for_organization(organization)
+
+    def active(self):
+        """Get active customers."""
+        return self.get_queryset().active()
+
+
 class PickOrderQuerySet(models.QuerySet):
     """QuerySet for PickOrder with common filters."""
 

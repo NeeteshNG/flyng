@@ -20,6 +20,7 @@ interface CartState {
   items: CartItem[]
   warehouse: number | null
   priority: string
+  customerId: number | null
   customerName: string
   customerCode: string
   externalReference: string
@@ -42,6 +43,7 @@ interface CartState {
 const INITIAL_META = {
   warehouse: null,
   priority: 'NORMAL',
+  customerId: null as number | null,
   customerName: '',
   customerCode: '',
   externalReference: '',
@@ -97,6 +99,7 @@ export const useCartStore = create<CartState>()(
         items: state.items,
         warehouse: state.warehouse,
         priority: state.priority,
+        customerId: state.customerId,
         customerName: state.customerName,
         customerCode: state.customerCode,
         externalReference: state.externalReference,

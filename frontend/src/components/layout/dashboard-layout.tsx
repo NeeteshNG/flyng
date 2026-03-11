@@ -96,6 +96,7 @@ const navigation: NavItem[] = [
     children: [
       { name: 'New Order', path: '/dashboard/orders/create' },
       { name: 'Order History', path: '/dashboard/orders' },
+      { name: 'Customers', path: '/dashboard/customers' },
     ],
   },
   {

@@ -12,11 +12,141 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from django_cryptography.fields import encrypt
+from phonenumber_field.modelfields import PhoneNumberField
 
 from apps.core.choices import OrderPriority, OrderStatus
 from apps.core.models import AuditedModel, BaseModel, TimeStampedModel
 
-from .managers import PickOrderBatchManager, PickOrderLineManager, PickOrderManager
+from .managers import CustomerManager, PickOrderBatchManager, PickOrderLineManager, PickOrderManager
+
+
+class Customer(BaseModel):
+    """
+    Customer entity for tracking clients who receive orders.
+
+    Stores customer contact information and default shipping address.
+    Linked to orders via FK for consistent customer data across orders.
+    """
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="customers",
+        verbose_name=_("Organization"),
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name=_("Name"),
+    )
+    code = models.CharField(
+        max_length=50,
+        db_index=True,
+        verbose_name=_("Customer Code"),
+    )
+    email = models.EmailField(
+        blank=True,
+        default="",
+        verbose_name=_("Email"),
+    )
+    phone = PhoneNumberField(
+        blank=True,
+        region="IN",
+        verbose_name=_("Phone"),
+    )
+    contact_person = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Contact Person"),
+    )
+
+    # Default address
+    address_line1 = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Address Line 1"),
+    )
+    address_line2 = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name=_("Address Line 2"),
+    )
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("City"),
+    )
+    state = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name=_("State"),
+    )
+    postal_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        verbose_name=_("Postal Code"),
+    )
+    country = models.CharField(
+        max_length=100,
+        default="India",
+        verbose_name=_("Country"),
+    )
+
+    # Business details
+    gst_number = models.CharField(
+        max_length=15,
+        blank=True,
+        default="",
+        verbose_name=_("GST Number"),
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name=_("Is Active"),
+    )
+
+    notes = models.TextField(
+        blank=True,
+        default="",
+        verbose_name=_("Notes"),
+    )
+
+    objects = CustomerManager()
+
+    class Meta:
+        verbose_name = _("Customer")
+        verbose_name_plural = _("Customers")
+        ordering = ["name"]
+        unique_together = [("organization", "code")]
+        indexes = [
+            models.Index(fields=["organization", "is_active"]),
+            models.Index(
+                fields=["organization", "name"],
+                name="customer_org_name_active",
+                condition=models.Q(deleted__isnull=True),
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    @property
+    def full_address(self):
+        """Get formatted full address."""
+        parts = [
+            self.address_line1,
+            self.address_line2,
+            self.city,
+            f"{self.state} {self.postal_code}".strip(),
+            self.country,
+        ]
+        return ", ".join(p for p in parts if p)
 
 
 class PickOrder(AuditedModel):
@@ -78,6 +208,15 @@ class PickOrder(AuditedModel):
     )
 
     # Customer information
+    customer = models.ForeignKey(
+        "orders.Customer",
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        blank=True,
+        null=True,
+        verbose_name=_("Customer"),
+        help_text=_("Link to customer record. Auto-fills name and code."),
+    )
     customer_name = models.CharField(
         max_length=255,
         blank=True,
@@ -300,6 +439,13 @@ class PickOrder(AuditedModel):
                     "Batch must belong to the same organization as the order."
                 )
 
+        # Validate customer belongs to same organization
+        if self.customer_id and self.organization_id:
+            if self.customer.organization_id != self.organization_id:
+                errors["customer"] = _(
+                    "Customer must belong to the same organization as the order."
+                )
+
         # Validate assigned_to belongs to same organization
         if self.assigned_to_id and self.organization_id:
             from apps.organizations.models import OrganizationMembership
@@ -318,6 +464,12 @@ class PickOrder(AuditedModel):
     def save(self, *args, **kwargs):
         # Skip history to avoid conflict with django-modeltranslation
         self.skip_history_when_saving = True
+        # Auto-fill customer_name/code from FK when set
+        if self.customer_id and not kwargs.get("update_fields"):
+            if not self.customer_name:
+                self.customer_name = self.customer.name
+            if not self.customer_code:
+                self.customer_code = self.customer.code
         # Run full validation on save (skip if using update_fields for state transitions)
         if not kwargs.get("update_fields"):
             self.full_clean()
