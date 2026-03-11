@@ -4,15 +4,17 @@ Jobs Views
 API views for drone jobs and job events.
 """
 
-from django.db.models import Count
+from django.db.models import Avg, Count, F, Q
+from django.utils import timezone
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.core.choices import ActivityAction
+from apps.core.choices import ActivityAction, JobStatus
 from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import HasPermission
 
@@ -373,3 +375,97 @@ class DroneJobEventViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return DroneJobEventListSerializer
         return DroneJobEventDetailSerializer
+
+
+# =============================================================================
+# Job Queue Live View
+# =============================================================================
+
+ACTIVE_STATUSES = [
+    JobStatus.NEW,
+    JobStatus.QUEUED,
+    JobStatus.ASSIGNED,
+    JobStatus.IN_PROGRESS,
+    JobStatus.PAUSED,
+]
+
+
+class JobQueueStatsView(APIView):
+    """
+    GET /jobs/queue-stats/
+
+    Returns job queue statistics for the live monitoring dashboard.
+    Includes per-status counts, priority breakdown, recent completions/failures,
+    and throughput metrics.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        all_jobs = DroneJob.objects.all()
+        now = timezone.now()
+
+        # Status counts
+        status_counts = {}
+        for choice in JobStatus:
+            status_counts[choice.value.lower()] = all_jobs.filter(
+                status=choice.value
+            ).count()
+
+        # Active jobs total
+        active_total = all_jobs.filter(status__in=ACTIVE_STATUSES).count()
+
+        # Priority breakdown for active jobs
+        active_jobs = all_jobs.filter(status__in=ACTIVE_STATUSES)
+        priority_counts = {
+            "urgent": active_jobs.filter(priority="URGENT").count(),
+            "high": active_jobs.filter(priority="HIGH").count(),
+            "normal": active_jobs.filter(priority="NORMAL").count(),
+            "low": active_jobs.filter(priority="LOW").count(),
+        }
+
+        # Recent completions (last 1 hour)
+        one_hour_ago = now - timezone.timedelta(hours=1)
+        completed_last_hour = all_jobs.filter(
+            status=JobStatus.COMPLETED,
+            completed_at__gte=one_hour_ago,
+        ).count()
+
+        # Recent failures (last 1 hour)
+        failed_last_hour = all_jobs.filter(
+            status=JobStatus.FAILED,
+            failed_at__gte=one_hour_ago,
+        ).count()
+
+        # Average duration of completed jobs (last 24 hours)
+        twenty_four_hours_ago = now - timezone.timedelta(hours=24)
+        avg_duration = (
+            all_jobs.filter(
+                status=JobStatus.COMPLETED,
+                completed_at__gte=twenty_four_hours_ago,
+                started_at__isnull=False,
+            )
+            .annotate(
+                duration=F("completed_at") - F("started_at"),
+            )
+            .aggregate(avg=Avg("duration"))
+            .get("avg")
+        )
+
+        # Jobs needing attention (failed + can retry)
+        needs_attention = all_jobs.filter(
+            status=JobStatus.FAILED,
+            retry_count__lt=F("max_retries"),
+        ).count()
+
+        return Response({
+            "active_total": active_total,
+            **status_counts,
+            "priority": priority_counts,
+            "completed_last_hour": completed_last_hour,
+            "failed_last_hour": failed_last_hour,
+            "avg_duration_seconds": (
+                avg_duration.total_seconds() if avg_duration else None
+            ),
+            "needs_attention": needs_attention,
+        })

@@ -71,6 +71,28 @@ export interface DroneJobEvent {
   created_at: string
 }
 
+export interface JobQueueStats {
+  active_total: number
+  new: number
+  queued: number
+  assigned: number
+  in_progress: number
+  completed: number
+  failed: number
+  cancelled: number
+  paused: number
+  priority: {
+    urgent: number
+    high: number
+    normal: number
+    low: number
+  }
+  completed_last_hour: number
+  failed_last_hour: number
+  avg_duration_seconds: number | null
+  needs_attention: number
+}
+
 // List response types
 interface PaginatedResponse<T> {
   count: number
@@ -216,6 +238,12 @@ const jobsApi = {
 
   getJobEvent: (uuid: string) => {
     return apiClient.get<DroneJobEvent>(`/job-events/${uuid}/`)
+  },
+
+  // === Job Queue Live View ===
+
+  getQueueStats: () => {
+    return apiClient.get<JobQueueStats>('/jobs/queue-stats/')
   },
 }
 

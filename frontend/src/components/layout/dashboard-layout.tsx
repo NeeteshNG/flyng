@@ -103,7 +103,10 @@ const navigation: NavItem[] = [
   {
     name: 'Jobs',
     icon: Briefcase,
-    path: '/dashboard/jobs',
+    children: [
+      { name: 'Job List', path: '/dashboard/jobs' },
+      { name: 'Job Queue', path: '/dashboard/job-queue' },
+    ],
   },
   {
     name: 'Bin Setup',

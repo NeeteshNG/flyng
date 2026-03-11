@@ -36,6 +36,7 @@ import TelemetryPage from '@/pages/dashboard/telemetry'
 import MaintenancePage from '@/pages/dashboard/maintenance'
 import BatteriesPage from '@/pages/dashboard/batteries'
 import JobsPage from '@/pages/dashboard/jobs'
+import JobQueuePage from '@/pages/dashboard/job-queue'
 import LogFilesPage from '@/pages/dashboard/log-files'
 import FlightExplorerPage from '@/pages/dashboard/log-files/flight-explorer'
 import GraphTemplatesPage from '@/pages/dashboard/graph-templates'
@@ -105,6 +106,7 @@ function App() {
             <Route path="batteries" element={<BatteriesPage />} />
             <Route path="live-tracking" element={<LiveTrackingPage />} />
             <Route path="jobs" element={<JobsPage />} />
+            <Route path="job-queue" element={<JobQueuePage />} />
             <Route path="log-files/:uuid/explore" element={<FlightExplorerPage />} />
             <Route path="log-files" element={<LogFilesPage />} />
             <Route path="graph-templates" element={<GraphTemplatesPage />} />
