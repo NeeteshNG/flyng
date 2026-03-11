@@ -101,6 +101,52 @@ export interface DroneMaintenanceRecord {
   created_at: string
 }
 
+export interface DronePosition {
+  id: number
+  uuid: string
+  name: string
+  serial_number: string
+  status: string
+  status_display: string
+  autonomy_mode: number
+  autonomy_display: string
+  work_area_name: string
+  zone_name: string
+  warehouse_name: string
+  home_x: string | null
+  home_y: string | null
+  home_z: string | null
+  last_heartbeat: string | null
+  is_online: boolean
+  // Latest telemetry
+  position_x: string | null
+  position_y: string | null
+  position_z: string | null
+  battery_percentage: number | null
+  ground_speed: string | null
+  flight_mode: string | null
+  rssi: number | null
+  last_telemetry_at: string | null
+  // Active job
+  active_job_id: number | null
+  active_job_number: string | null
+  active_job_type: string | null
+  active_job_status: string | null
+}
+
+export interface FleetStats {
+  total_drones: number
+  available: number
+  in_flight: number
+  charging: number
+  idle: number
+  offline: number
+  maintenance: number
+  error: number
+  avg_battery: number | null
+  with_active_jobs: number
+}
+
 // List response types
 interface PaginatedResponse<T> {
   count: number
@@ -290,6 +336,21 @@ const dronesApi = {
 
   completeMaintenanceRecord: (uuid: string) => {
     return apiClient.post<DroneMaintenanceRecord>(`/drone-maintenance/${uuid}/complete/`)
+  },
+
+  // === Fleet Live Tracking ===
+
+  getFleetPositions: (params?: {
+    warehouse?: number
+    zone?: number
+    status?: string
+    search?: string
+  }) => {
+    return apiClient.get<DronePosition[]>('/fleet/positions/', { params })
+  },
+
+  getFleetStats: () => {
+    return apiClient.get<FleetStats>('/fleet/stats/')
   },
 }
 

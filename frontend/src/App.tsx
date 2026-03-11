@@ -46,6 +46,7 @@ import ActivityPage from '@/pages/dashboard/activity'
 import LowStockPage from '@/pages/dashboard/low-stock'
 import NotificationsPage from '@/pages/dashboard/notifications'
 import MembersPage from '@/pages/dashboard/members'
+import LiveTrackingPage from '@/pages/dashboard/live-tracking'
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -102,6 +103,7 @@ function App() {
             <Route path="telemetry" element={<TelemetryPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="batteries" element={<BatteriesPage />} />
+            <Route path="live-tracking" element={<LiveTrackingPage />} />
             <Route path="jobs" element={<JobsPage />} />
             <Route path="log-files/:uuid/explore" element={<FlightExplorerPage />} />
             <Route path="log-files" element={<LogFilesPage />} />

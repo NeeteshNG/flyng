@@ -397,3 +397,75 @@ class DroneMaintenanceRecordCreateUpdateSerializer(serializers.ModelSerializer):
             "flights_at_maintenance",
             "notes",
         ]
+
+
+# --- Fleet Position Serializer ---
+
+
+class DronePositionSerializer(serializers.ModelSerializer):
+    """Serializer for fleet live tracking — drone + latest telemetry + active job."""
+
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    autonomy_display = serializers.CharField(
+        source="get_autonomy_mode_display", read_only=True
+    )
+    work_area_name = serializers.CharField(source="work_area.name", read_only=True)
+    zone_name = serializers.CharField(
+        source="work_area.ground_control_station.zone.name", read_only=True
+    )
+    warehouse_name = serializers.CharField(
+        source="work_area.ground_control_station.zone.warehouse.name", read_only=True
+    )
+    is_online = serializers.ReadOnlyField()
+
+    # Latest telemetry (annotated via Subquery in the view)
+    position_x = serializers.DecimalField(max_digits=12, decimal_places=4, read_only=True)
+    position_y = serializers.DecimalField(max_digits=12, decimal_places=4, read_only=True)
+    position_z = serializers.DecimalField(max_digits=12, decimal_places=4, read_only=True)
+    battery_percentage = serializers.IntegerField(read_only=True)
+    ground_speed = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
+    flight_mode = serializers.CharField(read_only=True)
+    rssi = serializers.IntegerField(read_only=True)
+    last_telemetry_at = serializers.DateTimeField(read_only=True)
+
+    # Active job (annotated via Subquery in the view)
+    active_job_id = serializers.IntegerField(read_only=True)
+    active_job_number = serializers.CharField(read_only=True)
+    active_job_type = serializers.CharField(read_only=True)
+    active_job_status = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Drone
+        fields = [
+            "id",
+            "uuid",
+            "name",
+            "serial_number",
+            "status",
+            "status_display",
+            "autonomy_mode",
+            "autonomy_display",
+            "work_area_name",
+            "zone_name",
+            "warehouse_name",
+            "home_x",
+            "home_y",
+            "home_z",
+            "last_heartbeat",
+            "is_online",
+            # Telemetry (annotated)
+            "position_x",
+            "position_y",
+            "position_z",
+            "battery_percentage",
+            "ground_speed",
+            "flight_mode",
+            "rssi",
+            "last_telemetry_at",
+            # Active job (annotated)
+            "active_job_id",
+            "active_job_number",
+            "active_job_type",
+            "active_job_status",
+        ]
+        read_only_fields = fields

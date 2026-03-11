@@ -64,6 +64,7 @@ const navigation: NavItem[] = [
     icon: Plane,
     children: [
       { name: 'Drone List', path: '/dashboard/drones' },
+      { name: 'Live Tracking', path: '/dashboard/live-tracking' },
       { name: 'Telemetry', path: '/dashboard/telemetry' },
       { name: 'Maintenance', path: '/dashboard/maintenance' },
       { name: 'Batteries', path: '/dashboard/batteries' },

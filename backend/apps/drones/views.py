@@ -4,17 +4,19 @@ Drone Views
 API views for drones, telemetry logs, and maintenance records.
 """
 
-from django.db.models import Count
+from django.db.models import Avg, Count, OuterRef, Q, Subquery
 from django_filters import rest_framework as django_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from apps.core.choices import ActivityAction
+from apps.core.choices import ActivityAction, DroneStatus, JobStatus
 from apps.core.mixins import ActivityLoggingMixin
 from apps.core.permissions import HasPermission
+from apps.jobs.models import DroneJob
 
 from .models import Drone, DroneMaintenanceRecord, DroneTelemetryLog
 from .serializers import (
@@ -24,6 +26,7 @@ from .serializers import (
     DroneMaintenanceRecordCreateUpdateSerializer,
     DroneMaintenanceRecordDetailSerializer,
     DroneMaintenanceRecordListSerializer,
+    DronePositionSerializer,
     DroneTelemetryLogCreateSerializer,
     DroneTelemetryLogDetailSerializer,
     DroneTelemetryLogListSerializer,
@@ -332,3 +335,137 @@ class DroneMaintenanceRecordViewSet(ActivityLoggingMixin, viewsets.ModelViewSet)
         self.log_activity(ActivityAction.UPDATE, record, "Completed maintenance record")
         serializer = DroneMaintenanceRecordDetailSerializer(record)
         return Response(serializer.data)
+
+
+# =============================================================================
+# Fleet Live Tracking Views
+# =============================================================================
+
+ACTIVE_JOB_STATUSES = [
+    JobStatus.NEW,
+    JobStatus.QUEUED,
+    JobStatus.ASSIGNED,
+    JobStatus.IN_PROGRESS,
+    JobStatus.PAUSED,
+]
+
+
+def _get_fleet_queryset():
+    """Build annotated queryset with latest telemetry + active job per drone."""
+    # Latest telemetry per drone via correlated subquery
+    latest_telemetry = DroneTelemetryLog.objects.filter(
+        drone=OuterRef("pk")
+    ).order_by("-timestamp")
+
+    # Active job per drone (most recent active job)
+    active_job = DroneJob.objects.filter(
+        drone=OuterRef("pk"),
+        status__in=ACTIVE_JOB_STATUSES,
+    ).order_by("-created_at")
+
+    return (
+        Drone.objects.filter(is_active=True)
+        .select_related(
+            "work_area",
+            "work_area__ground_control_station",
+            "work_area__ground_control_station__zone",
+            "work_area__ground_control_station__zone__warehouse",
+        )
+        .annotate(
+            # Latest telemetry fields
+            position_x=Subquery(latest_telemetry.values("position_x")[:1]),
+            position_y=Subquery(latest_telemetry.values("position_y")[:1]),
+            position_z=Subquery(latest_telemetry.values("position_z")[:1]),
+            battery_percentage=Subquery(latest_telemetry.values("battery_percentage")[:1]),
+            ground_speed=Subquery(latest_telemetry.values("ground_speed")[:1]),
+            flight_mode=Subquery(latest_telemetry.values("flight_mode")[:1]),
+            rssi=Subquery(latest_telemetry.values("rssi")[:1]),
+            last_telemetry_at=Subquery(latest_telemetry.values("timestamp")[:1]),
+            # Active job fields
+            active_job_id=Subquery(active_job.values("id")[:1]),
+            active_job_number=Subquery(active_job.values("job_number")[:1]),
+            active_job_type=Subquery(active_job.values("job_type")[:1]),
+            active_job_status=Subquery(active_job.values("status")[:1]),
+        )
+    )
+
+
+class FleetPositionsView(APIView):
+    """
+    GET /fleet/positions/
+
+    Returns all active drones with their latest telemetry data and active job.
+    No pagination — fleet size is typically small (<100 drones).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = _get_fleet_queryset()
+
+        # Filters
+        warehouse = request.query_params.get("warehouse")
+        if warehouse:
+            qs = qs.filter(
+                work_area__ground_control_station__zone__warehouse_id=warehouse
+            )
+
+        zone = request.query_params.get("zone")
+        if zone:
+            qs = qs.filter(work_area__ground_control_station__zone_id=zone)
+
+        drone_status = request.query_params.get("status")
+        if drone_status:
+            qs = qs.filter(status=drone_status)
+
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(serial_number__icontains=search))
+
+        qs = qs.order_by("name")
+        serializer = DronePositionSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class FleetStatsView(APIView):
+    """
+    GET /fleet/stats/
+
+    Returns fleet summary statistics.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        drones = Drone.objects.filter(is_active=True)
+
+        # Status counts
+        total = drones.count()
+        status_counts = {}
+        for choice in DroneStatus:
+            status_counts[choice.value.lower()] = drones.filter(status=choice.value).count()
+
+        # Average battery from latest telemetry
+        latest_telemetry = DroneTelemetryLog.objects.filter(
+            drone=OuterRef("pk")
+        ).order_by("-timestamp")
+
+        avg_battery = (
+            drones.annotate(
+                latest_battery=Subquery(latest_telemetry.values("battery_percentage")[:1])
+            )
+            .aggregate(avg=Avg("latest_battery"))
+            .get("avg")
+        )
+
+        # Drones with active jobs
+        with_active_jobs = drones.filter(
+            jobs__status__in=ACTIVE_JOB_STATUSES
+        ).distinct().count()
+
+        return Response({
+            "total_drones": total,
+            **status_counts,
+            "avg_battery": round(avg_battery, 1) if avg_battery else None,
+            "with_active_jobs": with_active_jobs,
+        })

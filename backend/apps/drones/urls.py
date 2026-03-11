@@ -9,6 +9,8 @@ from .views import (
     DroneMaintenanceRecordViewSet,
     DroneTelemetryLogViewSet,
     DroneViewSet,
+    FleetPositionsView,
+    FleetStatsView,
 )
 
 router = DefaultRouter()
@@ -19,5 +21,7 @@ router.register(
 )
 
 urlpatterns = [
+    path("fleet/positions/", FleetPositionsView.as_view(), name="fleet-positions"),
+    path("fleet/stats/", FleetStatsView.as_view(), name="fleet-stats"),
     path("", include(router.urls)),
 ]
