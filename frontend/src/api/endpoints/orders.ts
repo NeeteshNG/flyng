@@ -1,6 +1,18 @@
 import apiClient from '../client'
 
 // Types
+export interface OrderHistoryEntry {
+  history_id: number
+  history_date: string
+  history_type: string
+  history_type_code: string
+  history_change_reason: string
+  history_user: string | null
+  status: string
+  priority: string
+  changes: { field: string; old: string | null; new: string | null }[]
+}
+
 export interface Customer {
   id: number
   uuid: string
@@ -354,6 +366,11 @@ const ordersApi = {
       `/orders/${uuid}/revert/`,
       { reason: reason || '' }
     )
+  },
+
+  // Order History (audit trail)
+  getOrderHistory: (uuid: string) => {
+    return apiClient.get<OrderHistoryEntry[]>(`/orders/${uuid}/history/`)
   },
 
   // Order Lines

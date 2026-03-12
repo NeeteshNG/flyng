@@ -11,12 +11,16 @@ import {
   BarChart3, Plane, ShoppingCart, Briefcase, Battery,
   Package, AlertTriangle, PackageX, Target, Clock,
   Timer, Gauge, Wrench, Zap, HardDrive, PackageSearch,
+  MapPin, Navigation, ArrowDown,
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
 import { KpiCard } from '@/components/shared/kpi-card'
 
 import dashboardApi, {
@@ -414,6 +418,102 @@ function OrdersTab({ dateParams, isLoading: parentLoading }: { dateParams: DateR
           valueKey="quantity"
         />
       )}
+
+      {/* Top Pick & Drop Locations */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {loading ? (
+          <>
+            <Card><CardHeader><Skeleton className="h-5 w-32" /></CardHeader><CardContent><ChartSkeleton height={250} /></CardContent></Card>
+            <Card><CardHeader><Skeleton className="h-5 w-32" /></CardHeader><CardContent><ChartSkeleton height={250} /></CardContent></Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  Top Pick Locations
+                </CardTitle>
+                <CardDescription>Source bins most frequently picked from</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(analytics?.top_pick_locations || []).length === 0 ? (
+                  <div className="h-[200px] flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Bin</TableHead>
+                          <TableHead>Aisle</TableHead>
+                          <TableHead className="text-right">Picks</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics!.top_pick_locations.map((loc, i) => (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{loc.bin_code}</code>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{loc.aisle || '—'}</TableCell>
+                            <TableCell className="text-right font-medium">{loc.picks}</TableCell>
+                            <TableCell className="text-right">{loc.quantity}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ArrowDown className="h-4 w-4 text-primary" />
+                  Top Drop Locations
+                </CardTitle>
+                <CardDescription>Destination bins most frequently dropped to</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {(analytics?.top_drop_locations || []).length === 0 ? (
+                  <div className="h-[200px] flex items-center justify-center">
+                    <p className="text-sm text-muted-foreground">No data available</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Bin</TableHead>
+                          <TableHead>Aisle</TableHead>
+                          <TableHead className="text-right">Drops</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {analytics!.top_drop_locations.map((loc, i) => (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{loc.bin_code}</code>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{loc.aisle || '—'}</TableCell>
+                            <TableCell className="text-right font-medium">{loc.drops}</TableCell>
+                            <TableCell className="text-right">{loc.quantity}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -429,7 +529,7 @@ function FleetTab({ dateParams, isLoading: parentLoading }: { dateParams: DateRa
   return (
     <div className="space-y-6">
       {/* KPI cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Fleet Utilization" icon={Gauge} iconColor="text-blue-500" suffix="%" isLoading={loading}
           value={analytics?.kpis.fleet_utilization.value ?? 0}
           changePercent={analytics?.kpis.fleet_utilization.change_percent}
@@ -454,6 +554,14 @@ function FleetTab({ dateParams, isLoading: parentLoading }: { dateParams: DateRa
           value={analytics?.kpis.total_flight_hours.value ?? 0}
           changePercent={analytics?.kpis.total_flight_hours.change_percent}
           trend={analytics?.kpis.total_flight_hours.trend} />
+        <KpiCard title="Avg Speed" icon={Navigation} iconColor="text-indigo-500" suffix=" m/s" isLoading={loading}
+          value={analytics?.kpis.avg_speed?.value ?? 0}
+          changePercent={analytics?.kpis.avg_speed?.change_percent}
+          trend={analytics?.kpis.avg_speed?.trend} />
+        <KpiCard title="Avg Altitude" icon={ArrowDown} iconColor="text-cyan-500" suffix=" m" isLoading={loading}
+          value={analytics?.kpis.avg_altitude?.value ?? 0}
+          changePercent={analytics?.kpis.avg_altitude?.change_percent}
+          trend={analytics?.kpis.avg_altitude?.trend} />
       </div>
 
       {/* Jobs over time */}
@@ -502,6 +610,61 @@ function FleetTab({ dateParams, isLoading: parentLoading }: { dateParams: DateRa
           </>
         )}
       </div>
+
+      {/* Drone Telemetry Table */}
+      {loading ? (
+        <Card><CardHeader><Skeleton className="h-5 w-32" /></CardHeader><CardContent><ChartSkeleton height={250} /></CardContent></Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Plane className="h-4 w-4 text-primary" />
+              Drone Telemetry
+            </CardTitle>
+            <CardDescription>Per-drone performance stats (top 10 most active)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {(analytics?.drone_telemetry || []).length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center">
+                <p className="text-sm text-muted-foreground">No telemetry data available</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Drone</TableHead>
+                      <TableHead>Serial</TableHead>
+                      <TableHead className="text-right">Entries</TableHead>
+                      <TableHead className="text-right">Avg Speed (m/s)</TableHead>
+                      <TableHead className="text-right">Avg Altitude (m)</TableHead>
+                      <TableHead className="text-right">Avg Battery (%)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analytics!.drone_telemetry.map((drone, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{drone.name}</TableCell>
+                        <TableCell>
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{drone.serial}</code>
+                        </TableCell>
+                        <TableCell className="text-right">{drone.entries}</TableCell>
+                        <TableCell className="text-right">{drone.avg_speed}</TableCell>
+                        <TableCell className="text-right">{drone.avg_altitude}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={drone.avg_battery < 20 ? 'text-red-500 font-medium' : drone.avg_battery < 50 ? 'text-yellow-500' : 'text-green-500'}>
+                            {drone.avg_battery}%
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

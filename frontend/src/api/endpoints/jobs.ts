@@ -240,6 +240,12 @@ const jobsApi = {
     return apiClient.get<DroneJobEvent>(`/job-events/${uuid}/`)
   },
 
+  // === Next Job (GCS Integration) ===
+
+  getNextJob: (params?: { warehouse?: number; drone?: number }) => {
+    return apiClient.get<DroneJob>('/jobs/next/', { params })
+  },
+
   // === Job Queue Live View ===
 
   getQueueStats: () => {

@@ -609,6 +609,49 @@ class OrderAnalyticsView(APIView):
             for row in top_items_qs
         ]
 
+        # Top 10 pick locations (source bins most picked from)
+        top_pick_locations = list(
+            lines_current.filter(
+                picked_quantity__gt=0, source_bin__isnull=False
+            )
+            .values("source_bin__code", "source_bin__location__aisle")
+            .annotate(picks=Count("id"), quantity=Sum("picked_quantity"))
+            .order_by("-picks")[:10]
+        )
+        top_pick_locs = [
+            {
+                "bin_code": row["source_bin__code"],
+                "aisle": row["source_bin__location__aisle"] or "",
+                "picks": row["picks"],
+                "quantity": row["quantity"],
+            }
+            for row in top_pick_locations
+        ]
+
+        # Top 10 drop locations (destination bins from completed jobs)
+        from apps.jobs.models import DroneJob
+
+        top_drop_locations = list(
+            DroneJob.objects.filter(
+                organization=org_id,
+                status="COMPLETED",
+                destination_bin__isnull=False,
+                completed_at__range=(date_from, date_to),
+            )
+            .values("destination_bin__code", "destination_bin__location__aisle")
+            .annotate(drops=Count("id"), quantity=Sum("picked_quantity"))
+            .order_by("-drops")[:10]
+        )
+        top_drop_locs = [
+            {
+                "bin_code": row["destination_bin__code"],
+                "aisle": row["destination_bin__location__aisle"] or "",
+                "drops": row["drops"],
+                "quantity": row["quantity"] or 0,
+            }
+            for row in top_drop_locations
+        ]
+
         return Response({
             "success": True,
             "data": {
@@ -627,6 +670,8 @@ class OrderAnalyticsView(APIView):
                 "orders_by_priority": orders_by_priority,
                 "orders_by_status": orders_by_status,
                 "top_picked_items": top_picked_items,
+                "top_pick_locations": top_pick_locs,
+                "top_drop_locations": top_drop_locs,
             },
         })
 
@@ -775,6 +820,41 @@ class FleetAnalyticsView(APIView):
         )
         battery_status = [{"name": d["status"], "value": d["count"]} for d in battery_status_dist]
 
+        # Telemetry analytics: per-drone aggregated stats from recent telemetry
+        from apps.drones.models import DroneTelemetryLog
+
+        telemetry_qs = DroneTelemetryLog.objects.filter(
+            drone__in=drones_qs,
+            timestamp__range=(date_from, date_to),
+        )
+        telemetry_agg = telemetry_qs.aggregate(
+            avg_speed=Avg("ground_speed"),
+            avg_altitude=Avg("position_z"),
+            avg_battery=Avg("battery_percentage"),
+        )
+        # Per-drone performance (top 10 most active)
+        per_drone_stats = list(
+            telemetry_qs.values("drone__name", "drone__serial_number")
+            .annotate(
+                entries=Count("id"),
+                avg_speed=Avg("ground_speed"),
+                avg_altitude=Avg("position_z"),
+                avg_battery=Avg("battery_percentage"),
+            )
+            .order_by("-entries")[:10]
+        )
+        drone_telemetry = [
+            {
+                "name": row["drone__name"],
+                "serial": row["drone__serial_number"],
+                "entries": row["entries"],
+                "avg_speed": round(float(row["avg_speed"] or 0), 2),
+                "avg_altitude": round(float(row["avg_altitude"] or 0), 1),
+                "avg_battery": round(float(row["avg_battery"] or 0), 1),
+            }
+            for row in per_drone_stats
+        ]
+
         return Response({
             "success": True,
             "data": {
@@ -789,12 +869,15 @@ class FleetAnalyticsView(APIView):
                     "battery_avg_charge": {"value": battery_avg_charge, "change_percent": 0, "trend": "stable"},
                     "batteries_needing_replacement": {"value": batteries_needing_replacement, "change_percent": 0, "trend": "stable"},
                     "total_flight_hours": {"value": total_flight_hours, "change_percent": 0, "trend": "stable"},
+                    "avg_speed": {"value": round(float(telemetry_agg["avg_speed"] or 0), 2), "change_percent": 0, "trend": "stable"},
+                    "avg_altitude": {"value": round(float(telemetry_agg["avg_altitude"] or 0), 1), "change_percent": 0, "trend": "stable"},
                 },
                 "jobs_over_time": jobs_over_time,
                 "jobs_by_type": jobs_by_type,
                 "drone_status": drone_status,
                 "battery_health": battery_health,
                 "battery_status": battery_status,
+                "drone_telemetry": drone_telemetry,
             },
         })
 

@@ -312,6 +312,38 @@ class DroneJobViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
         )
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="next")
+    def next_job(self, request):
+        """
+        GET /jobs/next/
+
+        Returns the next queued job for processing. Used by GCS software
+        to fetch the next job to execute.
+
+        Query params:
+            warehouse: Filter by warehouse ID
+            drone: Filter by drone ID (returns jobs assigned to this drone
+                   or unassigned jobs)
+        """
+        warehouse = request.query_params.get("warehouse")
+        drone = request.query_params.get("drone")
+
+        job = DroneJob.objects.next_in_queue(
+            warehouse=warehouse or None,
+            drone=drone or None,
+        )
+
+        if job is None:
+            return Response(
+                {"message": "No jobs in queue."},
+                status=status.HTTP_204_NO_CONTENT,
+            )
+
+        serializer = DroneJobDetailSerializer(
+            self.get_queryset().get(pk=job.pk)
+        )
+        return Response(serializer.data)
+
 
 # =============================================================================
 # DroneJobEvent ViewSet

@@ -462,7 +462,9 @@ class PickOrder(AuditedModel):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
-        # Skip history to avoid conflict with django-modeltranslation
+        is_new = self._state.adding
+        # Skip auto history signal to avoid conflict with django-modeltranslation
+        # (translated fields like notes_en/hi are not on HistoricalPickOrder)
         self.skip_history_when_saving = True
         # Auto-fill customer_name/code from FK when set
         if self.customer_id and not kwargs.get("update_fields"):
@@ -474,6 +476,33 @@ class PickOrder(AuditedModel):
         if not kwargs.get("update_fields"):
             self.full_clean()
         super().save(*args, **kwargs)
+        # Manually create history record with only the fields the historical model has
+        history_type = "+" if is_new else "~"
+        self._create_history_record(history_type)
+
+    def _create_history_record(self, history_type):
+        """Create a history record manually, excluding modeltranslation fields."""
+        from django.utils import timezone as tz
+
+        hist_model = self.history.model
+        # Build set of column names the historical model accepts
+        hist_col_to_field = {}
+        for f in hist_model._meta.get_fields():
+            if hasattr(f, "column"):
+                hist_col_to_field[f.column] = f.attname
+        attrs = {}
+        for field in self._meta.get_fields():
+            if not hasattr(field, "column"):
+                continue
+            # Use column name to match (handles FK _id suffix correctly)
+            if field.column in hist_col_to_field:
+                attr_name = hist_col_to_field[field.column]
+                attrs[attr_name] = getattr(self, field.attname)
+        attrs["history_date"] = tz.now()
+        attrs["history_type"] = history_type
+        attrs["history_change_reason"] = None
+        attrs["history_user_id"] = None
+        hist_model.objects.create(**attrs)
 
     @property
     def total_lines(self):

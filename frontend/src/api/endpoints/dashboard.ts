@@ -105,6 +105,8 @@ export interface OrderAnalytics {
   orders_by_priority: { name: string; value: number }[]
   orders_by_status: { name: string; value: number }[]
   top_picked_items: { name: string; sku: string; quantity: number }[]
+  top_pick_locations: { bin_code: string; aisle: string; picks: number; quantity: number }[]
+  top_drop_locations: { bin_code: string; aisle: string; drops: number; quantity: number }[]
 }
 
 export interface FleetAnalytics {
@@ -116,6 +118,8 @@ export interface FleetAnalytics {
     battery_avg_charge: KpiValue
     batteries_needing_replacement: KpiValue
     total_flight_hours: KpiValue
+    avg_speed: KpiValue
+    avg_altitude: KpiValue
   }
   jobs_over_time: {
     period: string
@@ -127,6 +131,14 @@ export interface FleetAnalytics {
   drone_status: { name: string; value: number }[]
   battery_health: { name: string; value: number }[]
   battery_status: { name: string; value: number }[]
+  drone_telemetry: {
+    name: string
+    serial: string
+    entries: number
+    avg_speed: number
+    avg_altitude: number
+    avg_battery: number
+  }[]
 }
 
 export interface InventoryAnalytics {

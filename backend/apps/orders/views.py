@@ -353,6 +353,50 @@ class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    @action(detail=True, methods=["get"])
+    def history(self, request, uuid=None):
+        """
+        GET /orders/{uuid}/history/
+
+        Returns the change history for an order using django-simple-history.
+        Each entry shows what changed, when, and by whom.
+        """
+        order = self.get_object()
+        history_qs = order.history.all().order_by("-history_date")[:50]
+
+        records = []
+        history_list = list(history_qs)
+        for i, record in enumerate(history_list):
+            entry = {
+                "history_id": record.history_id,
+                "history_date": record.history_date.isoformat(),
+                "history_type": record.get_history_type_display(),
+                "history_type_code": record.history_type,
+                "history_change_reason": record.history_change_reason or "",
+                "history_user": (
+                    record.history_user.get_full_name() or record.history_user.email
+                    if record.history_user else None
+                ),
+                "status": record.status,
+                "priority": record.priority,
+                "changes": [],
+            }
+
+            # Compute field-level diff against previous record
+            if i < len(history_list) - 1:
+                prev = history_list[i + 1]
+                delta = record.diff_against(prev)
+                for change in delta.changes:
+                    entry["changes"].append({
+                        "field": change.field,
+                        "old": str(change.old) if change.old is not None else None,
+                        "new": str(change.new) if change.new is not None else None,
+                    })
+
+            records.append(entry)
+
+        return Response(records)
+
 
 # --- Pick Order Line Views ---
 

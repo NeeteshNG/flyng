@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   ShoppingCart, MapPin, User, Clock, Package, Truck,
-  CheckCircle, AlertTriangle, FileText,
+  CheckCircle, AlertTriangle, FileText, History, ArrowRight,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,7 @@ import {
   Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -55,6 +56,13 @@ export default function OrderDetailSheet({ open, onOpenChange, order }: OrderDet
     enabled: !!order?.uuid && open,
   })
 
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ['order-history', order?.uuid],
+    queryFn: () => ordersApi.getOrderHistory(order!.uuid),
+    enabled: !!order?.uuid && open,
+  })
+
+  const history = historyData?.data || []
   const detail = detailData?.data || order
   if (!detail) return null
 
@@ -227,6 +235,65 @@ export default function OrderDetailSheet({ open, onOpenChange, order }: OrderDet
                   </div>
                 ))}
             </div>
+          </div>
+
+          {/* Change History (Audit Trail) */}
+          <Separator />
+          <div>
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              <History className="h-4 w-4" /> Change History
+            </h3>
+            {historyLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No change history recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {history.map((entry) => (
+                  <div key={entry.history_id} className="rounded-md border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={entry.history_type_code === '+' ? 'default' : 'secondary'} className="text-xs">
+                          {entry.history_type}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(entry.history_date)}
+                        </span>
+                      </div>
+                      {entry.history_user && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <User className="h-3 w-3" /> {entry.history_user}
+                        </span>
+                      )}
+                    </div>
+                    {entry.changes.length > 0 && (
+                      <div className="space-y-1">
+                        {entry.changes.map((change, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground font-medium min-w-[100px]">
+                              {change.field.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                            </span>
+                            <code className="bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 px-1.5 py-0.5 rounded text-xs">
+                              {change.old || '—'}
+                            </code>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <code className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300 px-1.5 py-0.5 rounded text-xs">
+                              {change.new || '—'}
+                            </code>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {entry.history_change_reason && (
+                      <p className="text-xs text-muted-foreground italic">{entry.history_change_reason}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Cancellation Reason */}
