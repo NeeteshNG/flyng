@@ -1,21 +1,34 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CreditCard, Building2, Users, Warehouse,
   Clock, CheckCircle, XCircle,
-  AlertTriangle, Zap, Crown, Star, Shield,
+  AlertTriangle, Zap, Crown, Star, Shield, Loader2,
 } from 'lucide-react'
+import { toast } from 'sonner'
 
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
 
 import billingApi, { Plan, BillingOverview } from '@/api/endpoints/billing'
 import { useFormat } from '@/hooks/use-format'
+import { useRazorpay } from '@/hooks/use-razorpay'
+import { getErrorMessage } from '@/lib/api-error'
 
 const planTypeIcon = (planType: string) => {
   switch (planType) {
@@ -87,15 +100,25 @@ function FeatureItem({ enabled, label }: { enabled: boolean; label: string }) {
   )
 }
 
-function PlanCard({ plan, isCurrentPlan, isAnnual }: {
+function PlanCard({ plan, isCurrentPlan, isAnnual, hasActiveSubscription, onSelect }: {
   plan: Plan
   isCurrentPlan: boolean
   isAnnual: boolean
+  hasActiveSubscription: boolean
+  onSelect: (plan: Plan) => void
 }) {
   const price = isAnnual ? plan.annual_price : plan.monthly_price
   const monthlyEquivalent = isAnnual
     ? (parseFloat(plan.annual_price) / 12).toFixed(0)
     : null
+
+  const isFree = plan.plan_type === 'FREE'
+  const showButton = !isFree && !isCurrentPlan
+
+  let buttonLabel = 'Subscribe'
+  if (hasActiveSubscription && !isCurrentPlan) {
+    buttonLabel = 'Switch Plan'
+  }
 
   return (
     <Card className={isCurrentPlan ? 'border-primary ring-2 ring-primary/20' : ''}>
@@ -182,6 +205,13 @@ function PlanCard({ plan, isCurrentPlan, isAnnual }: {
           {plan.data_retention_days} days data retention
           {plan.api_access_enabled && ` · ${plan.api_rate_limit_per_minute} API req/min`}
         </div>
+
+        {/* Action Button */}
+        {showButton && (
+          <Button className="w-full" onClick={() => onSelect(plan)}>
+            {buttonLabel}
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
@@ -189,7 +219,20 @@ function PlanCard({ plan, isCurrentPlan, isAnnual }: {
 
 export default function BillingPage() {
   const { formatDateTime, formatRelative } = useFormat()
+  const queryClient = useQueryClient()
+  const { openCheckout } = useRazorpay()
   const [isAnnual, setIsAnnual] = useState(false)
+
+  // Subscribe dialog state
+  const [subscribeDialogOpen, setSubscribeDialogOpen] = useState(false)
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
+  const [dialogCycle, setDialogCycle] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY')
+  const [isProcessing, setIsProcessing] = useState(false)
+
+  // Cancel dialog state
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelImmediately, setCancelImmediately] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Fetch billing overview
   const { data: billingData, isLoading: billingLoading } = useQuery({
@@ -207,6 +250,88 @@ export default function BillingPage() {
   const plans: Plan[] = plansData?.data?.results || []
   const subscription = billing?.subscription
   const usageStats = billing?.usage_stats
+  const hasActiveSubscription = !!subscription?.is_active
+
+  const refetchBilling = () => {
+    queryClient.refetchQueries({ queryKey: ['billing-overview'] })
+  }
+
+  // Handle plan selection from card
+  const handlePlanSelect = (plan: Plan) => {
+    setSelectedPlan(plan)
+    setDialogCycle(isAnnual ? 'ANNUAL' : 'MONTHLY')
+    setSubscribeDialogOpen(true)
+  }
+
+  // Handle subscribe/upgrade
+  const handleSubscribe = async () => {
+    if (!selectedPlan) return
+    setIsProcessing(true)
+
+    try {
+      let useCheckout = !hasActiveSubscription
+
+      // Try upgrade first if there's an active subscription
+      if (hasActiveSubscription) {
+        try {
+          await billingApi.upgradePlan(selectedPlan.id, dialogCycle)
+          toast.success('Plan updated successfully', { duration: 4000 })
+          refetchBilling()
+          setSubscribeDialogOpen(false)
+          return
+        } catch (upgradeError: unknown) {
+          // If backend says no payment subscription exists, fall through to checkout
+          const err = upgradeError as { response?: { data?: { requires_checkout?: boolean } } }
+          if (err?.response?.data?.requires_checkout) {
+            useCheckout = true
+          } else {
+            throw upgradeError
+          }
+        }
+      }
+
+      if (useCheckout) {
+        // Create checkout and open Razorpay
+        const response = await billingApi.createCheckout(selectedPlan.id, dialogCycle)
+        const { subscription_id, razorpay_key_id } = response.data.data
+
+        openCheckout(subscription_id, razorpay_key_id, {
+          onSuccess: () => {
+            toast.success('Payment successful! Your subscription is now active.', { duration: 5000 })
+            refetchBilling()
+            setSubscribeDialogOpen(false)
+          },
+          onError: () => {
+            toast.error('Payment was cancelled or failed', { duration: 5000 })
+          },
+        })
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error), { duration: 5000 })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Handle cancel subscription
+  const handleCancel = async () => {
+    setIsCancelling(true)
+    try {
+      await billingApi.cancelSubscription(cancelImmediately)
+      toast.success(
+        cancelImmediately
+          ? 'Subscription cancelled immediately'
+          : 'Subscription will be cancelled at the end of the billing period',
+        { duration: 4000 }
+      )
+      refetchBilling()
+      setCancelDialogOpen(false)
+    } catch (error) {
+      toast.error(getErrorMessage(error), { duration: 5000 })
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -366,8 +491,21 @@ export default function BillingPage() {
           {/* Subscription Details */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Subscription Details</CardTitle>
-              <CardDescription>Billing and period information</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Subscription Details</CardTitle>
+                  <CardDescription>Billing and period information</CardDescription>
+                </div>
+                {hasActiveSubscription && !subscription?.cancel_at_period_end && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setCancelDialogOpen(true)}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {subscription ? (
@@ -493,6 +631,8 @@ export default function BillingPage() {
                 plan={plan}
                 isCurrentPlan={billing?.plan_type === plan.plan_type}
                 isAnnual={isAnnual}
+                hasActiveSubscription={hasActiveSubscription}
+                onSelect={handlePlanSelect}
               />
             ))}
           </div>
@@ -508,6 +648,110 @@ export default function BillingPage() {
           </Card>
         )}
       </div>
+
+      {/* Subscribe / Upgrade Dialog */}
+      <Dialog open={subscribeDialogOpen} onOpenChange={setSubscribeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {hasActiveSubscription ? 'Switch Plan' : 'Subscribe to'} {selectedPlan?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {hasActiveSubscription
+                ? 'Your subscription will be updated to the new plan.'
+                : 'Choose a billing cycle and complete payment.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPlan && (
+            <div className="space-y-4 py-2">
+              {/* Billing Cycle Selection */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDialogCycle('MONTHLY')}
+                  className={`rounded-lg border-2 p-4 text-left transition-colors ${
+                    dialogCycle === 'MONTHLY'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted hover:border-muted-foreground/25'
+                  }`}
+                >
+                  <div className="text-sm font-medium">Monthly</div>
+                  <div className="text-2xl font-bold mt-1">
+                    ₹{parseInt(selectedPlan.monthly_price).toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">per month</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDialogCycle('ANNUAL')}
+                  className={`rounded-lg border-2 p-4 text-left transition-colors ${
+                    dialogCycle === 'ANNUAL'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted hover:border-muted-foreground/25'
+                  }`}
+                >
+                  <div className="text-sm font-medium">Annual</div>
+                  <div className="text-2xl font-bold mt-1">
+                    ₹{parseInt(selectedPlan.annual_price).toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">per year</div>
+                  {parseFloat(selectedPlan.monthly_price) > 0 && (
+                    <Badge variant="secondary" className="mt-2 text-xs">
+                      Save ₹{(parseFloat(selectedPlan.monthly_price) * 12 - parseFloat(selectedPlan.annual_price)).toLocaleString('en-IN')}
+                    </Badge>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubscribeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubscribe} disabled={isProcessing}>
+              {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {hasActiveSubscription ? 'Update Plan' : 'Proceed to Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Subscription Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel your subscription? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex items-center gap-2 py-2">
+            <Switch
+              id="cancel-immediately"
+              checked={cancelImmediately}
+              onCheckedChange={setCancelImmediately}
+            />
+            <Label htmlFor="cancel-immediately" className="text-sm">
+              Cancel immediately (otherwise cancels at end of billing period)
+            </Label>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              disabled={isCancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isCancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Cancel Subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

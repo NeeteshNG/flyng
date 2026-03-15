@@ -9,6 +9,8 @@ from apps.organizations.views import (
     APIKeyRevokeView,
     AnalyticsView,
     BillingOverviewView,
+    CancelSubscriptionView,
+    CreateCheckoutView,
     DashboardStatsView,
     FleetAnalyticsView,
     InventoryAnalyticsView,
@@ -26,11 +28,17 @@ from apps.organizations.views import (
     PlanListView,
     ReferenceDataView,
     TransferOwnershipView,
+    UpgradePlanView,
 )
+from apps.organizations.webhooks import RazorpayWebhookView
 
 urlpatterns = [
     path("plans/", PlanListView.as_view(), name="plan-list"),
     path("billing/", BillingOverviewView.as_view(), name="billing-overview"),
+    path("billing/checkout/", CreateCheckoutView.as_view(), name="billing-checkout"),
+    path("billing/cancel/", CancelSubscriptionView.as_view(), name="billing-cancel"),
+    path("billing/upgrade/", UpgradePlanView.as_view(), name="billing-upgrade"),
+    path("webhooks/razorpay/", RazorpayWebhookView.as_view(), name="razorpay-webhook"),
     path("settings/", OrganizationSettingsView.as_view(), name="org-settings"),
     path("settings/regenerate-webhook-secret/", OrganizationSettingsRegenerateWebhookView.as_view(), name="org-settings-regen-webhook"),
     path("dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),

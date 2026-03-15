@@ -200,6 +200,22 @@ class Plan(BaseModel):
         help_text=_("Order for displaying plans (lower = first)"),
     )
 
+    # Razorpay integration
+    razorpay_plan_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        verbose_name=_("Razorpay Monthly Plan ID"),
+        help_text=_("Plan ID from Razorpay for monthly billing"),
+    )
+    razorpay_annual_plan_id = models.CharField(
+        max_length=255,
+        blank=True,
+        db_index=True,
+        verbose_name=_("Razorpay Annual Plan ID"),
+        help_text=_("Plan ID from Razorpay for annual billing"),
+    )
+
     class Meta:
         verbose_name = _("Plan")
         verbose_name_plural = _("Plans")

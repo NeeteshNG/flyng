@@ -466,3 +466,32 @@ class TransferOwnershipSerializer(serializers.Serializer):
     """Serializer for ownership transfer."""
 
     new_owner_membership_id = serializers.IntegerField()
+
+
+# =============================================================================
+# Billing / Payment Serializers
+# =============================================================================
+
+
+class CheckoutSerializer(serializers.Serializer):
+    """Serializer for creating a subscription checkout."""
+
+    plan_id = serializers.IntegerField()
+    billing_cycle = serializers.ChoiceField(
+        choices=[("MONTHLY", "Monthly"), ("ANNUAL", "Annual")]
+    )
+
+
+class CancelSubscriptionSerializer(serializers.Serializer):
+    """Serializer for cancelling a subscription."""
+
+    cancel_immediately = serializers.BooleanField(default=False)
+
+
+class UpgradePlanSerializer(serializers.Serializer):
+    """Serializer for upgrading/downgrading a plan."""
+
+    plan_id = serializers.IntegerField()
+    billing_cycle = serializers.ChoiceField(
+        choices=[("MONTHLY", "Monthly"), ("ANNUAL", "Annual")]
+    )

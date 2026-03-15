@@ -417,6 +417,13 @@ SAFE_DELETE_INTERPRET_UNDELETED_OBJECTS_AS_CREATED = True
 # =============================================================================
 # Store history in same database
 SIMPLE_HISTORY_REVERT_DISABLED = False
+
+# =============================================================================
+# RAZORPAY CONFIGURATION
+# =============================================================================
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
 # Use foreign keys for user tracking
 SIMPLE_HISTORY_FILEFIELD_TO_CHARFIELD = False
 

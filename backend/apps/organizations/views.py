@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.choices import InvitationStatus
+from apps.core.choices import BillingCycle, InvitationStatus, SubscriptionStatus
 from apps.core.pagination import StandardPagination
 from apps.core.permissions import IsAdminOrManager
 from apps.organizations.models import (
@@ -32,6 +32,8 @@ from apps.organizations.serializers import (
     APIKeyCreateResponseSerializer,
     APIKeyCreateSerializer,
     APIKeyListSerializer,
+    CancelSubscriptionSerializer,
+    CheckoutSerializer,
     InvitationCreateSerializer,
     InvitationListSerializer,
     MembershipDetailSerializer,
@@ -42,6 +44,7 @@ from apps.organizations.serializers import (
     PlanSerializer,
     SubscriptionSerializer,
     TransferOwnershipSerializer,
+    UpgradePlanSerializer,
 )
 
 
@@ -1685,3 +1688,337 @@ class InvitationRevokeView(APIView):
             )
 
         return Response({"success": True, "message": "Invitation revoked successfully"})
+
+
+# =============================================================================
+# Billing / Payment Views
+# =============================================================================
+
+
+class CreateCheckoutView(APIView):
+    """
+    Create a Razorpay subscription and return checkout details.
+
+    POST /api/v1/billing/checkout/
+    Body: { plan_id: int, billing_cycle: "MONTHLY" | "ANNUAL" }
+    Returns: { subscription_id: str, razorpay_key_id: str }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.conf import settings as django_settings
+
+        from apps.organizations.payment import RazorpayService
+
+        serializer = CheckoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        plan_id = serializer.validated_data["plan_id"]
+        billing_cycle = serializer.validated_data["billing_cycle"]
+
+        # Get user's organization
+        membership = (
+            OrganizationMembership.objects.filter(user=request.user, is_active=True)
+            .select_related("organization")
+            .first()
+        )
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        org = membership.organization
+
+        # Check for existing active subscription with Razorpay
+        existing_sub = Subscription.objects.filter(
+            organization=org,
+            status__in=[SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+        ).first()
+        if existing_sub and existing_sub.external_subscription_id:
+            return Response(
+                {"success": False, "message": "Organization already has an active payment subscription. Use upgrade instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Hard-delete any existing subscription without a Razorpay ID (e.g. seeded data)
+        # to free up the unique constraint on organization_id
+        # Use raw SQL because safedelete's force_policy doesn't reliably hard-delete
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM organizations_subscription WHERE organization_id = %s AND (external_subscription_id = '' OR external_subscription_id IS NULL)",
+                [org.id],
+            )
+
+        # Validate plan
+        try:
+            plan = Plan.objects.get(id=plan_id, is_active=True)
+        except Plan.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Plan not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if plan.is_free:
+            return Response(
+                {"success": False, "message": "Cannot create a checkout for a free plan"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create Razorpay subscription
+        try:
+            service = RazorpayService()
+            customer_id = service.get_or_create_customer(request.user)
+            rzp_sub = service.create_subscription(plan, billing_cycle, customer_id, org.id)
+        except ValueError as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"success": False, "message": f"Payment gateway error: {e}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Create local subscription record (status will be updated by webhook)
+        now = timezone.now()
+        amount = plan.annual_price if billing_cycle == BillingCycle.ANNUAL else plan.monthly_price
+        period_end = now + timedelta(days=365 if billing_cycle == BillingCycle.ANNUAL else 30)
+
+        with transaction.atomic():
+            subscription = Subscription.objects.create(
+                organization=org,
+                plan=plan,
+                status=SubscriptionStatus.TRIALING,
+                billing_cycle=billing_cycle,
+                amount=amount,
+                currency="INR",
+                started_at=now,
+                current_period_start=now,
+                current_period_end=period_end,
+                external_subscription_id=rzp_sub["id"],
+                external_customer_id=customer_id,
+                metadata={"razorpay_short_url": rzp_sub.get("short_url", "")},
+            )
+            # Update org plan using queryset update to avoid simple-history signal
+            Organization.objects.filter(pk=org.pk).update(plan=plan)
+
+        return Response({
+            "success": True,
+            "data": {
+                "subscription_id": rzp_sub["id"],
+                "razorpay_key_id": django_settings.RAZORPAY_KEY_ID,
+            },
+        })
+
+
+class CancelSubscriptionView(APIView):
+    """
+    Cancel the current subscription.
+
+    POST /api/v1/billing/cancel/
+    Body: { cancel_immediately: bool }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.organizations.payment import RazorpayService
+
+        serializer = CancelSubscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        cancel_immediately = serializer.validated_data["cancel_immediately"]
+
+        # Get user's organization subscription
+        membership = (
+            OrganizationMembership.objects.filter(user=request.user, is_active=True)
+            .select_related("organization")
+            .first()
+        )
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            subscription = Subscription.objects.select_related("plan").get(
+                organization=membership.organization,
+                status__in=[SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+            )
+        except Subscription.DoesNotExist:
+            return Response(
+                {"success": False, "message": "No active subscription found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Cancel on Razorpay
+        if subscription.external_subscription_id:
+            try:
+                service = RazorpayService()
+                service.cancel_subscription(
+                    subscription.external_subscription_id,
+                    at_period_end=not cancel_immediately,
+                )
+            except Exception as e:
+                return Response(
+                    {"success": False, "message": f"Payment gateway error: {e}"},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        # Update local subscription
+        subscription.cancel(immediately=cancel_immediately)
+
+        return Response({
+            "success": True,
+            "data": SubscriptionSerializer(subscription).data,
+        })
+
+
+class UpgradePlanView(APIView):
+    """
+    Upgrade or downgrade the subscription plan.
+
+    POST /api/v1/billing/upgrade/
+    Body: { plan_id: int, billing_cycle: "MONTHLY" | "ANNUAL" }
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.organizations.payment import RazorpayService
+
+        serializer = UpgradePlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        plan_id = serializer.validated_data["plan_id"]
+        billing_cycle = serializer.validated_data["billing_cycle"]
+
+        # Get user's organization subscription
+        membership = (
+            OrganizationMembership.objects.filter(user=request.user, is_active=True)
+            .select_related("organization")
+            .first()
+        )
+        if not membership:
+            return Response(
+                {"success": False, "message": "No organization found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            subscription = Subscription.objects.select_related("plan").get(
+                organization=membership.organization,
+                status__in=[SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+            )
+        except Subscription.DoesNotExist:
+            return Response(
+                {"success": False, "message": "No active subscription found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Validate new plan
+        try:
+            new_plan = Plan.objects.get(id=plan_id, is_active=True)
+        except Plan.DoesNotExist:
+            return Response(
+                {"success": False, "message": "Plan not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if new_plan.is_free:
+            return Response(
+                {"success": False, "message": "Cannot upgrade to a free plan. Cancel your subscription instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_plan.id == subscription.plan_id and billing_cycle == subscription.billing_cycle:
+            return Response(
+                {"success": False, "message": "Already on this plan and billing cycle"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Require Razorpay subscription to upgrade — if none exists,
+        # the user must go through checkout to create one first
+        if not subscription.external_subscription_id:
+            return Response(
+                {
+                    "success": False,
+                    "message": "No payment subscription found. Please subscribe through checkout first.",
+                    "requires_checkout": True,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check Razorpay subscription state before attempting update
+        service = RazorpayService()
+        try:
+            rz_sub = service.fetch_subscription(subscription.external_subscription_id)
+        except Exception as e:
+            return Response(
+                {"success": False, "message": f"Payment gateway error: {e}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        rz_status = rz_sub.get("status", "")
+
+        # Only active/authenticated subscriptions can be updated on Razorpay
+        if rz_status not in ("active", "authenticated"):
+            # Cancel the incomplete subscription on Razorpay if possible
+            if rz_status == "created":
+                try:
+                    service.cancel_subscription(subscription.external_subscription_id, at_period_end=False)
+                except Exception:
+                    pass
+            # Clear local subscription so user goes through checkout
+            subscription.external_subscription_id = ""
+            subscription.save(update_fields=["external_subscription_id"])
+            return Response(
+                {
+                    "success": False,
+                    "message": "Your previous payment was not completed. Please subscribe again.",
+                    "requires_checkout": True,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            service.update_subscription_plan(
+                subscription.external_subscription_id,
+                new_plan,
+                billing_cycle,
+            )
+        except ValueError as e:
+            return Response(
+                {"success": False, "message": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception as e:
+            return Response(
+                {"success": False, "message": f"Payment gateway error: {e}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Update local subscription
+        new_amount = new_plan.annual_price if billing_cycle == BillingCycle.ANNUAL else new_plan.monthly_price
+        with transaction.atomic():
+            subscription.plan = new_plan
+            subscription.billing_cycle = billing_cycle
+            subscription.amount = new_amount
+            subscription.save(update_fields=["plan", "billing_cycle", "amount"])
+
+            # Update org plan using queryset update to avoid simple-history signal
+            # (HistoricalOrganization conflicts with modeltranslation fields)
+            Organization.objects.filter(pk=membership.organization_id).update(plan=new_plan)
+
+        # Refetch for serialization
+        subscription.refresh_from_db()
+
+        return Response({
+            "success": True,
+            "data": SubscriptionSerializer(subscription).data,
+        })

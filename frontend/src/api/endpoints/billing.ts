@@ -76,6 +76,11 @@ export interface PlanListResponse {
   results: Plan[]
 }
 
+export interface CheckoutResponse {
+  subscription_id: string
+  razorpay_key_id: string
+}
+
 const billingApi = {
   // Get all active plans
   getPlans: () => {
@@ -85,6 +90,30 @@ const billingApi = {
   // Get billing overview for current user's organization
   getBillingOverview: () => {
     return apiClient.get<{ success: boolean; data: BillingOverview }>('/billing/')
+  },
+
+  // Create a checkout session for subscribing to a plan
+  createCheckout: (planId: number, billingCycle: 'MONTHLY' | 'ANNUAL') => {
+    return apiClient.post<{ success: boolean; data: CheckoutResponse }>(
+      '/billing/checkout/',
+      { plan_id: planId, billing_cycle: billingCycle }
+    )
+  },
+
+  // Cancel the current subscription
+  cancelSubscription: (cancelImmediately = false) => {
+    return apiClient.post<{ success: boolean; data: Subscription }>(
+      '/billing/cancel/',
+      { cancel_immediately: cancelImmediately }
+    )
+  },
+
+  // Upgrade or downgrade the plan
+  upgradePlan: (planId: number, billingCycle: 'MONTHLY' | 'ANNUAL') => {
+    return apiClient.post<{ success: boolean; data: Subscription }>(
+      '/billing/upgrade/',
+      { plan_id: planId, billing_cycle: billingCycle }
+    )
   },
 }
 

@@ -82,6 +82,9 @@ dependencies = [
 
     # ULog Flight Log Parsing
     "pyulog>=0.9.0",
+
+    # Payment Gateway
+    "razorpay>=1.4.2",
 ]
 
 [project.optional-dependencies]
