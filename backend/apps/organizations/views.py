@@ -1582,6 +1582,15 @@ class InvitationListCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        if not membership.organization.can_add_user():
+            return Response(
+                {
+                    "success": False,
+                    "message": "Plan limit reached for users. Upgrade your plan to add more.",
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         serializer = InvitationCreateSerializer(
             data=request.data,
             context={"organization": membership.organization},

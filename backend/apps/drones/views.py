@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from apps.core.choices import ActivityAction, DroneStatus, JobStatus
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import HasPermission
+from apps.core.permissions import HasPermission, PlanLimitPermission
 from apps.jobs.models import DroneJob
 
 from .models import Drone, DroneMaintenanceRecord, DroneTelemetryLog
@@ -80,7 +80,8 @@ class DroneViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Deactivate a drone
     """
 
-    permission_classes = [IsAuthenticated, HasPermission]
+    permission_classes = [IsAuthenticated, HasPermission, PlanLimitPermission]
+    plan_limit_resource = "drone"
     filter_backends = [
         DjangoFilterBackend,
         filters.SearchFilter,

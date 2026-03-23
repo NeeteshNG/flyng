@@ -496,10 +496,56 @@ class Organization(AuditedModel):
         current_count = self.warehouses.count()
         return current_count < self.plan.max_warehouses
 
+    def can_add_drone(self):
+        """Check if organization can add more drones (across all warehouses)."""
+        if not self.plan:
+            return False
+        from apps.drones.models import Drone
+
+        current_count = Drone.objects.filter(
+            work_area__ground_control_station__zone__warehouse__organization=self
+        ).count()
+        return current_count < self.plan.max_drones
+
+    def can_add_storage_location(self):
+        """Check if organization can add more storage locations (across all warehouses)."""
+        if not self.plan:
+            return False
+        from apps.inventory.models import StorageLocation
+
+        current_count = StorageLocation.objects.filter(
+            zone__warehouse__organization=self
+        ).count()
+        return current_count < self.plan.max_storage_locations
+
+    def can_add_order(self):
+        """Check if organization can add more orders this month."""
+        if not self.plan:
+            return False
+        if self.plan.has_unlimited_orders():
+            return True
+        from apps.orders.models import PickOrder
+        from django.utils import timezone
+
+        now = timezone.now()
+        current_count = PickOrder.objects.filter(
+            organization=self,
+            created_at__year=now.year,
+            created_at__month=now.month,
+        ).count()
+        return current_count < self.plan.max_orders_per_month
+
     def get_usage_stats(self):
         """Get current usage vs plan limits."""
         if not self.plan:
             return {}
+
+        from apps.drones.models import Drone
+        from apps.inventory.models import StorageLocation
+        from apps.orders.models import PickOrder
+        from django.utils import timezone
+
+        now = timezone.now()
 
         return {
             "users": {
@@ -509,6 +555,27 @@ class Organization(AuditedModel):
             "warehouses": {
                 "current": self.warehouses.count() if hasattr(self, "warehouses") else 0,
                 "limit": self.plan.max_warehouses,
+            },
+            "drones": {
+                "current": Drone.objects.filter(
+                    work_area__ground_control_station__zone__warehouse__organization=self
+                ).count(),
+                "limit": self.plan.max_drones,
+            },
+            "storage_locations": {
+                "current": StorageLocation.objects.filter(
+                    zone__warehouse__organization=self
+                ).count(),
+                "limit": self.plan.max_storage_locations,
+            },
+            "orders_this_month": {
+                "current": PickOrder.objects.filter(
+                    organization=self,
+                    created_at__year=now.year,
+                    created_at__month=now.month,
+                ).count(),
+                "limit": self.plan.max_orders_per_month,
+                "unlimited": self.plan.has_unlimited_orders(),
             },
         }
 

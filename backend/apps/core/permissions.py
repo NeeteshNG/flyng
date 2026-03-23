@@ -193,3 +193,57 @@ class HasPermission(permissions.BasePermission):
                 return None
 
         return f"{app_label}.{resource}.{action}"
+
+
+class PlanLimitPermission(permissions.BasePermission):
+    """
+    Blocks POST (create) when the organization has hit the plan limit
+    for the resource type declared on the view.
+
+    Usage: Set ``plan_limit_resource`` on the ViewSet.
+    Valid values: "user", "warehouse", "drone", "storage_location", "order"
+    """
+
+    LIMIT_MAP = {
+        "user": "can_add_user",
+        "warehouse": "can_add_warehouse",
+        "drone": "can_add_drone",
+        "storage_location": "can_add_storage_location",
+        "order": "can_add_order",
+    }
+
+    message = "Plan limit reached. Upgrade your plan to add more resources."
+
+    def has_permission(self, request, view):
+        if request.method != "POST":
+            return True
+
+        resource = getattr(view, "plan_limit_resource", None)
+        if not resource:
+            return True
+
+        checker_name = self.LIMIT_MAP.get(resource)
+        if not checker_name:
+            return True
+
+        from apps.organizations.models import OrganizationMembership
+
+        membership = (
+            OrganizationMembership.objects.filter(user=request.user, is_active=True)
+            .select_related("organization__plan")
+            .first()
+        )
+
+        if not membership or not membership.organization:
+            return True  # No org — other permission classes will block
+
+        org = membership.organization
+        checker = getattr(org, checker_name, None)
+        if checker and not checker():
+            self.message = (
+                f"Plan limit reached for {resource.replace('_', ' ')}s. "
+                f"Upgrade your plan to add more."
+            )
+            return False
+
+        return True

@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import HasPermission
+from apps.core.permissions import HasPermission, PlanLimitPermission
 
 from .models import Customer, PickOrder, PickOrderBatch, PickOrderLine
 from .serializers import (
@@ -139,7 +139,8 @@ class PickOrderViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Cancel a pick order
     """
 
-    permission_classes = [IsAuthenticated, HasPermission]
+    permission_classes = [IsAuthenticated, HasPermission, PlanLimitPermission]
+    plan_limit_resource = "order"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PickOrderFilter
     search_fields = [

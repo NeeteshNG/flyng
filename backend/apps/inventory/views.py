@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import HasPermission
+from apps.core.permissions import HasPermission, PlanLimitPermission
 
 from .models import (
     BinLabelType,
@@ -88,7 +88,8 @@ class StorageLocationViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a storage location
     """
 
-    permission_classes = [IsAuthenticated, HasPermission]
+    permission_classes = [IsAuthenticated, HasPermission, PlanLimitPermission]
+    plan_limit_resource = "storage_location"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = StorageLocationFilter
     search_fields = ["code", "aisle", "rack", "level", "notes"]

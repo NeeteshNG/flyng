@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from apps.core.choices import ActivityAction
 from apps.core.mixins import ActivityLoggingMixin
-from apps.core.permissions import HasPermission
+from apps.core.permissions import HasPermission, PlanLimitPermission
 from apps.warehouses.models import (
     DroneWorkArea,
     GroundControlStation,
@@ -48,7 +48,8 @@ class WarehouseViewSet(ActivityLoggingMixin, viewsets.ModelViewSet):
     destroy: Soft delete a warehouse (Admin/Manager only)
     """
 
-    permission_classes = [IsAuthenticated, HasPermission]
+    permission_classes = [IsAuthenticated, HasPermission, PlanLimitPermission]
+    plan_limit_resource = "warehouse"
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["organization", "is_active", "city", "state", "country"]
     search_fields = ["name", "code", "city", "state"]
